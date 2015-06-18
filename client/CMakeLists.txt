@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project( VideoStreaming )
+project( client-OpenCV )
 find_package( OpenCV REQUIRED )
-add_executable( VideoStreaming VideoStreaming.cpp )
-target_link_libraries( VideoStreaming ${OpenCV_LIBS} )
+add_executable( client-OpenCV client-OpenCV.cpp )
+target_link_libraries( client-OpenCV ${OpenCV_LIBS} )
