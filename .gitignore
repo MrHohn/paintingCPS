@@ -13,3 +13,9 @@
 
 # image files
 *.jpg
+
+# cmake files
+client/Makefile
+client/CMakeCache.txt
+client/CMakeFiles/*
+*.cmake
