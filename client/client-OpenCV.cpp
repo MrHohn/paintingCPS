@@ -1,3 +1,12 @@
+/*************************************************
+#
+# Purpose: main program for "CPS client"
+# Author.: Zihong Zheng
+# Version: 0.1
+# License: 
+#
+*************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h> 

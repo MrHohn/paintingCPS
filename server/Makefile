@@ -1,9 +1,9 @@
 ###############################################################
 #
-# Purpose: Makefile for "server"
+# Purpose: Makefile for "CPS server"
 # Author.: Zihong Zheng
 # Version: 0.1
-# License: GPL
+# License: 
 #
 ###############################################################
 

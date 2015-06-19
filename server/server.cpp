@@ -1,13 +1,11 @@
 /*************************************************
-        AUTHOR: Zihong Zheng
+#
+# Purpose: main program for "CPS server"
+# Author.: Zihong Zheng
+# Version: 0.1
+# License: 
+#
 *************************************************/
-
-/* 
-    A server in the internet domain using TCP
-    The port number is set in the code
-    It runs forever, forking off a separate 
-    process for each connection
-*/
 
 #include <stdio.h>
 #include <unistd.h>
