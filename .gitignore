@@ -18,4 +18,7 @@
 client/Makefile
 client/CMakeCache.txt
 client/CMakeFiles/*
+server/Makefile
+server/CMakeCache.txt
+server/CMakeFiles/*
 *.cmake

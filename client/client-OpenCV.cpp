@@ -209,9 +209,11 @@ void *transmit_thread(void *arg)
             sockfd = socket(AF_INET, SOCK_STREAM, 0);
             if (sockfd < 0) 
                 error("ERROR opening socket");
-            inet_pton(AF_INET, "127.0.0.1", &ipv4addr);
+            char server_addr[] = "127.0.0.1";
+            inet_pton(AF_INET, server_addr, &ipv4addr);
             server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-            printf("\n[client] Host name: %s\n", server->h_name);
+            // printf("\n[client] Host name: %s\n", server->h_name);
+            printf("\n[client] Server address: %s\n", server_addr);
             if (server == NULL) {
                 fprintf(stderr,"ERROR, no such host\n");
                 exit(0);
@@ -313,7 +315,7 @@ int client_stop()
     // DBG("will cancel threads\n");
     printf("Canceling threads.\n");
     pthread_cancel(transmitThread);
-    pthread_cancel(resultThread);
+    // pthread_cancel(resultThread);
     return 0;
 }
 
@@ -328,8 +330,8 @@ int client_run()
     printf("\nLaunching threads.\n");
     pthread_create(&transmitThread, 0, transmit_thread, NULL);
     pthread_detach(transmitThread);
-    pthread_create(&resultThread, 0, result_thread, NULL);
-    pthread_detach(resultThread);
+    // pthread_create(&resultThread, 0, result_thread, NULL);
+    // pthread_detach(resultThread);
     return 0;
 }
 

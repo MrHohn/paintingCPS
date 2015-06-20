@@ -52,7 +52,7 @@ void server_result (int sock)
     char response[] = "ok";
     char userLine[256];
     // int userNum;
-    printf("result part\n");
+    printf("result part\n\n");
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
@@ -90,7 +90,7 @@ void server_transmit (int sock)
     char *file_name;
     int write_length = 0;
     int length = 0;  
-    printf("transmitting part\n");
+    printf("transmitting part\n\n");
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
