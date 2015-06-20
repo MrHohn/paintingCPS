@@ -2,6 +2,8 @@
 *.slo
 *.lo
 *.o
+client/client-OpenCV
+server/server-OpenCV
 
 # Compiled Dynamic libraries
 *.so
@@ -12,7 +14,7 @@
 *.a
 
 # image files
-*.jpg
+*.jpeg
 
 # cmake files
 client/Makefile

@@ -87,7 +87,7 @@ void server_transmit (int sock)
     char buffer[BUFFER_SIZE];
     char response[] = "ok";
 
-    char *file_name;
+    char file_name[BUFFER_SIZE];
     int write_length = 0;
     int length = 0;  
     printf("transmitting part\n\n");
@@ -101,12 +101,14 @@ void server_transmit (int sock)
     n = read(sock,buffer, sizeof(buffer));
     if (n < 0) 
         error("ERROR reading from socket");
-    printf("[server] file name: %s\n",buffer);
+
+    // file_name = buffer;
+    strncpy(file_name, buffer, BUFFER_SIZE);
+    printf("[server] file name: %s\n", file_name);
     // n = write(sock,"I got your message",18);
     // if (n < 0) error("ERROR writing to socket");
 
-    file_name = buffer;
-    FILE *fp = fopen(buffer, "w");  
+    FILE *fp = fopen(file_name, "w");  
     if (fp == NULL)  
     {  
         printf("File:\t%s Can Not Open To Write!\n", file_name);  
@@ -117,11 +119,12 @@ void server_transmit (int sock)
     bzero(buffer, sizeof(buffer));  
     while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
     {  
+        // printf("%d\n", length);
         if (length < 0)  
         {  
             printf("Recieve Data From Client Failed!\n");  
             break;  
-        }  
+        }
   
         write_length = fwrite(buffer, sizeof(char), length, fp);  
         if (write_length < length)  
@@ -129,15 +132,12 @@ void server_transmit (int sock)
             printf("File:\t Write Failed!\n");  
             break;  
         }  
-        bzero(buffer, BUFFER_SIZE);  
-    }  
-  
-    printf("[server] Recieve File:\t%s From Client Finished!\n", file_name);  
-  
+        bzero(buffer, BUFFER_SIZE);
+    }
+    printf("[server] Recieve File: %s From Client Finished!\n", file_name);  
     // finished 
     fclose(fp);
     
-
     close(sock); 
     printf("[server] Connection closed.\n\n");
     pthread_exit(NULL); //terminate calling thread!

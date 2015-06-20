@@ -32,6 +32,11 @@ static pthread_t transmitThread;
 static pthread_t resultThread;
 
 int global_stop = 0;
+Point center = Point(255,255);
+int r = 100;
+int drawCircle = 0;
+int drawLetter = 0;
+string letterShown = "Human";
 
 /******************************************************************************
 Description.: tempalte for transfer integer to string
@@ -125,13 +130,28 @@ void *result_thread(void *arg)
         bzero(buffer, sizeof(buffer));
         n = read(sockfd, buffer, sizeof(buffer));
         if (n < 0) 
-         error("ERROR writing to socket");
-        else if (n > 0)
         {
-            printf("\n-------------------------------------\n");
-            printf("[client] result from the server: %s", buffer);
-            printf("-------------------------------------\n\n");
-       }
+            error("ERROR writing to socket");
+        }
+        // else if (n > 0)
+        // {
+        //     printf("\n-------------------------------------\n");
+        //     printf("[client] result from the server: %s", buffer);
+        //     printf("-------------------------------------\n\n");
+        // }
+        if (strcmp(buffer, "circle\n") == 0) 
+        {
+            drawCircle = 1;
+        }
+        else if (strcmp(buffer, "letter\n") == 0) 
+        {
+            drawLetter = 1;
+        }
+        else if (strcmp(buffer, "none\n") == 0)
+        {
+            drawCircle = 0;
+            drawLetter = 0;
+        }
     }
 
     close(sockfd); // disconnect server
@@ -178,7 +198,8 @@ void *transmit_thread(void *arg)
     struct in_addr ipv4addr;
     char header[] = "transmit"; 
     char response[10];
-
+    portno = PORT_NO;
+  
     /*-------------------end----------------------*/
 
     // double rate = capture.get(CV_CAP_PROP_FPS);
@@ -192,6 +213,15 @@ void *transmit_thread(void *arg)
         ++count;
         capture.read(frame);
         // capture >> frame;
+        if (drawCircle)
+        {
+            circle(frame, center, r, Scalar(0, 0, 255), 4);
+        }
+        if (drawLetter)
+        {
+            putText(frame, letterShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+        }
+
         imshow("Real-Time CPS", frame);
         if (count == 60) {
             count = 0;
@@ -205,7 +235,6 @@ void *transmit_thread(void *arg)
 
             /*-------------------send current frame here--------------*/
 
-            portno = PORT_NO;
             sockfd = socket(AF_INET, SOCK_STREAM, 0);
             if (sockfd < 0) 
                 error("ERROR opening socket");
@@ -235,7 +264,7 @@ void *transmit_thread(void *arg)
             else
             {
                 printf("[client] transmit thread get connection to server\n");
-                printf("[client] start transmitting current frame\n");
+                printf("[client] start transmitting current frame\n\n");
             }
 
             // printf("Please enter the file name: ");
@@ -246,6 +275,7 @@ void *transmit_thread(void *arg)
             n = write(sockfd, header, sizeof(header));
             if (n < 0) 
                  error("ERROR writing to socket");
+
             // get the response
             n = read(sockfd, response, sizeof(response));
             if (n < 0) 
@@ -281,18 +311,21 @@ void *transmit_thread(void *arg)
                         printf("Send File:\t%s Failed!\n", file_name);  
                         break;  
                     }  
+                    // send(sockfd, "", 0, 0);
 
-                    bzero(bufferSend, sizeof(bufferSend));  
+                    bzero(bufferSend, BUFFER_SIZE);  
                 }
 
                 fclose(fp);  
                 printf("[client] transfer finished\n");  
             }
-            close(sockfd); // disconnect server
-            printf("[client] connection closed\n");
 
             /*---------------------------end--------------------------*/
+
+            close(sockfd); // disconnect server
+            printf("[client] connection closed\n\n");
         }
+        
 
         if (cvWaitKey(20) == 27)
         {
@@ -315,7 +348,7 @@ int client_stop()
     // DBG("will cancel threads\n");
     printf("Canceling threads.\n");
     pthread_cancel(transmitThread);
-    // pthread_cancel(resultThread);
+    pthread_cancel(resultThread);
     return 0;
 }
 
@@ -330,8 +363,8 @@ int client_run()
     printf("\nLaunching threads.\n");
     pthread_create(&transmitThread, 0, transmit_thread, NULL);
     pthread_detach(transmitThread);
-    // pthread_create(&resultThread, 0, result_thread, NULL);
-    // pthread_detach(resultThread);
+    pthread_create(&resultThread, 0, result_thread, NULL);
+    pthread_detach(resultThread);
     return 0;
 }
 
