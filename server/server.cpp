@@ -29,14 +29,22 @@
  // context transmitServer;
  // context resultServer;
 
-
+/******************************************************************************
+Description.: print out the error message and exit
+Input Value.:
+Return Value:
+******************************************************************************/
 void error(const char *msg)
 {
     perror(msg);
     exit(1);
 }
 
-// function for sending back the result 
+/******************************************************************************
+Description: function for sending back the result
+Input Value.:
+Return Value:
+******************************************************************************/
 void server_result (int sock)
 {
     int n;
@@ -68,7 +76,11 @@ void server_result (int sock)
 
 }
 
-// function for transmitting the frames
+/******************************************************************************
+Description: function for transmitting the frames
+Input Value.:
+Return Value:
+******************************************************************************/
 void server_transmit (int sock)
 {
     int n;
@@ -132,11 +144,13 @@ void server_transmit (int sock)
 
 }
 
-/******** serverThread() *********************
- There is a separate instance of this function 
- for each connection.  It handles all communication
- once a connnection has been established.
- *****************************************/
+/******************************************************************************
+Description.: There is a separate instance of this function 
+              for each connection.  It handles all communication
+              once a connnection has been established.
+Input Value.:
+Return Value: -
+******************************************************************************/
 void *serverThread (void * inputsock)
 {
     int sock = *((int *)inputsock);
@@ -166,6 +180,11 @@ void *serverThread (void * inputsock)
     return 0;
 }
 
+/******************************************************************************
+Description.: calling this function creates and starts the server threads
+Input Value.: -
+Return Value: -
+******************************************************************************/
 void run_server()
 {
     // init part
@@ -228,6 +247,7 @@ void run_server()
     } /* end of while */
     close(sockfd);
 }
+
 
 int main(int argc, char *argv[])
 {

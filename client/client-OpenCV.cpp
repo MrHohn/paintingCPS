@@ -26,7 +26,7 @@ using namespace std;
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
-#define DELAY                       5 // ms
+#define DELAY                        1 // ms
 
 static pthread_t transmitThread;
 static pthread_t resultThread;
@@ -66,7 +66,7 @@ Return Value:
 ******************************************************************************/
 void *result_thread(void *arg)
 {
-    printf("In the receiver thread.\n");
+    // printf("In the receiver thread.\n");
 
     /*-----------------network part--------------*/
 
@@ -82,9 +82,11 @@ void *result_thread(void *arg)
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
-    inet_pton(AF_INET, "127.0.0.1", &ipv4addr);
+    char server_addr[] = "127.0.0.1";
+    inet_pton(AF_INET, server_addr, &ipv4addr);
     server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-    printf("\n[client] Host name: %s\n", server->h_name);
+    // printf("\n[client] Host name: %s\n", server->h_name);
+    printf("\n[client] Server address: %s\n", server_addr);
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         exit(0);
@@ -98,11 +100,16 @@ void *result_thread(void *arg)
 
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
     {
-        printf("\n-------- The server is not available now. ---------\n\n");
-        error("ERROR connecting");
+        printf("-------- The server is not available now. ---------\n\n");
+        global_stop = 1;
+        exit(0);
+        // error("ERROR connecting");
     }
-    printf("[client] result thread get connection to server\n");
-    printf("[client] start receiving the result\n");
+    else
+    {
+        printf("[client] result thread get connection to server\n");
+        printf("[client] start receiving the result\n");   
+    }
 
     // send the header first
     n = write(sockfd, header, sizeof(header));
@@ -134,6 +141,7 @@ void *result_thread(void *arg)
 
     // // /* cleanup now */
     // // pthread_cleanup_pop(1);
+    global_stop = 1;
 
     return NULL;
 }
@@ -150,7 +158,8 @@ void *transmit_thread(void *arg)
     int index = 1;
     int count = 0;
     
-    string file_name;
+    // string file_name;
+    char file_name[20] = {0};
     VideoCapture capture(0);
     Mat frame;
 
@@ -158,6 +167,19 @@ void *transmit_thread(void *arg)
     vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
     compression_params.push_back(95);
+
+
+    /*-----------------network part--------------*/
+
+    int sockfd, portno, n;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+    char bufferSend[BUFFER_SIZE];
+    struct in_addr ipv4addr;
+    char header[] = "transmit"; 
+    char response[10];
+
+    /*-------------------end----------------------*/
 
     // double rate = capture.get(CV_CAP_PROP_FPS);
     // printf("FPS: %f\n", rate);
@@ -171,20 +193,114 @@ void *transmit_thread(void *arg)
         capture.read(frame);
         // capture >> frame;
         imshow("Real-Time CPS", frame);
-        if (count == 30) {
+        if (count == 60) {
             count = 0;
             // writer << frame;
             // file_name = to_string(index);
-            file_name = NumberToString(index);
-            imwrite("pics/" + file_name + ".jpeg", frame, compression_params);
+            // file_name = NumberToString(index);
+            // file_name = "pics/" + file_name + ".jpeg";
+            sprintf(file_name, "pics/%d.jpeg", index);
+            imwrite(file_name, frame, compression_params);
             ++index;
+
+            /*-------------------send current frame here--------------*/
+
+            portno = PORT_NO;
+            sockfd = socket(AF_INET, SOCK_STREAM, 0);
+            if (sockfd < 0) 
+                error("ERROR opening socket");
+            inet_pton(AF_INET, "127.0.0.1", &ipv4addr);
+            server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+            printf("\n[client] Host name: %s\n", server->h_name);
+            if (server == NULL) {
+                fprintf(stderr,"ERROR, no such host\n");
+                exit(0);
+            }
+            bzero((char *) &serv_addr, sizeof(serv_addr));
+            serv_addr.sin_family = AF_INET;
+            bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
+            serv_addr.sin_port = htons(portno);
+
+            // finished initialize, try to connect
+
+            if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+            {
+                printf("-------- The server is not available now. ---------\n\n");
+                global_stop = 1;
+                exit(0);
+                // error("ERROR connecting");
+            }
+            else
+            {
+                printf("[client] transmit thread get connection to server\n");
+                printf("[client] start transmitting current frame\n");
+            }
+
+            // printf("Please enter the file name: ");
+            // bzero(bufferSend,BUFFER_SIZE);
+            // fgets(bufferSend,BUFFER_SIZE - 1,stdin);
+            
+            // send the header first
+            n = write(sockfd, header, sizeof(header));
+            if (n < 0) 
+                 error("ERROR writing to socket");
+            // get the response
+            n = read(sockfd, response, sizeof(response));
+            if (n < 0) 
+                 error("ERROR reading from socket");
+
+            // start transmitting the file
+            printf("[client] file: %s\n", file_name);
+            n = write(sockfd, file_name, sizeof(file_name));
+            if (n < 0) 
+                 error("ERROR writing to socket");
+
+
+            // char file_name[] = "./pics/client.jpg";
+            // char file_name[1024];
+            // strcpy(file_name, buffer2);
+            FILE *fp = fopen(file_name, "r");  
+            if (fp == NULL)  
+            {  
+                // printf("File:\t%s Not Found!\n", file_name);  
+                printf("File:\t%s Not Found!\n", file_name);  
+            }  
+            else  
+            {  
+                bzero(bufferSend, BUFFER_SIZE);  
+                int file_block_length = 0;  
+                while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
+                {  
+                    // printf("file_block_length = %d\n", file_block_length);  
+
+                    // send data to the client side  
+                    if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
+                    {  
+                        printf("Send File:\t%s Failed!\n", file_name);  
+                        break;  
+                    }  
+
+                    bzero(bufferSend, sizeof(bufferSend));  
+                }
+
+                fclose(fp);  
+                printf("[client] transfer finished\n");  
+            }
+            close(sockfd); // disconnect server
+            printf("[client] connection closed\n");
+
+            /*---------------------------end--------------------------*/
         }
+
         if (cvWaitKey(20) == 27)
         {
             break;
         }
-        usleep(1000 * DELAY);
+        // usleep(1000 * DELAY);
     }
+
+    global_stop = 1;
+    // exit(0);
 }
 
 /******************************************************************************
@@ -197,7 +313,7 @@ int client_stop()
     // DBG("will cancel threads\n");
     printf("Canceling threads.\n");
     pthread_cancel(transmitThread);
-    // pthread_cancel(resultThread);
+    pthread_cancel(resultThread);
     return 0;
 }
 
@@ -209,11 +325,11 @@ Return Value: always 0
 int client_run()
 {
     // DBG("launching threads\n");
-    printf("Launching threads.\n");
+    printf("\nLaunching threads.\n");
     pthread_create(&transmitThread, 0, transmit_thread, NULL);
     pthread_detach(transmitThread);
-    // pthread_create(&resultThread, 0, result_thread, NULL);
-    // pthread_detach(resultThread);
+    pthread_create(&resultThread, 0, result_thread, NULL);
+    pthread_detach(resultThread);
     return 0;
 }
 
