@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
+#include "ImgMatch.h"
 // #include <errno.h>
 
 #define BUFFER_SIZE               1024  
@@ -55,7 +56,7 @@ void server_result (int sock)
     int n;
     // char buffer[BUFFER_SIZE];
     char response[] = "ok";
-    char userLine[256];
+    // char userLine[256];
     // int userNum;
     printf("result part\n\n");
 
@@ -74,7 +75,7 @@ void server_result (int sock)
         // }
 
         sem_wait(&sem_imgProcess);    
-        
+
     }
 
     close(sock); 
@@ -301,8 +302,13 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    run_server();
+    ImgMatch imgM;
+    // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
+    imgM.init_matchImg("./indexImgTable", "ImgIndex.yml");
+    imgM.matchImg("./imgDB/2.jpg");
+    imgM.showMatchImg();
+
+    // run_server();
 
     return 0; /* we never get here */
 }
-

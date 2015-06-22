@@ -24,3 +24,9 @@ server/Makefile
 server/CMakeCache.txt
 server/CMakeFiles/*
 *.cmake
+
+# database files
+server/imgDB/*
+server/infoDB/*
+*.yml
+server/indexImgTable
