@@ -38,6 +38,7 @@
 int global_stop = 0;
 sem_t sem_imgProcess;
 queue<string> imgQueue;
+pthread_mutex_t queueLock;
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -153,9 +154,14 @@ void server_transmit (int sock)
     // finished 
     fclose(fp);
 
+    // lock the queue, ensure there is only one thread modifying the queue
+    pthread_mutex_lock(&queueLock);
+
     // store the file name to the waiting queue
     string file_name_string = file_name;
     imgQueue.push(file_name_string);
+
+    pthread_mutex_unlock(&queueLock);
     // signal the result thread to do image processing
     sem_post(&sem_imgProcess);
 
