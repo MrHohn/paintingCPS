@@ -8,6 +8,7 @@
 *************************************************/
 
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <sys/types.h> 
 #include <string.h>
@@ -20,6 +21,8 @@
 #include <signal.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
+#include <sys/time.h>
 
 using namespace cv;
 using namespace std;
@@ -223,6 +226,9 @@ void *transmit_thread(void *arg)
         }
 
         imshow("Real-Time CPS", frame);
+        if (index == 1 && count == 1) {
+            moveWindow("Real-Time CPS", 450, 150 ); 
+        }
         if (count == 60) {
             count = 0;
             // writer << frame;

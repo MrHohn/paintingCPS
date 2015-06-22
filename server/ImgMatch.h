@@ -27,13 +27,15 @@ public:
     ImgMatch();
     ~ImgMatch();
     void init_DB(int size_DB, string add_DB, string indexImgAdd, string featureClusterAdd); // minHessian, db add, db size
+    void init_infoDB( string add_DB);
     void matchImg(string srcImgAdd);
-    void init_matchImg(string indexImgAdd,string featureClusterAdd);
+    void init_matchImg(string indexImgAdd,string featureClusterAdd,string imgInfoAdd);
     void set_minHessian(int minHessian);
     void set_dbSize(int size_DB);
     void set_indexImgAdd(string indexImgAdd);
     int getMatchedImgIndex();
     void showMatchImg();
+    void getMatchedImgInfo();
 private:
     int minHessian;
     string add_DB;  //database address
@@ -46,6 +48,7 @@ private:
     SurfDescriptorExtractor extractor;
     Mat featureCluster;
     string featureClusterAdd;
+    string imgInfoAdd;
     Mat indices, dists;
     struct ImgFreq{
         int ImgIndex;

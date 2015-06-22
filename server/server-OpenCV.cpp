@@ -19,6 +19,9 @@
 #include <signal.h>
 #include <semaphore.h>
 #include "ImgMatch.h"
+#include <sys/time.h>
+#include <queue>
+// #include <sys/queue.h>
 // #include <errno.h>
 
 #define BUFFER_SIZE               1024  
@@ -34,6 +37,7 @@
 
 int global_stop = 0;
 sem_t sem_imgProcess;
+queue<string> imgQueue;
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -74,7 +78,10 @@ void server_result (int sock)
         //         error("ERROR writting to socket");
         // }
 
-        sem_wait(&sem_imgProcess);    
+        sem_wait(&sem_imgProcess);
+        string file_name = imgQueue.front(); 
+        printf("file name: %s\n", file_name.c_str());
+        imgQueue.pop();
 
     }
 
@@ -145,7 +152,13 @@ void server_transmit (int sock)
     printf("[server] Recieve File: %s From Client Finished!\n", file_name);  
     // finished 
     fclose(fp);
-    
+
+    // store the file name to the waiting queue
+    string file_name_string = file_name;
+    imgQueue.push(file_name_string);
+    // signal the result thread to do image processing
+    sem_post(&sem_imgProcess);
+
     close(sock); 
     printf("[server] Connection closed.\n\n");
     pthread_exit(NULL); //terminate calling thread!
@@ -304,11 +317,11 @@ int main(int argc, char *argv[])
 
     ImgMatch imgM;
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
-    imgM.init_matchImg("./indexImgTable", "ImgIndex.yml");
-    imgM.matchImg("./imgDB/2.jpg");
-    imgM.showMatchImg();
+    imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
+    // imgM.matchImg("./imgDB/2.jpg");
+    // imgM.showMatchImg();
 
-    // run_server();
+    run_server();
 
     return 0; /* we never get here */
 }

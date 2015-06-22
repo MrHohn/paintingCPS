@@ -5,6 +5,7 @@
 */
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
+#include <sys/time.h>
 #include "ImgMatch.h"
  
 ImgMatch::ImgMatch()
@@ -13,18 +14,16 @@ ImgMatch::ImgMatch()
  
 }
  
- 
 ImgMatch::~ImgMatch()
 {
 }
 //get all descriptor of images in database, save index_img to file;
-void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string featureClusterAdd)
-{
+void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string featureClusterAdd){
     printf("Start calculating the descriptors\n");
     this->set_dbSize(size_DB);
     SurfFeatureDetector detector(3000);
     for (int i = 1; i <= size_DB; i++){
-        char  imgName[100];
+        char  imgName[100]; 
          
         sprintf(imgName, "IMG_%d.jpg", i);
         string fileName;
@@ -62,13 +61,32 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     printf("Finished.\n");
 }
  
+void init_infoDB(string add_DB){
+    const int infoDB_Size = 20;
+    string infoDB[infoDB_Size] = { "winlab logo", "microware", "file extinguisher", "winlab door", "winlab inner door", "sofa", "working desk", "trash box", "orbit machine", "car", "computer display" };
+ 
+    for (int i = 0; i < sizeof(infoDB) / sizeof(*infoDB); i++){
+        if (infoDB[i] != "\0"){
+            char filename[100];
+            sprintf(filename, "INFO_%d.txt", i);
+ 
+            string fileName;
+            string fileAdd = add_DB;
+            fileName = fileAdd.append(string(filename));
+ 
+            ofstream outFile;
+            outFile.open(filename);
+            outFile << infoDB[i];
+        }
+    }
+}
+ 
 /*
     \read all descriptors of database img, and index-img map hashtable
 */
-void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd)
-{
-    printf("Start loading the database\n");
+void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,string imgInfoAdd){
     ifstream inFile(indexImgAdd);
+    printf("Start loading the database\n");
     int t;
     while (inFile >> t){
         index_IMG.push_back(t);
@@ -76,10 +94,15 @@ void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd)
     FileStorage storage(featureClusterAdd, FileStorage::READ);
     storage["index"] >> featureCluster;
     storage.release();
-    printf("Finished\n");
+    this->imgInfoAdd = imgInfoAdd;
+    printf("Finished\n"); 
 }
  
 void ImgMatch::matchImg(string srcImgAdd){
+    struct timeval tpstart,tpend;
+    double timeuse;
+    gettimeofday(&tpstart,NULL);
+
     Mat srcImg = imread(srcImgAdd);
     if (!srcImg.data){
         cout << "srcImg NOT found" << endl;
@@ -97,7 +120,7 @@ void ImgMatch::matchImg(string srcImgAdd){
     /*
         \find best match img
     */
-    float nndrRatio = 0.6f;
+    float nndrRatio = 0.8f;
     vector<ImgFreq>imgFreq;
     for (int i = 0; i < indices.rows; i++){
         if (dists.at<float>(i, 0) < dists.at<float>(i, 1) * nndrRatio){
@@ -121,6 +144,14 @@ void ImgMatch::matchImg(string srcImgAdd){
     }
     flannIndex.~Index();
  
+    //display possible matched image index
+    /*
+    for (auto&t : imgFreq){
+    cout << "possible imatch " << t.ImgIndex << " times is: " << t.Freq << endl;
+    }
+    */
+     
+ 
     int maxFreq = 1;
     matchedImgIndex = 0;
     for (auto &t : imgFreq){
@@ -131,6 +162,11 @@ void ImgMatch::matchImg(string srcImgAdd){
         if (t.Freq == maxFreq)
             matchedImgIndex = t.ImgIndex;
     }
+
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    // printf("used time:%fus\n",timeuse);
+    printf("used time:%fms\n",timeuse / 1000);
 }
  
 void ImgMatch::set_minHessian(int m){
@@ -149,13 +185,29 @@ void ImgMatch::set_dbSize(int s){
 int ImgMatch::getMatchedImgIndex(){
     return this->matchedImgIndex;
 }
+ 
 void ImgMatch::showMatchImg(){
     cout << matchedImgIndex;
- 
+     
     char filename[100];
     sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
     Mat matchImg = imread(filename);
     imshow("matched img", matchImg);
+    moveWindow("matched img", 0, 200 ); 
     waitKey();
  
+}
+void ImgMatch::getMatchedImgInfo(){
+    string add = imgInfoAdd;
+    char infoAdd[100];
+    int index =  ceil(matchedImgIndex / double(2));
+    cout << "matchedImgIndex is: " << matchedImgIndex << endl;
+    cout << "info index is: " << index;
+    sprintf(infoAdd, "INFO_%d.txt", index);
+    add.append(string(infoAdd));
+    ifstream inFile(add);
+    string info;
+    while (inFile >> info){
+        cout << info;
+    } 
 }
