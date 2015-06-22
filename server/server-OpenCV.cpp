@@ -16,6 +16,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <signal.h>
+#include <semaphore.h>
 // #include <errno.h>
 
 #define BUFFER_SIZE               1024  
@@ -28,6 +30,9 @@
 // context servers[MAX_SERVER_NUM];
  // context transmitServer;
  // context resultServer;
+
+int global_stop = 0;
+sem_t sem_imgProcess;
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -59,15 +64,17 @@ void server_result (int sock)
     if (n < 0) 
         error("ERROR writting to socket");
 
-    while(1) 
+    while(!global_stop) 
     {
-        // read user input and send it to client(a simple simulation)
-        if (fgets(userLine, sizeof(userLine), stdin)) {
-            n = write(sock, userLine, sizeof(userLine));
-            if (n < 0) 
-                error("ERROR writting to socket");
-        }
+        // // read user input and send it to client(a simple simulation)
+        // if (fgets(userLine, sizeof(userLine), stdin)) {
+        //     n = write(sock, userLine, sizeof(userLine));
+        //     if (n < 0) 
+        //         error("ERROR writting to socket");
+        // }
 
+        sem_wait(&sem_imgProcess);    
+        
     }
 
     close(sock); 
@@ -223,7 +230,7 @@ void run_server()
         printf ("[server] listening the port %d sucessfully.\n", portno);    
     
     // init finished, now wait for a client
-    while (1) {
+    while (!global_stop) {
         pthread_t thread_id;
         //Block here. Until server accpets a new connection.
         newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
@@ -248,10 +255,54 @@ void run_server()
     close(sockfd);
 }
 
+/******************************************************************************
+Description.: pressing CTRL+C sends signals to this process instead of just
+              killing the threads can tidily shutdown and free allocated
+              resources. The function prototype is defined by the system,
+              because it is a callback function.
+Input Value.: sig tells us which signal was received
+Return Value: -
+******************************************************************************/
+void signal_handler(int sig)
+{
+
+    /* signal "stop" to threads */
+    printf("\nSetting signal to stop.\n");
+    global_stop = 1;
+    sem_destroy(&sem_imgProcess);
+    usleep(1000 * 1000);
+
+    /* clean up threads */
+    printf("Force cancellation of threads and cleanup resources.\n");
+    // client_stop();
+
+    usleep(1000 * 1000);
+
+    printf("Done.\n");
+
+    exit(0);
+    return;
+}
+
 
 int main(int argc, char *argv[])
 {
+    /* register signal handler for <CTRL>+C in order to clean up */
+    if(signal(SIGINT, signal_handler) == SIG_ERR) {
+        printf("could not register signal handler\n");
+        exit(EXIT_FAILURE);
+    }
+
+    const unsigned int nSemaphoreCount = 0; //initial value of semaphore
+    int nRet = -1;
+    nRet = sem_init(&sem_imgProcess, 0, nSemaphoreCount);
+    if (0 != nRet)
+    {
+        return -1;
+    }
+
     run_server();
+
     return 0; /* we never get here */
 }
 
