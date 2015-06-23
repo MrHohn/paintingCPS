@@ -40,6 +40,8 @@ int r = 100;
 int drawCircle = 0;
 int drawLetter = 0;
 string letterShown = "Human";
+int drawResult = 0;
+string resultShown = "";
 
 /******************************************************************************
 Description.: tempalte for transfer integer to string
@@ -83,8 +85,9 @@ void *result_thread(void *arg)
     struct hostent *server;
     struct in_addr ipv4addr;
     char buffer[BUFFER_SIZE];
-    char header[] = "result"; 
+    char header[] = "result";
     char response[10];
+    char *resultTemp = "";
 
     portno = PORT_NO;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -131,17 +134,16 @@ void *result_thread(void *arg)
     while(!global_stop)
     {
         bzero(buffer, sizeof(buffer));
-        n = read(sockfd, buffer, sizeof(buffer));
-        if (n < 0) 
+        if (read(sockfd, buffer, sizeof(buffer)) < 0) 
         {
-            error("ERROR writing to socket");
+            error("ERROR reading from socket");
         }
-        // else if (n > 0)
-        // {
-        //     printf("\n-------------------------------------\n");
-        //     printf("[client] result from the server: %s", buffer);
-        //     printf("-------------------------------------\n\n");
-        // }
+        else if (n > 0)
+        {
+            printf("\n-------------------------------------\n");
+            printf("[client] result from the server: %s", buffer);
+            printf("-------------------------------------\n\n");
+        }
         if (strcmp(buffer, "circle\n") == 0) 
         {
             drawCircle = 1;
@@ -155,6 +157,18 @@ void *result_thread(void *arg)
             drawCircle = 0;
             drawLetter = 0;
         }
+        
+
+        // if (strcmp(buffer, "none"))
+        // {
+        //     drawResult = 0;
+        // }
+        // else
+        // {
+        //     sprintf(resultTemp, "matched index: %s", buffer);
+        //     resultShown = resultTemp;
+        //     drawResult = 1;
+        // }
     }
 
     close(sockfd); // disconnect server
@@ -216,19 +230,7 @@ void *transmit_thread(void *arg)
         ++count;
         capture.read(frame);
         // capture >> frame;
-        if (drawCircle)
-        {
-            circle(frame, center, r, Scalar(0, 0, 255), 4);
-        }
-        if (drawLetter)
-        {
-            putText(frame, letterShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
-        }
-
-        imshow("Real-Time CPS", frame);
-        if (index == 1 && count == 1) {
-            moveWindow("Real-Time CPS", 450, 150 ); 
-        }
+    
         if (count == 60) {
             count = 0;
             // writer << frame;
@@ -287,12 +289,16 @@ void *transmit_thread(void *arg)
             if (n < 0) 
                  error("ERROR reading from socket");
 
-            // start transmitting the file
+            // send the file name
             printf("[client] file: %s\n", file_name);
             n = write(sockfd, file_name, sizeof(file_name));
             if (n < 0) 
                  error("ERROR writing to socket");
 
+            // get the response
+            n = read(sockfd, response, sizeof(response));
+            if (n < 0) 
+                 error("ERROR reading from socket");
 
             // char file_name[] = "./pics/client.jpg";
             // char file_name[1024];
@@ -306,13 +312,15 @@ void *transmit_thread(void *arg)
             else  
             {  
                 bzero(bufferSend, BUFFER_SIZE);  
-                int file_block_length = 0;  
+                int file_block_length = 0;
+                // start transmitting the file
                 while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
                 {  
                     // printf("file_block_length = %d\n", file_block_length);  
 
                     // send data to the client side  
                     if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
+                    // if (send(sockfd, bufferSend, BUFFER_SIZE, 0) < 0)  
                     {  
                         printf("Send File:\t%s Failed!\n", file_name);  
                         break;  
@@ -332,7 +340,23 @@ void *transmit_thread(void *arg)
             printf("[client] connection closed\n\n");
         }
         
+        if (drawCircle)
+        {
+            circle(frame, center, r, Scalar(0, 0, 255), 4);
+        }
+        if (drawLetter)
+        {
+            putText(frame, letterShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+        }
+        // if (drawResult)
+        // {
+        //     putText(frame, resultShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+        // }
 
+        imshow("Real-Time CPS", frame);
+        if (index == 1 && count == 1) {
+            moveWindow("Real-Time CPS", 100, 150 ); 
+        }
         if (cvWaitKey(20) == 27)
         {
             break;

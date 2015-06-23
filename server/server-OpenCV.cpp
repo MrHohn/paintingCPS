@@ -35,10 +35,11 @@
  // context transmitServer;
  // context resultServer;
 
-int global_stop = 0;
-sem_t sem_imgProcess;
-queue<string> imgQueue;
-pthread_mutex_t queueLock;
+int global_stop = 0;       // global flag for quit
+sem_t sem_imgProcess;      // semaphore for result thread
+queue<string> imgQueue;    // queue storing the file names 
+pthread_mutex_t queueLock; // mutex lock for queue operation
+ImgMatch imgM;             // class for image process
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -61,9 +62,12 @@ void server_result (int sock)
     int n;
     // char buffer[BUFFER_SIZE];
     char response[] = "ok";
-    // char userLine[256];
+    char defMsg[] = "none";
+    int matchedIndex;
+    char sendIndex[40];
+    char userLine[256];
     // int userNum;
-    printf("result part\n\n");
+    printf("result thread\n\n");
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
@@ -72,17 +76,41 @@ void server_result (int sock)
 
     while(!global_stop) 
     {
-        // // read user input and send it to client(a simple simulation)
-        // if (fgets(userLine, sizeof(userLine), stdin)) {
-        //     n = write(sock, userLine, sizeof(userLine));
-        //     if (n < 0) 
-        //         error("ERROR writting to socket");
+        // read user input and send it to client(a simple simulation)
+        if (fgets(userLine, sizeof(userLine), stdin)) {
+            n = write(sock, userLine, sizeof(userLine));
+            if (n < 0) 
+                error("ERROR writting to socket");
+        }
+
+        // sem_wait(&sem_imgProcess);
+        // string file_name = imgQueue.front(); 
+        // printf("file name: %s\n", file_name.c_str());
+        // imgQueue.pop();
+
+        // start matching the image
+        // imgM.matchImg(file_name);
+        // matchedIndex = imgM.getMatchedImgIndex();
+        // if (matchedIndex == 0) 
+        // {   
+        //     // write none to client
+        //     // if (write(sock, defMsg, sizeof(defMsg)) < 0)
+        //     // {
+        //     //     error("ERROR writting to socket");
+        //     // }
+        // }
+        // else
+        // {
+        //     // write index to client
+        //     // itoa(matchedIndex, sendIndex, 10);
+        //     sprintf(sendIndex, "%d", matchedIndex);
+        //     // if (write(sock, sendIndex, sizeof(sendIndex)) < 0)
+        //     // {
+        //     //     error("ERROR writting to socket");
+        //     // }
+        //     // printf("\nmatched image index: %d\n", matchedIndex);
         // }
 
-        sem_wait(&sem_imgProcess);
-        string file_name = imgQueue.front(); 
-        printf("file name: %s\n", file_name.c_str());
-        imgQueue.pop();
 
     }
 
@@ -117,12 +145,17 @@ void server_transmit (int sock)
     n = read(sock,buffer, sizeof(buffer));
     if (n < 0) 
         error("ERROR reading from socket");
-
-    // file_name = buffer;
+    // store the file name
     strncpy(file_name, buffer, BUFFER_SIZE);
     printf("[server] file name: %s\n", file_name);
     // n = write(sock,"I got your message",18);
     // if (n < 0) error("ERROR writing to socket");
+
+    // reponse to the client
+    n = write(sock, response, sizeof(response));
+    if (n < 0) 
+        error("ERROR writting to socket");
+
 
     FILE *fp = fopen(file_name, "w");  
     if (fp == NULL)  
@@ -290,6 +323,7 @@ void signal_handler(int sig)
     printf("\nSetting signal to stop.\n");
     global_stop = 1;
     sem_destroy(&sem_imgProcess);
+    pthread_mutex_destroy(&queueLock);
     usleep(1000 * 1000);
 
     /* clean up threads */
@@ -321,7 +355,13 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    ImgMatch imgM;
+    if (pthread_mutex_init(&queueLock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+
+    // ImgMatch imgM;
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
     imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
     // imgM.matchImg("./imgDB/2.jpg");

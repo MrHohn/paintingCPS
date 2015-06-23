@@ -106,6 +106,7 @@ void ImgMatch::matchImg(string srcImgAdd){
     Mat srcImg = imread(srcImgAdd);
     if (!srcImg.data){
         cout << "srcImg NOT found" << endl;
+        matchedImgIndex = 0;
         return;
     }
     SurfFeatureDetector detector(minHessian);
