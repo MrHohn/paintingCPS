@@ -65,7 +65,7 @@ void server_result (int sock)
     char defMsg[] = "none";
     int matchedIndex;
     char sendIndex[40];
-    char userLine[256];
+    // char userLine[256];
     // int userNum;
     printf("result thread\n\n");
 
@@ -76,40 +76,41 @@ void server_result (int sock)
 
     while(!global_stop) 
     {
-        // read user input and send it to client(a simple simulation)
-        if (fgets(userLine, sizeof(userLine), stdin)) {
-            n = write(sock, userLine, sizeof(userLine));
-            if (n < 0) 
-                error("ERROR writting to socket");
-        }
+        // // read user input and send it to client(a simple simulation)
+        // if (fgets(userLine, sizeof(userLine), stdin)) {
+        //     n = write(sock, userLine, sizeof(userLine));
+        //     if (n < 0) 
+        //         error("ERROR writting to socket");
+        // }
 
-        // sem_wait(&sem_imgProcess);
-        // string file_name = imgQueue.front(); 
-        // printf("file name: %s\n", file_name.c_str());
-        // imgQueue.pop();
+        sem_wait(&sem_imgProcess);
+        string file_name = imgQueue.front(); 
+        printf("file name: %s\n", file_name.c_str());
+        imgQueue.pop();
 
         // start matching the image
-        // imgM.matchImg(file_name);
-        // matchedIndex = imgM.getMatchedImgIndex();
-        // if (matchedIndex == 0) 
-        // {   
-        //     // write none to client
-        //     // if (write(sock, defMsg, sizeof(defMsg)) < 0)
-        //     // {
-        //     //     error("ERROR writting to socket");
-        //     // }
-        // }
-        // else
-        // {
-        //     // write index to client
-        //     // itoa(matchedIndex, sendIndex, 10);
-        //     sprintf(sendIndex, "%d", matchedIndex);
-        //     // if (write(sock, sendIndex, sizeof(sendIndex)) < 0)
-        //     // {
-        //     //     error("ERROR writting to socket");
-        //     // }
-        //     // printf("\nmatched image index: %d\n", matchedIndex);
-        // }
+        imgM.matchImg(file_name);
+        matchedIndex = imgM.getMatchedImgIndex();
+        if (matchedIndex == 0) 
+        {   
+            // write none to client
+            if (write(sock, defMsg, sizeof(defMsg)) < 0)
+            {
+                error("ERROR writting to socket");
+            }
+            printf("not match\n");            
+        }
+        else
+        {
+            // write index to client
+            sprintf(sendIndex, "%d", matchedIndex);
+            // printf("index: %s\n", sendIndex);
+            if (write(sock, sendIndex, sizeof(sendIndex)) < 0)
+            {
+                error("ERROR writting to socket");
+            }
+            printf("matched image index: %d\n", matchedIndex);
+        }
 
 
     }

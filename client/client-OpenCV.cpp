@@ -35,11 +35,11 @@ static pthread_t transmitThread;
 static pthread_t resultThread;
 
 int global_stop = 0;
-Point center = Point(255,255);
-int r = 100;
-int drawCircle = 0;
-int drawLetter = 0;
-string letterShown = "Human";
+// Point center = Point(255,255);
+// int r = 100;
+// int drawCircle = 0;
+// int drawLetter = 0;
+// string letterShown = "Human";
 int drawResult = 0;
 string resultShown = "";
 
@@ -84,10 +84,10 @@ void *result_thread(void *arg)
     struct sockaddr_in serv_addr;
     struct hostent *server;
     struct in_addr ipv4addr;
-    char buffer[BUFFER_SIZE];
+    char buffer[40];
     char header[] = "result";
     char response[10];
-    char *resultTemp = "";
+    // char *resultTemp = "";
 
     portno = PORT_NO;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -140,35 +140,40 @@ void *result_thread(void *arg)
         }
         else if (n > 0)
         {
-            printf("\n-------------------------------------\n");
-            printf("[client] result from the server: %s", buffer);
-            printf("-------------------------------------\n\n");
-        }
-        if (strcmp(buffer, "circle\n") == 0) 
-        {
-            drawCircle = 1;
-        }
-        else if (strcmp(buffer, "letter\n") == 0) 
-        {
-            drawLetter = 1;
-        }
-        else if (strcmp(buffer, "none\n") == 0)
-        {
-            drawCircle = 0;
-            drawLetter = 0;
-        }
+        //     printf("\n-------------------------------------\n");
+        //     printf("[client] result from the server: %s", buffer);
+        //     printf("-------------------------------------\n\n");
+        // }
+        // if (strcmp(buffer, "circle\n") == 0) 
+        // {
+        //     drawCircle = 1;
+        // }
+        // else if (strcmp(buffer, "letter\n") == 0) 
+        // {
+        //     drawLetter = 1;
+        // }
+        // else if (strcmp(buffer, "none\n") == 0)
+        // {
+        //     drawCircle = 0;
+        //     drawLetter = 0;
+        // }
         
-
-        // if (strcmp(buffer, "none"))
-        // {
-        //     drawResult = 0;
-        // }
-        // else
-        // {
-        //     sprintf(resultTemp, "matched index: %s", buffer);
-        //     resultShown = resultTemp;
-        //     drawResult = 1;
-        // }
+            if (strcmp(buffer, "none") == 0)
+            {
+                drawResult = 0;
+            }
+            else
+            {
+                resultShown = buffer;
+                resultShown = "matched index: " + resultShown;
+                drawResult = 1;
+                // printf("here\n");
+                // printf("result from server: %s", buffer);
+                // cout << resultShown << endl;
+                // sprintf(resultTemp, "matched index: %s", buffer);
+                // resultShown = resultTemp;
+            }
+        }
     }
 
     close(sockfd); // disconnect server
@@ -340,18 +345,18 @@ void *transmit_thread(void *arg)
             printf("[client] connection closed\n\n");
         }
         
-        if (drawCircle)
-        {
-            circle(frame, center, r, Scalar(0, 0, 255), 4);
-        }
-        if (drawLetter)
-        {
-            putText(frame, letterShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
-        }
-        // if (drawResult)
+        // if (drawCircle)
         // {
-        //     putText(frame, resultShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+        //     circle(frame, center, r, Scalar(0, 0, 255), 4);
         // }
+        // if (drawLetter)
+        // {
+        //     putText(frame, letterShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+        // }
+        if (drawResult)
+        {
+            putText(frame, resultShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+        }
 
         imshow("Real-Time CPS", frame);
         if (index == 1 && count == 1) {
