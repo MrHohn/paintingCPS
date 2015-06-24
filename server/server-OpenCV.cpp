@@ -21,7 +21,6 @@
 #include "ImgMatch.h"
 #include <sys/time.h>
 #include <queue>
-// #include <errno.h>
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
@@ -53,7 +52,7 @@ void errorSocket(const char *msg, int sock)
 {
     perror(msg);
     close(sock); 
-    printf("[server] Connection closed.\n\n");
+    printf("[server] Connection closed. --- error\n\n");
     pthread_exit(NULL); //terminate calling thread!
 }
 
@@ -66,8 +65,6 @@ void server_result (int sock)
 {
     // printf("result thread\n\n");
 
-    // char userLine[256];
-    // int userNum;
     int n;
     char response[] = "ok";
     char defMsg[] = "none";
@@ -83,15 +80,6 @@ void server_result (int sock)
 
     while(!global_stop) 
     {
-        // // read user input and send it to client(a simple simulation)
-        // if (fgets(userLine, sizeof(userLine), stdin)) {
-        //     n = write(sock, userLine, sizeof(userLine));
-        //     if (n < 0)
-        {
-        //         error("ERROR writting to socket");
-        } 
-        // }
-
         sem_wait(&sem_imgProcess);
 
         printf("\n----------- start matching -------------\n");
@@ -144,9 +132,11 @@ void server_transmit (int sock)
     char buffer[BUFFER_SIZE];
     char response[] = "ok";
 
-    char file_name[BUFFER_SIZE];
+    char file_name_temp[40];
+    char *file_name;
     int write_length = 0;
     int length = 0;
+    char *block_count_char;
     int block_count;
     int count = 0;
 
@@ -160,33 +150,20 @@ void server_transmit (int sock)
 
     while (!global_stop)
     {
-
-        // receive the file name
+        // receive the file info
         bzero(buffer,BUFFER_SIZE);
         n = read(sock,buffer, sizeof(buffer));
         if (n <= 0)
         {
             errorSocket("ERROR reading from socket\n", sock);
         } 
-        // store the file name
-        strncpy(file_name, buffer, BUFFER_SIZE);
+
+        // store the file name and the block count
+        file_name = strtok(buffer, ",");
+        strcpy(file_name_temp, file_name);
         printf("[server] file name: %s\n", file_name);
-
-        // reponse to the client
-        n = write(sock, response, sizeof(response));
-        if (n <= 0)
-        {
-            errorSocket("ERROR writting to socket\n", sock);
-        } 
-
-        // receive the block size
-        bzero(buffer,BUFFER_SIZE);
-        n = read(sock,buffer, sizeof(buffer));
-        if (n <= 0)
-        {
-            errorSocket("ERROR reading from socket\n", sock);
-        } 
-        block_count = strtol(buffer, NULL, 10);
+        block_count_char = strtok(NULL, ",");
+        block_count = strtol(block_count_char, NULL, 10);
         // printf("block count: %d\n", block_count);
 
         // reponse to the client
@@ -208,7 +185,6 @@ void server_transmit (int sock)
         count = 0;
         while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
         {
-            // printf("%d\n", length);
             if (length < 0)  
             {  
                 printf("Recieve Data From Client Failed!\n");  
@@ -236,12 +212,12 @@ void server_transmit (int sock)
         pthread_mutex_lock(&queueLock);
 
         // store the file name to the waiting queue
-        string file_name_string = file_name;
+        string file_name_string(file_name_temp);
         imgQueue.push(file_name_string);
 
         pthread_mutex_unlock(&queueLock);
         // signal the result thread to do image processing
-        // sem_post(&sem_imgProcess);
+        sem_post(&sem_imgProcess);
     }
 
     close(sock); 
@@ -410,11 +386,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // ImgMatch imgM;
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
     imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
-    // imgM.matchImg("./imgDB/2.jpg");
-    // imgM.showMatchImg();
 
     run_server();
 

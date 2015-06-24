@@ -39,8 +39,6 @@ int global_stop = 0;
 // Point center = Point(255,255);
 // int r = 100;
 // int drawCircle = 0;
-// int drawLetter = 0;
-// string letterShown = "Human";
 int drawResult = 0;
 string resultShown = "";
 
@@ -128,23 +126,6 @@ void *result_thread(void *arg)
         }
         else if (n > 0)
         {
-        //     printf("\n-------------------------------------\n");
-        //     printf("[client] result from the server: %s", buffer);
-        //     printf("-------------------------------------\n\n");
-        // }
-        // if (strcmp(buffer, "circle\n") == 0) 
-        // {
-        //     drawCircle = 1;
-        // }
-        // else if (strcmp(buffer, "letter\n") == 0) 
-        // {
-        //     drawLetter = 1;
-        // }
-        // else if (strcmp(buffer, "none\n") == 0)
-        // {
-        //     drawCircle = 0;
-        //     drawLetter = 0;
-        // }
             if (strcmp(buffer, "none") == 0)
             {
                 drawResult = 0;
@@ -190,7 +171,7 @@ void *transmit_thread(void *arg)
     // stat of file, to get the size
     struct stat file_stat;
     int block_count = 0;
-    char send_block_count[20];
+    char send_info[20];
 
     // set up the image format and the quality
     vector<int> compression_params;
@@ -289,21 +270,10 @@ void *transmit_thread(void *arg)
             }
             // printf("block count: %d\n", block_count);
 
-            // send the file name
-            printf("[client] file: %s\n", file_name);
-            n = write(sockfd, file_name, sizeof(file_name));
-            if (n < 0) 
-                 error("ERROR writing to socket");
-
-            // get the response
-            n = read(sockfd, response, sizeof(response));
-            if (n < 0) 
-                 error("ERROR reading from socket");
-
-            // send the block size
-            sprintf(send_block_count, "%d", block_count);
-            // printf("[client] block size: %s\n", send_block_count);
-            n = write(sockfd, send_block_count, sizeof(send_block_count));
+            // send the file info, combine with ','
+            printf("[client] file name: %s\n", file_name);
+            sprintf(send_info, "%s,%d", file_name, block_count);
+            n = write(sockfd, send_info, sizeof(send_info));
             if (n < 0) 
                  error("ERROR writing to socket");
 
@@ -344,10 +314,6 @@ void *transmit_thread(void *arg)
         // if (drawCircle)
         // {
         //     circle(frame, center, r, Scalar(0, 0, 255), 4);
-        // }
-        // if (drawLetter)
-        // {
-        //     putText(frame, letterShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
         // }
         if (drawResult)
         {
