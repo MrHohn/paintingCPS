@@ -34,6 +34,7 @@ using namespace std;
 
 static pthread_t transmitThread;
 static pthread_t resultThread;
+pthread_mutex_t sendLock; // mutex lock to make sure transmit order
 
 int global_stop = 0;
 // Point center = Point(255,255);
@@ -41,6 +42,11 @@ int global_stop = 0;
 // int drawCircle = 0;
 int drawResult = 0;
 string resultShown = "";
+
+struct arg_transmit {
+    int sock;
+    char file_name[20];
+};
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -152,6 +158,92 @@ void *result_thread(void *arg)
 }
 
 /******************************************************************************
+Description.: this is the transmit child thread
+              it is responsible to send out one frame
+Input Value.:
+Return Value:
+******************************************************************************/
+void *transmit_child(void *arg)
+{
+    // printf("here\n");
+
+    struct arg_transmit *args = (struct arg_transmit *)arg;
+    int sockfd = args->sock;
+    char *file_name = args->file_name;
+    int n;
+    char bufferSend[BUFFER_SIZE];
+    char response[10];
+
+    // stat of file, to get the size
+    struct stat file_stat;
+    int block_count = 0;
+    char send_info[20];
+
+    // get the status of file
+    if (stat(file_name, &file_stat) == -1)
+    {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
+    if (file_stat.st_size % BUFFER_SIZE == 0)
+    {
+        block_count = file_stat.st_size / 1024;
+    }
+    else
+    {
+        block_count = file_stat.st_size / 1024 + 1;
+    }
+    // printf("block count: %d\n", block_count);
+
+    // gain the lock, insure transmit order
+    pthread_mutex_lock(&sendLock);
+
+    // send the file info, combine with ','
+    printf("[client] file name: %s\n", file_name);
+    sprintf(send_info, "%s,%d", file_name, block_count);
+    n = write(sockfd, send_info, sizeof(send_info));
+    if (n < 0) 
+         error("ERROR writing to socket");
+
+    // get the response
+    n = read(sockfd, response, sizeof(response));
+    if (n < 0) 
+         error("ERROR reading from socket");
+
+    FILE *fp = fopen(file_name, "r");  
+    if (fp == NULL)  
+    {  
+        // printf("File:\t%s Not Found!\n", file_name);  
+        printf("File:\t%s Not Found!\n", file_name);  
+    }  
+    else  
+    {  
+        bzero(bufferSend, BUFFER_SIZE);  
+        int file_block_length = 0;
+        // start transmitting the file
+        while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
+        {  
+            // send data to the client side  
+            if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
+            {  
+                printf("Send File: %s Failed!\n", file_name);  
+                break;  
+            }  
+
+            bzero(bufferSend, BUFFER_SIZE);  
+        }
+
+        fclose(fp);  
+        printf("[client] Transfer Finished!\n\n");  
+    }
+
+    pthread_mutex_unlock(&sendLock);
+    pthread_exit(NULL);
+
+    return NULL;
+}
+
+/******************************************************************************
 Description.: this is the transmit thread
               it loops forever, grabs a fresh frame and stores it to file,
               also send it out to the server
@@ -168,11 +260,6 @@ void *transmit_thread(void *arg)
     VideoCapture capture(0);
     Mat frame;
 
-    // stat of file, to get the size
-    struct stat file_stat;
-    int block_count = 0;
-    char send_info[20];
-
     // set up the image format and the quality
     vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
@@ -184,11 +271,10 @@ void *transmit_thread(void *arg)
     int sockfd, portno, n;
     struct sockaddr_in serv_addr;
     struct hostent *server;
-    char bufferSend[BUFFER_SIZE];
     struct in_addr ipv4addr;
-    char header[] = "transmit"; 
-    char response[10];
     portno = PORT_NO;
+    char response[10];
+    char header[] = "transmit";
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
@@ -244,72 +330,31 @@ void *transmit_thread(void *arg)
         // capture >> frame;
         // writer << frame;
     
-        if (count == 40) {
+        if (count == 20) {
             count = 0;
 
-            /*-------------------send current frame here--------------*/
 
             // set up the file name and encode the frame to jpeg
             sprintf(file_name, "pics/%d.jpeg", index);
             imwrite(file_name, frame, compression_params);
             ++index;
 
-            // get the status of file
-            if (stat(file_name, &file_stat) == -1)
+            /*-------------------send current frame here--------------*/
+
+            pthread_t thread_id;
+            struct arg_transmit trans_info;
+            trans_info.sock = sockfd;
+            strcpy(trans_info.file_name, file_name);
+            /* create thread and pass socket and file name to send file */
+            if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
             {
-                perror("stat");
-                exit(EXIT_FAILURE);
+                fprintf(stderr,"pthread_create error!\n");
+                break; //break while loop
             }
-            if (file_stat.st_size % BUFFER_SIZE == 0)
-            {
-                block_count = file_stat.st_size / 1024;
-            }
-            else
-            {
-                block_count = file_stat.st_size / 1024 + 1;
-            }
-            // printf("block count: %d\n", block_count);
+            pthread_detach(thread_id);
 
-            // send the file info, combine with ','
-            printf("[client] file name: %s\n", file_name);
-            sprintf(send_info, "%s,%d", file_name, block_count);
-            n = write(sockfd, send_info, sizeof(send_info));
-            if (n < 0) 
-                 error("ERROR writing to socket");
-
-            // get the response
-            n = read(sockfd, response, sizeof(response));
-            if (n < 0) 
-                 error("ERROR reading from socket");
-
-            FILE *fp = fopen(file_name, "r");  
-            if (fp == NULL)  
-            {  
-                // printf("File:\t%s Not Found!\n", file_name);  
-                printf("File:\t%s Not Found!\n", file_name);  
-            }  
-            else  
-            {  
-                bzero(bufferSend, BUFFER_SIZE);  
-                int file_block_length = 0;
-                // start transmitting the file
-                while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
-                {  
-                    // send data to the client side  
-                    if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
-                    {  
-                        printf("Send File:\t%s Failed!\n", file_name);  
-                        break;  
-                    }  
-
-                    bzero(bufferSend, BUFFER_SIZE);  
-                }
-
-                fclose(fp);  
-                printf("[client] Transfer Finished!\n\n");  
-            }
+            /*---------------------------end--------------------------*/
         }
-        /*---------------------------end--------------------------*/
         
         // if (drawCircle)
         // {
@@ -404,6 +449,12 @@ int main()
     if(signal(SIGINT, signal_handler) == SIG_ERR) {
         printf("could not register signal handler\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (pthread_mutex_init(&sendLock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
     }
 
     client_run();
