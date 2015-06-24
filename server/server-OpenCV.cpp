@@ -21,19 +21,11 @@
 #include "ImgMatch.h"
 #include <sys/time.h>
 #include <queue>
-// #include <sys/queue.h>
 // #include <errno.h>
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
 #define MAX_CONNECTION              10
-
-/*
- * keep context for each server
- */
-// context servers[MAX_SERVER_NUM];
- // context transmitServer;
- // context resultServer;
 
 int global_stop = 0;       // global flag for quit
 sem_t sem_imgProcess;      // semaphore for result thread
@@ -59,15 +51,15 @@ Return Value:
 ******************************************************************************/
 void server_result (int sock)
 {
+    // printf("result thread\n\n");
+
+    // char userLine[256];
+    // int userNum;
     int n;
-    // char buffer[BUFFER_SIZE];
     char response[] = "ok";
     char defMsg[] = "none";
     int matchedIndex;
     char sendIndex[40];
-    // char userLine[256];
-    // int userNum;
-    printf("result thread\n\n");
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
@@ -84,6 +76,8 @@ void server_result (int sock)
         // }
 
         sem_wait(&sem_imgProcess);
+
+        printf("\n----------- start matching -------------\n");
         string file_name = imgQueue.front(); 
         printf("file name: %s\n", file_name.c_str());
         imgQueue.pop();
@@ -104,7 +98,6 @@ void server_result (int sock)
         {
             // write index to client
             sprintf(sendIndex, "%d", matchedIndex);
-            // printf("index: %s\n", sendIndex);
             if (write(sock, sendIndex, sizeof(sendIndex)) < 0)
             {
                 error("ERROR writting to socket");
@@ -112,7 +105,7 @@ void server_result (int sock)
             printf("matched image index: %d\n", matchedIndex);
         }
 
-
+        printf("------------- end matching -------------\n\n");
     }
 
     close(sock); 
@@ -128,20 +121,25 @@ Return Value:
 ******************************************************************************/
 void server_transmit (int sock)
 {
+    // printf("transmitting part\n");
+
     int n;
     char buffer[BUFFER_SIZE];
     char response[] = "ok";
 
     char file_name[BUFFER_SIZE];
     int write_length = 0;
-    int length = 0;  
-    printf("transmitting part\n\n");
+    int length = 0;
+    int block_count;
+    int count = 0;
+
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0) 
         error("ERROR writting to socket");
 
+    // receive the file name
     bzero(buffer,BUFFER_SIZE);
     n = read(sock,buffer, sizeof(buffer));
     if (n < 0) 
@@ -149,14 +147,24 @@ void server_transmit (int sock)
     // store the file name
     strncpy(file_name, buffer, BUFFER_SIZE);
     printf("[server] file name: %s\n", file_name);
-    // n = write(sock,"I got your message",18);
-    // if (n < 0) error("ERROR writing to socket");
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0) 
         error("ERROR writting to socket");
 
+    // receive the block size
+    bzero(buffer,BUFFER_SIZE);
+    n = read(sock,buffer, sizeof(buffer));
+    if (n < 0) 
+        error("ERROR reading from socket");
+    block_count = strtol(buffer, NULL, 10);
+    // printf("block count: %d\n", block_count);
+
+    // reponse to the client
+    n = write(sock, response, sizeof(response));
+    if (n < 0) 
+        error("ERROR writting to socket");
 
     FILE *fp = fopen(file_name, "w");  
     if (fp == NULL)  
@@ -166,9 +174,10 @@ void server_transmit (int sock)
     }  
 
     // receive the data from server and store them into buffer
-    bzero(buffer, sizeof(buffer));  
+    bzero(buffer, sizeof(buffer));
+    count = 0;
     while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
-    {  
+    {
         // printf("%d\n", length);
         if (length < 0)  
         {  
@@ -183,6 +192,11 @@ void server_transmit (int sock)
             break;  
         }  
         bzero(buffer, BUFFER_SIZE);
+        ++count;
+        if (count >= block_count) {
+            // printf("block count full\n");
+            break;
+        }
     }
     printf("[server] Recieve File: %s From Client Finished!\n", file_name);  
     // finished 
@@ -249,7 +263,6 @@ Return Value: -
 void run_server()
 {
     // init part
-    // int pid;
     printf("\n[server] start initializing\n");
     int sockfd, newsockfd, portno;
     socklen_t clilen;
@@ -353,6 +366,7 @@ int main(int argc, char *argv[])
     nRet = sem_init(&sem_imgProcess, 0, nSemaphoreCount);
     if (0 != nRet)
     {
+        printf("\n semaphore init failed\n");
         return -1;
     }
 

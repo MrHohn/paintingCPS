@@ -23,6 +23,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 using namespace cv;
 using namespace std;
@@ -42,19 +43,6 @@ int global_stop = 0;
 // string letterShown = "Human";
 int drawResult = 0;
 string resultShown = "";
-
-/******************************************************************************
-Description.: tempalte for transfer integer to string
-Input Value.:
-Return Value:
-******************************************************************************/
-template <typename T>
-string NumberToString ( T Number )
-{
- ostringstream ss;
- ss << Number;
- return ss.str();
-}
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -134,7 +122,7 @@ void *result_thread(void *arg)
     while(!global_stop)
     {
         bzero(buffer, sizeof(buffer));
-        if (read(sockfd, buffer, sizeof(buffer)) < 0) 
+        if (recv(sockfd, buffer, sizeof(buffer), 0) < 0) 
         {
             error("ERROR reading from socket");
         }
@@ -157,7 +145,6 @@ void *result_thread(void *arg)
         //     drawCircle = 0;
         //     drawLetter = 0;
         // }
-        
             if (strcmp(buffer, "none") == 0)
             {
                 drawResult = 0;
@@ -167,11 +154,6 @@ void *result_thread(void *arg)
                 resultShown = buffer;
                 resultShown = "matched index: " + resultShown;
                 drawResult = 1;
-                // printf("here\n");
-                // printf("result from server: %s", buffer);
-                // cout << resultShown << endl;
-                // sprintf(resultTemp, "matched index: %s", buffer);
-                // resultShown = resultTemp;
             }
         }
     }
@@ -181,8 +163,8 @@ void *result_thread(void *arg)
 
     /*---------------------------end--------------------------*/
 
-    // // /* cleanup now */
-    // // pthread_cleanup_pop(1);
+    // /* cleanup now */
+    // pthread_cleanup_pop(1);
     global_stop = 1;
 
     return NULL;
@@ -205,6 +187,11 @@ void *transmit_thread(void *arg)
     VideoCapture capture(0);
     Mat frame;
 
+    // stat of file, to get the size
+    struct stat file_stat;
+    int block_count = 0;
+    char send_block_count[20];
+
     // set up the image format and the quality
     vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
@@ -224,9 +211,6 @@ void *transmit_thread(void *arg)
   
     /*-------------------end----------------------*/
 
-    // double rate = capture.get(CV_CAP_PROP_FPS);
-    // printf("FPS: %f\n", rate);
-
     // // create window
     // namedWindow("Real-Time CPS", 1);
 
@@ -235,16 +219,10 @@ void *transmit_thread(void *arg)
         ++count;
         capture.read(frame);
         // capture >> frame;
+        // writer << frame;
     
-        if (count == 60) {
+        if (count == 40) {
             count = 0;
-            // writer << frame;
-            // file_name = to_string(index);
-            // file_name = NumberToString(index);
-            // file_name = "pics/" + file_name + ".jpeg";
-            sprintf(file_name, "pics/%d.jpeg", index);
-            imwrite(file_name, frame, compression_params);
-            ++index;
 
             /*-------------------send current frame here--------------*/
 
@@ -280,10 +258,6 @@ void *transmit_thread(void *arg)
                 printf("[client] start transmitting current frame\n\n");
             }
 
-            // printf("Please enter the file name: ");
-            // bzero(bufferSend,BUFFER_SIZE);
-            // fgets(bufferSend,BUFFER_SIZE - 1,stdin);
-            
             // send the header first
             n = write(sockfd, header, sizeof(header));
             if (n < 0) 
@@ -293,6 +267,27 @@ void *transmit_thread(void *arg)
             n = read(sockfd, response, sizeof(response));
             if (n < 0) 
                  error("ERROR reading from socket");
+
+            // set up the file name and encode the frame to jpeg
+            sprintf(file_name, "pics/%d.jpeg", index);
+            imwrite(file_name, frame, compression_params);
+            ++index;
+
+            // get the status of file
+            if (stat(file_name, &file_stat) == -1)
+            {
+                perror("stat");
+                exit(EXIT_FAILURE);
+            }
+            if (file_stat.st_size % BUFFER_SIZE == 0)
+            {
+                block_count = file_stat.st_size / 1024;
+            }
+            else
+            {
+                block_count = file_stat.st_size / 1024 + 1;
+            }
+            // printf("block count: %d\n", block_count);
 
             // send the file name
             printf("[client] file: %s\n", file_name);
@@ -305,9 +300,18 @@ void *transmit_thread(void *arg)
             if (n < 0) 
                  error("ERROR reading from socket");
 
-            // char file_name[] = "./pics/client.jpg";
-            // char file_name[1024];
-            // strcpy(file_name, buffer2);
+            // send the block size
+            sprintf(send_block_count, "%d", block_count);
+            printf("[client] block size: %s\n", send_block_count);
+            n = write(sockfd, send_block_count, sizeof(send_block_count));
+            if (n < 0) 
+                 error("ERROR writing to socket");
+
+            // get the response
+            n = read(sockfd, response, sizeof(response));
+            if (n < 0) 
+                 error("ERROR reading from socket");
+
             FILE *fp = fopen(file_name, "r");  
             if (fp == NULL)  
             {  
@@ -325,12 +329,10 @@ void *transmit_thread(void *arg)
 
                     // send data to the client side  
                     if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
-                    // if (send(sockfd, bufferSend, BUFFER_SIZE, 0) < 0)  
                     {  
                         printf("Send File:\t%s Failed!\n", file_name);  
                         break;  
                     }  
-                    // send(sockfd, "", 0, 0);
 
                     bzero(bufferSend, BUFFER_SIZE);  
                 }
@@ -371,6 +373,8 @@ void *transmit_thread(void *arg)
 
     global_stop = 1;
     // exit(0);
+
+    return NULL;
 }
 
 /******************************************************************************
