@@ -19,7 +19,7 @@ ImgMatch::~ImgMatch()
 }
 //get all descriptor of images in database, save index_img to file;
 void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string featureClusterAdd){
-    printf("Start calculating the descriptors\n");
+    printf("\nStart calculating the descriptors\n");
     this->set_dbSize(size_DB);
     SurfFeatureDetector detector(3000);
     for (int i = 1; i <= size_DB; i++){
@@ -58,7 +58,7 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     cv::FileStorage storage(featureClusterAdd, cv::FileStorage::WRITE);
     storage << "index" << featureCluster;
     storage.release();
-    printf("Finished.\n");
+    printf("Finished.");
 }
  
 void init_infoDB(string add_DB){
@@ -86,7 +86,7 @@ void init_infoDB(string add_DB){
 */
 void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,string imgInfoAdd){
     ifstream inFile(indexImgAdd);
-    printf("Start loading the database\n");
+    printf("\nStart loading the database\n");
     int t;
     while (inFile >> t){
         index_IMG.push_back(t);

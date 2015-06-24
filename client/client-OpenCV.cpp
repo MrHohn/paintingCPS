@@ -208,6 +208,48 @@ void *transmit_thread(void *arg)
     char header[] = "transmit"; 
     char response[10];
     portno = PORT_NO;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+    char server_addr[] = "127.0.0.1";
+    inet_pton(AF_INET, server_addr, &ipv4addr);
+    server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+    // printf("\n[client] Host name: %s\n", server->h_name);
+    printf("\n[client] Server address: %s\n", server_addr);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
+    serv_addr.sin_port = htons(portno);
+
+    // finished initialize, try to connect
+
+    if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+    {
+        printf("-------- The server is not available now. ---------\n\n");
+        global_stop = 1;
+        exit(0);
+        // error("ERROR connecting");
+    }
+    else
+    {
+        printf("[client] transmit thread get connection to server\n");
+        printf("[client] start transmitting current frame\n\n");
+    }
+
+    // send the header first
+    n = write(sockfd, header, sizeof(header));
+    if (n < 0) 
+         error("ERROR writing to socket");
+
+    // get the response
+    n = read(sockfd, response, sizeof(response));
+    if (n < 0) 
+         error("ERROR reading from socket");
   
     /*-------------------end----------------------*/
 
@@ -225,48 +267,6 @@ void *transmit_thread(void *arg)
             count = 0;
 
             /*-------------------send current frame here--------------*/
-
-            sockfd = socket(AF_INET, SOCK_STREAM, 0);
-            if (sockfd < 0) 
-                error("ERROR opening socket");
-            char server_addr[] = "127.0.0.1";
-            inet_pton(AF_INET, server_addr, &ipv4addr);
-            server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-            // printf("\n[client] Host name: %s\n", server->h_name);
-            printf("\n[client] Server address: %s\n", server_addr);
-            if (server == NULL) {
-                fprintf(stderr,"ERROR, no such host\n");
-                exit(0);
-            }
-            bzero((char *) &serv_addr, sizeof(serv_addr));
-            serv_addr.sin_family = AF_INET;
-            bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
-            serv_addr.sin_port = htons(portno);
-
-            // finished initialize, try to connect
-
-            if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-            {
-                printf("-------- The server is not available now. ---------\n\n");
-                global_stop = 1;
-                exit(0);
-                // error("ERROR connecting");
-            }
-            else
-            {
-                printf("[client] transmit thread get connection to server\n");
-                printf("[client] start transmitting current frame\n\n");
-            }
-
-            // send the header first
-            n = write(sockfd, header, sizeof(header));
-            if (n < 0) 
-                 error("ERROR writing to socket");
-
-            // get the response
-            n = read(sockfd, response, sizeof(response));
-            if (n < 0) 
-                 error("ERROR reading from socket");
 
             // set up the file name and encode the frame to jpeg
             sprintf(file_name, "pics/%d.jpeg", index);
@@ -302,7 +302,7 @@ void *transmit_thread(void *arg)
 
             // send the block size
             sprintf(send_block_count, "%d", block_count);
-            printf("[client] block size: %s\n", send_block_count);
+            // printf("[client] block size: %s\n", send_block_count);
             n = write(sockfd, send_block_count, sizeof(send_block_count));
             if (n < 0) 
                  error("ERROR writing to socket");
@@ -325,8 +325,6 @@ void *transmit_thread(void *arg)
                 // start transmitting the file
                 while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
                 {  
-                    // printf("file_block_length = %d\n", file_block_length);  
-
                     // send data to the client side  
                     if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
                     {  
@@ -338,14 +336,10 @@ void *transmit_thread(void *arg)
                 }
 
                 fclose(fp);  
-                printf("[client] transfer finished\n");  
+                printf("[client] Transfer Finished!\n\n");  
             }
-
-            /*---------------------------end--------------------------*/
-
-            close(sockfd); // disconnect server
-            printf("[client] connection closed\n\n");
         }
+        /*---------------------------end--------------------------*/
         
         // if (drawCircle)
         // {
@@ -370,7 +364,9 @@ void *transmit_thread(void *arg)
         }
         // usleep(1000 * DELAY);
     }
-
+    
+    close(sockfd); // disconnect server
+    printf("[client] connection closed\n\n");
     global_stop = 1;
     // exit(0);
 

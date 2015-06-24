@@ -45,6 +45,19 @@ void error(const char *msg)
 }
 
 /******************************************************************************
+Description.: print out the error message and exit
+Input Value.:
+Return Value:
+******************************************************************************/
+void errorSocket(const char *msg, int sock)
+{
+    perror(msg);
+    close(sock); 
+    printf("[server] Connection closed.\n\n");
+    pthread_exit(NULL); //terminate calling thread!
+}
+
+/******************************************************************************
 Description: function for sending back the result
 Input Value.:
 Return Value:
@@ -63,16 +76,20 @@ void server_result (int sock)
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
-    if (n < 0) 
+    if (n < 0)
+    {
         error("ERROR writting to socket");
+    } 
 
     while(!global_stop) 
     {
         // // read user input and send it to client(a simple simulation)
         // if (fgets(userLine, sizeof(userLine), stdin)) {
         //     n = write(sock, userLine, sizeof(userLine));
-        //     if (n < 0) 
+        //     if (n < 0)
+        {
         //         error("ERROR writting to socket");
+        } 
         // }
 
         sem_wait(&sem_imgProcess);
@@ -90,7 +107,7 @@ void server_result (int sock)
             // write none to client
             if (write(sock, defMsg, sizeof(defMsg)) < 0)
             {
-                error("ERROR writting to socket");
+               errorSocket("ERROR writting to socket", sock);
             }
             printf("not match\n");            
         }
@@ -100,7 +117,7 @@ void server_result (int sock)
             sprintf(sendIndex, "%d", matchedIndex);
             if (write(sock, sendIndex, sizeof(sendIndex)) < 0)
             {
-                error("ERROR writting to socket");
+                errorSocket("ERROR writting to socket", sock);
             }
             printf("matched image index: %d\n", matchedIndex);
         }
@@ -109,7 +126,7 @@ void server_result (int sock)
     }
 
     close(sock); 
-    printf("[server] Connection closed.\n\n");
+    printf("[server] Connection closed. --- result\n\n");
     pthread_exit(NULL); //terminate calling thread!
 
 }
@@ -136,85 +153,99 @@ void server_transmit (int sock)
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
-    if (n < 0) 
-        error("ERROR writting to socket");
-
-    // receive the file name
-    bzero(buffer,BUFFER_SIZE);
-    n = read(sock,buffer, sizeof(buffer));
-    if (n < 0) 
-        error("ERROR reading from socket");
-    // store the file name
-    strncpy(file_name, buffer, BUFFER_SIZE);
-    printf("[server] file name: %s\n", file_name);
-
-    // reponse to the client
-    n = write(sock, response, sizeof(response));
-    if (n < 0) 
-        error("ERROR writting to socket");
-
-    // receive the block size
-    bzero(buffer,BUFFER_SIZE);
-    n = read(sock,buffer, sizeof(buffer));
-    if (n < 0) 
-        error("ERROR reading from socket");
-    block_count = strtol(buffer, NULL, 10);
-    // printf("block count: %d\n", block_count);
-
-    // reponse to the client
-    n = write(sock, response, sizeof(response));
-    if (n < 0) 
-        error("ERROR writting to socket");
-
-    FILE *fp = fopen(file_name, "w");  
-    if (fp == NULL)  
-    {  
-        printf("File:\t%s Can Not Open To Write!\n", file_name);  
-        exit(1);  
-    }  
-
-    // receive the data from server and store them into buffer
-    bzero(buffer, sizeof(buffer));
-    count = 0;
-    while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
+    if (n < 0)
     {
-        // printf("%d\n", length);
-        if (length < 0)  
+        errorSocket("ERROR writting to socket\n", sock);
+    } 
+
+    while (!global_stop)
+    {
+
+        // receive the file name
+        bzero(buffer,BUFFER_SIZE);
+        n = read(sock,buffer, sizeof(buffer));
+        if (n <= 0)
+        {
+            errorSocket("ERROR reading from socket\n", sock);
+        } 
+        // store the file name
+        strncpy(file_name, buffer, BUFFER_SIZE);
+        printf("[server] file name: %s\n", file_name);
+
+        // reponse to the client
+        n = write(sock, response, sizeof(response));
+        if (n <= 0)
+        {
+            errorSocket("ERROR writting to socket\n", sock);
+        } 
+
+        // receive the block size
+        bzero(buffer,BUFFER_SIZE);
+        n = read(sock,buffer, sizeof(buffer));
+        if (n <= 0)
+        {
+            errorSocket("ERROR reading from socket\n", sock);
+        } 
+        block_count = strtol(buffer, NULL, 10);
+        // printf("block count: %d\n", block_count);
+
+        // reponse to the client
+        n = write(sock, response, sizeof(response));
+        if (n <= 0)
+        {
+            errorSocket("ERROR writting to socket\n", sock);
+        } 
+
+        FILE *fp = fopen(file_name, "w");  
+        if (fp == NULL)  
         {  
-            printf("Recieve Data From Client Failed!\n");  
-            break;  
-        }
-  
-        write_length = fwrite(buffer, sizeof(char), length, fp);  
-        if (write_length < length)  
-        {  
-            printf("File:\t Write Failed!\n");  
-            break;  
-        }  
-        bzero(buffer, BUFFER_SIZE);
-        ++count;
-        if (count >= block_count) {
-            // printf("block count full\n");
+            printf("File:\t%s Can Not Open To Write!\n", file_name);  
             break;
+        }  
+
+        // receive the data from server and store them into buffer
+        bzero(buffer, sizeof(buffer));
+        count = 0;
+        while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
+        {
+            // printf("%d\n", length);
+            if (length < 0)  
+            {  
+                printf("Recieve Data From Client Failed!\n");  
+                break;  
+            }
+      
+            write_length = fwrite(buffer, sizeof(char), length, fp);  
+            if (write_length < length)  
+            {  
+                printf("File:\t Write Failed!\n");  
+                break;  
+            }  
+            bzero(buffer, BUFFER_SIZE);
+            ++count;
+            if (count >= block_count) {
+                // printf("block count full\n");
+                break;
+            }
         }
+        printf("[server] Recieve Finished!\n\n");  
+        // finished 
+        fclose(fp);
+
+        // lock the queue, ensure there is only one thread modifying the queue
+        pthread_mutex_lock(&queueLock);
+
+        // store the file name to the waiting queue
+        string file_name_string = file_name;
+        imgQueue.push(file_name_string);
+
+        pthread_mutex_unlock(&queueLock);
+        // signal the result thread to do image processing
+        // sem_post(&sem_imgProcess);
     }
-    printf("[server] Recieve File: %s From Client Finished!\n", file_name);  
-    // finished 
-    fclose(fp);
-
-    // lock the queue, ensure there is only one thread modifying the queue
-    pthread_mutex_lock(&queueLock);
-
-    // store the file name to the waiting queue
-    string file_name_string = file_name;
-    imgQueue.push(file_name_string);
-
-    pthread_mutex_unlock(&queueLock);
-    // signal the result thread to do image processing
-    sem_post(&sem_imgProcess);
 
     close(sock); 
-    printf("[server] Connection closed.\n\n");
+    printf("[server] Connection closed. --- transmit\n\n");
     pthread_exit(NULL); //terminate calling thread!
 
 }
@@ -235,8 +266,11 @@ void *serverThread (void * inputsock)
     // Receive the header
     bzero(buffer,20);
     n = read(sock, buffer, sizeof(buffer));
-    if (n < 0) error("ERROR reading from socket");
-    printf("[server] header content: %s\n",buffer);
+    if (n < 0)
+    {
+        errorSocket("ERROR reading from socket\n", sock);
+    } 
+    printf("[server] header content: %s\n\n",buffer);
 
     if (strcmp(buffer, "transmit") == 0) 
     {
@@ -272,7 +306,6 @@ void run_server()
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
     {
-        printf("ERROR opening socket\n");
         error("ERROR opening socket");
     } 
     else 
@@ -285,16 +318,17 @@ void run_server()
     serv_addr.sin_port = htons(portno);
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
     {
-        printf("ERROR on binding");
         error("ERROR on binding");
     }
     else
         printf("[server] bind tcp port %d sucessfully.\n",portno);
 
     if(listen(sockfd,5))
+    {
         error("ERROR listening");
+    }
     else 
-        printf ("[server] listening the port %d sucessfully.\n", portno);    
+        printf ("[server] listening the port %d sucessfully.\n\n", portno);    
     
     // init finished, now wait for a client
     while (!global_stop) {
@@ -308,7 +342,7 @@ void run_server()
             continue; //ignore current socket ,continue while loop.
         }
         else 
-            printf ("\n[server] server has got connect from %s.\n", (char *)inet_ntoa(cli_addr.sin_addr));
+            printf ("[server] server has got connect from %s.\n", (char *)inet_ntoa(cli_addr.sin_addr));
 
         /* create thread and pass context to thread function */
         if (pthread_create(&thread_id, 0, serverThread, (void *)&(newsockfd)) == -1)
