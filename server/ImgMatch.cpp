@@ -159,6 +159,14 @@ void ImgMatch::matchImg(string srcImgAdd){
         if (t.Freq > maxFreq)
             maxFreq = t.Freq;
     }
+
+    /*
+    \if max matched times is smaller than 3, it fails to find a matched object
+    */
+    if (maxFreq < 3){
+        cout << "Not find matched ojbect" << endl;
+        return;
+    }
     for (auto &t : imgFreq){ 
         if (t.Freq == maxFreq)
             matchedImgIndex = t.ImgIndex;
@@ -220,6 +228,13 @@ vector<float> ImgMatch::calLocation(){
         {
             good_matches.push_back(matches[i]);
         }
+    }
+    /*
+        \test size of good_matches, if it is smaller than 4, then it fails to draw an outline of a mathed object
+    */
+    if (good_matches.size() < 4){
+        // cout << "not find matched object" << endl;
+        return matchedLocation;
     }
  
     Mat img_matches = srcImg;
@@ -288,7 +303,13 @@ vector<float> ImgMatch::calLocation(){
 }
  
 void ImgMatch::locateDrawRect(vector<float> matchedLocation){
- 
+    /*
+    \when matchedImgIndex equals to 0, it fails to find a object
+    */
+    if (matchedImgIndex == 0){
+        return;
+    }
+
     line(srcImg, cvPoint(matchedLocation.at(0), matchedLocation.at(1)), cvPoint(matchedLocation.at(2), matchedLocation.at(3)), Scalar(0, 0, 0), 2);
     line(srcImg, cvPoint(matchedLocation.at(2), matchedLocation.at(3)), cvPoint(matchedLocation.at(4), matchedLocation.at(5)), Scalar(0, 0, 0), 2);
     line(srcImg, cvPoint(matchedLocation.at(4), matchedLocation.at(5)), cvPoint(matchedLocation.at(6), matchedLocation.at(7)), Scalar(0, 0, 0), 2);
@@ -296,6 +317,7 @@ void ImgMatch::locateDrawRect(vector<float> matchedLocation){
     imshow("matched image", srcImg);
     moveWindow("matched image", 600, 350 );
     waitKey();
+    clearLocation();
 }
  
 void ImgMatch::locateDrawCirle(vector<float> matchedLocation){
@@ -303,7 +325,11 @@ void ImgMatch::locateDrawCirle(vector<float> matchedLocation){
     imshow("matched image", srcImg);
     waitKey();
 }
- 
+
+void ImgMatch::clearLocation(){
+    matchedLocation.clear();
+}
+
 void ImgMatch::getMatchedImgInfo(){
     string add = imgInfoAdd;
     char infoAdd[100];

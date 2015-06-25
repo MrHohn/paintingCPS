@@ -36,6 +36,7 @@ public:
     int getMatchedImgIndex();
     vector<float> calLocation();
     vector<float> matchedLocation;
+    void clearLocation();
     void getMatchedImgInfo();
     void locateDrawRect(vector<float> location);
     void locateDrawCirle(vector<float> location);

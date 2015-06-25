@@ -83,9 +83,9 @@ void server_result (int sock)
     {
         sem_wait(&sem_imgProcess);
 
-        printf("\n----------- start matching -------------\n");
+        // printf("\n----------- start matching -------------\n");
         string file_name = imgQueue.front(); 
-        printf("file name: %s\n", file_name.c_str());
+        // printf("file name: %s\n", file_name.c_str());
         imgQueue.pop();
 
         // start matching the image
@@ -98,23 +98,24 @@ void server_result (int sock)
             {
                errorSocket("ERROR writting to socket", sock);
             }
-            printf("not match\n");            
+            // printf("not match\n");            
         }
         else
         {
             // write index to client
             coord = imgM.calLocation();
+            // sprintf(sendInfo, "%d,", matchedIndex);
             sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
             // printf("sendInfo: %s\n", sendInfo);
             if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
             {
                 errorSocket("ERROR writting to socket", sock);
             }
-            printf("matched image index: %d\n", matchedIndex);
+            // printf("matched image index: %d\n", matchedIndex);
 
         }
 
-        printf("------------- end matching -------------\n\n");
+        // printf("------------- end matching -------------\n");
     }
 
     close(sock); 
@@ -165,7 +166,7 @@ void server_transmit (int sock)
         // store the file name and the block count
         file_name = strtok(buffer, ",");
         strcpy(file_name_temp, file_name);
-        printf("[server] file name: %s\n", file_name);
+        printf("\n[server] file name: %s\n", file_name);
         block_count_char = strtok(NULL, ",");
         block_count = strtol(block_count_char, NULL, 10);
         // printf("block count: %d\n", block_count);
