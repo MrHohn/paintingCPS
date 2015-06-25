@@ -339,7 +339,7 @@ void *transmit_thread(void *arg)
         // capture >> frame;
         // writer << frame;
     
-        if (count == 30) {
+        if (count == 30 && !frame.empty()) {
             count = 0;
 
 
@@ -378,7 +378,9 @@ void *transmit_thread(void *arg)
             line(frame, cvPoint(coord[6], coord[7]), cvPoint(coord[0], coord[1]), Scalar(0, 0, 255), 2);
         }
 
-        imshow("Real-Time CPS", frame);
+        if(!frame.empty()){
+            imshow("Real-Time CPS", frame);
+        }
         if (index == 1 && count == 1) {
             moveWindow("Real-Time CPS", 100, 150 ); 
         }

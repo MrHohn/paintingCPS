@@ -10,7 +10,7 @@
  
 ImgMatch::ImgMatch()
 {
-    minHessian = 3000;
+    minHessian = 1000;
  
 }
  
