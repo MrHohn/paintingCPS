@@ -262,7 +262,6 @@ void *transmit_thread(void *arg)
     int index = 1;
     int count = 0;
     
-    // string file_name;
     char file_name[20] = {0};
     VideoCapture capture(0);
     Mat frame;
@@ -339,7 +338,7 @@ void *transmit_thread(void *arg)
         // capture >> frame;
         // writer << frame;
     
-        if (count == 30 && !frame.empty()) {
+        if (count >= 30 && !frame.empty()) {
             count = 0;
 
 
