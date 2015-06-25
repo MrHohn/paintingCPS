@@ -42,6 +42,7 @@ int global_stop = 0;
 // int drawCircle = 0;
 int drawResult = 0;
 string resultShown = "";
+float coord[8];
 
 struct arg_transmit {
     int sock;
@@ -76,10 +77,10 @@ void *result_thread(void *arg)
     struct sockaddr_in serv_addr;
     struct hostent *server;
     struct in_addr ipv4addr;
-    char buffer[40];
+    char buffer[256];
     char header[] = "result";
     char response[10];
-    // char *resultTemp = "";
+    char *resultTemp;
 
     portno = PORT_NO;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -138,8 +139,14 @@ void *result_thread(void *arg)
             }
             else
             {
-                resultShown = buffer;
+                // printf("result: %s\n", buffer);
+                resultShown = strtok(buffer, ",");
                 resultShown = "matched index: " + resultShown;
+                for (int i = 0; i < 8; ++i) {
+                    resultTemp = strtok(NULL, ",");
+                    coord[i] = atof(resultTemp);
+                    // printf("%f\n", coord[i]);
+                }
                 drawResult = 1;
             }
         }
@@ -261,6 +268,8 @@ void *transmit_thread(void *arg)
     Mat frame;
 
     // set up the image format and the quality
+    // capture.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+    // capture.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
     vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
     compression_params.push_back(95);
@@ -330,7 +339,7 @@ void *transmit_thread(void *arg)
         // capture >> frame;
         // writer << frame;
     
-        if (count == 20) {
+        if (count == 30) {
             count = 0;
 
 
@@ -363,6 +372,10 @@ void *transmit_thread(void *arg)
         if (drawResult)
         {
             putText(frame, resultShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
+            line(frame, cvPoint(coord[0], coord[1]), cvPoint(coord[2], coord[3]), Scalar(0, 0, 255), 2);
+            line(frame, cvPoint(coord[2], coord[3]), cvPoint(coord[4], coord[5]), Scalar(0, 0, 255), 2);
+            line(frame, cvPoint(coord[4], coord[5]), cvPoint(coord[6], coord[7]), Scalar(0, 0, 255), 2);
+            line(frame, cvPoint(coord[6], coord[7]), cvPoint(coord[0], coord[1]), Scalar(0, 0, 255), 2);
         }
 
         imshow("Real-Time CPS", frame);

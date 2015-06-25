@@ -103,7 +103,7 @@ void ImgMatch::matchImg(string srcImgAdd){
     double timeuse;
     gettimeofday(&tpstart,NULL);
 
-    Mat srcImg = imread(srcImgAdd);
+    srcImg = imread(srcImgAdd);
     if (!srcImg.data){
         cout << "srcImg NOT found" << endl;
         matchedImgIndex = 0;
@@ -183,21 +183,127 @@ void ImgMatch::set_dbSize(int s){
     }else
         cout << "error: Database Size should bigger than 0!" << endl;
 }
+
 int ImgMatch::getMatchedImgIndex(){
     return this->matchedImgIndex;
 }
- 
-void ImgMatch::showMatchImg(){
-    cout << matchedImgIndex;
-     
+
+vector<float> ImgMatch::calLocation(){
     char filename[100];
     sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
     Mat matchImg = imread(filename);
-    imshow("matched img", matchImg);
-    moveWindow("matched img", 0, 200 ); 
-    waitKey();
  
+    SurfFeatureDetector detector(minHessian);
+    detector.detect(matchImg, keyPoints2);
+    extractor.compute(matchImg, keyPoints2, despDB);
+    FlannBasedMatcher matcher;
+    vector<DMatch>matches;
+    matcher.match(despDB, despSRC, matches);
+ 
+ 
+    double max_dist = 0; double min_dist = 100;
+ 
+    //-- Quick calculation of max and min distances between keypoints
+    for (int i = 0; i < despDB.rows; i++)
+    {
+        double dist = matches[i].distance;
+        if (dist < min_dist) min_dist = dist;
+        if (dist > max_dist) max_dist = dist;
+    }
+ 
+    //-- Draw only "good" matches (i.e. whose distance is less than 3*min_dist )
+    std::vector< DMatch > good_matches;
+ 
+    for (int i = 0; i < despDB.rows; i++)
+    {
+        if (matches[i].distance < 3 * min_dist)
+        {
+            good_matches.push_back(matches[i]);
+        }
+    }
+ 
+    Mat img_matches = srcImg;
+     
+    //-- Localize the object
+    vector<Point2f> obj;
+    vector<Point2f> scene;
+ 
+    for (int i = 0; i < good_matches.size(); i++)
+    {
+        //-- Get the keypoints from the good matches
+        obj.push_back(keyPoints2[good_matches[i].queryIdx].pt);
+        scene.push_back(keyPoints1[good_matches[i].trainIdx].pt);
+    }
+ 
+    Mat H = findHomography(obj, scene, CV_RANSAC);
+ 
+    //-- Get the corners from the matchImg ( the object to be "detected" )
+    vector<Point2f> obj_corners(4);
+    obj_corners[0] = cvPoint(0, 0); obj_corners[1] = cvPoint(matchImg.cols, 0);
+    obj_corners[2] = cvPoint(matchImg.cols, matchImg.rows); obj_corners[3] = cvPoint(0, matchImg.rows);
+    vector<Point2f> scene_corners(4);
+ 
+    perspectiveTransform(obj_corners, scene_corners, H);
+ 
+    /*
+        draw rectangle to localize the object( draw four lines on given points)
+        four points postions & type: float
+        A:scene_corner[0].x, scene_corner[0].y
+        B:scene_corner[1].x, scene_corner[1].y
+        C:scene_corner[2].x, scene_corner[2].y
+        D:scene_corner[3].x, scene_corner[3].y
+ 
+        draw circle to localize the object ( draw circle based on center and radius
+        center: scene_corners[0].x + (scene_corners[1].x - scene_corners[0].x) / 2, scene_corners[0].y + (scene_corners[3].y - scene_corners[0].y) / 2
+        radius: sqrt(((scene_corners[1].x - scene_corners[0].x) / 2)*( (scene_corners[1].x - scene_corners[0].x) / 2) + ((scene_corners[3].y - scene_corners[0].y) / 2 )* ((scene_corners[3].y - scene_corners[0].y) / 2));
+    */
+ 
+    /*
+    line(img_matches, scene_corners[0] , scene_corners[1] , Scalar(0, 0, 0), 2);
+    line(img_matches, scene_corners[1] , scene_corners[2] , Scalar(0, 0, 0), 2);
+    line(img_matches, scene_corners[2] , scene_corners[3] , Scalar(0, 0, 0), 2);
+    line(img_matches, scene_corners[3] , scene_corners[0] , Scalar(0, 0, 0), 2);
+ 
+    circle(img_matches, center, radius, Scalar(0, 0, 0), 2, 0);
+    */
+
+    if (matchedLocation.size() >= 8)
+    {
+        matchedLocation.clear();
+    }
+    matchedLocation.push_back(scene_corners[0].x);
+    matchedLocation.push_back(scene_corners[0].y);
+    matchedLocation.push_back(scene_corners[1].x);
+    matchedLocation.push_back(scene_corners[1].y);
+    matchedLocation.push_back(scene_corners[2].x);
+    matchedLocation.push_back(scene_corners[2].y);
+    matchedLocation.push_back(scene_corners[3].x);
+    matchedLocation.push_back(scene_corners[3].y);
+    matchedLocation.push_back(scene_corners[0].x + (scene_corners[1].x - scene_corners[0].x) / 2);
+    matchedLocation.push_back(scene_corners[0].y + (scene_corners[3].y - scene_corners[0].y) / 2);
+    matchedLocation.push_back(sqrt(((scene_corners[1].x - scene_corners[0].x) / 2)*((scene_corners[1].x - scene_corners[0].x) / 2) + ((scene_corners[3].y - scene_corners[0].y) / 2)* ((scene_corners[3].y - scene_corners[0].y) / 2)));
+ 
+    return matchedLocation;
+     
 }
+ 
+void ImgMatch::locateDrawRect(vector<float> matchedLocation){
+ 
+    line(srcImg, cvPoint(matchedLocation.at(0), matchedLocation.at(1)), cvPoint(matchedLocation.at(2), matchedLocation.at(3)), Scalar(0, 0, 0), 2);
+    line(srcImg, cvPoint(matchedLocation.at(2), matchedLocation.at(3)), cvPoint(matchedLocation.at(4), matchedLocation.at(5)), Scalar(0, 0, 0), 2);
+    line(srcImg, cvPoint(matchedLocation.at(4), matchedLocation.at(5)), cvPoint(matchedLocation.at(6), matchedLocation.at(7)), Scalar(0, 0, 0), 2);
+    line(srcImg, cvPoint(matchedLocation.at(6), matchedLocation.at(7)), cvPoint(matchedLocation.at(0), matchedLocation.at(1)), Scalar(0, 0, 0), 2);
+    imshow("matched image", srcImg);
+    moveWindow("matched image", 600, 350 );
+    waitKey();
+}
+ 
+void ImgMatch::locateDrawCirle(vector<float> matchedLocation){
+    circle(srcImg, cvPoint(matchedLocation.at(8), matchedLocation.at(9)), matchedLocation.at(10), Scalar(0, 0, 0), 2, 0);
+    imshow("matched image", srcImg);
+    waitKey();
+}
+ 
 void ImgMatch::getMatchedImgInfo(){
     string add = imgInfoAdd;
     char infoAdd[100];
@@ -210,5 +316,6 @@ void ImgMatch::getMatchedImgInfo(){
     string info;
     while (inFile >> info){
         cout << info;
-    } 
+    }
+ 
 }

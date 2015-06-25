@@ -69,7 +69,8 @@ void server_result (int sock)
     char response[] = "ok";
     char defMsg[] = "none";
     int matchedIndex;
-    char sendIndex[40];
+    char sendInfo[256];
+    vector<float> coord;
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
@@ -102,12 +103,15 @@ void server_result (int sock)
         else
         {
             // write index to client
-            sprintf(sendIndex, "%d", matchedIndex);
-            if (write(sock, sendIndex, sizeof(sendIndex)) < 0)
+            coord = imgM.calLocation();
+            sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+            // printf("sendInfo: %s\n", sendInfo);
+            if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
             {
                 errorSocket("ERROR writting to socket", sock);
             }
             printf("matched image index: %d\n", matchedIndex);
+
         }
 
         printf("------------- end matching -------------\n\n");

@@ -34,8 +34,11 @@ public:
     void set_dbSize(int size_DB);
     void set_indexImgAdd(string indexImgAdd);
     int getMatchedImgIndex();
-    void showMatchImg();
+    vector<float> calLocation();
+    vector<float> matchedLocation;
     void getMatchedImgInfo();
+    void locateDrawRect(vector<float> location);
+    void locateDrawCirle(vector<float> location);
 private:
     int minHessian;
     string add_DB;  //database address
@@ -54,5 +57,6 @@ private:
         int ImgIndex;
         int Freq;
     };
+ 
     int matchedImgIndex;
 };
