@@ -154,7 +154,7 @@ void server_transmit (int sock)
     char buffer[BUFFER_SIZE];
     char response[] = "ok";
 
-    char file_name_temp[40];
+    char file_name_temp[60];
     char *file_name;
     int write_length = 0;
     int length = 0;

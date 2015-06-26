@@ -205,7 +205,7 @@ void *transmit_child(void *arg)
     // stat of file, to get the size
     struct stat file_stat;
     int block_count = 0;
-    char send_info[20];
+    char send_info[70];
 
     // get the status of file
     if (stat(file_name, &file_stat) == -1)
@@ -283,7 +283,7 @@ void *transmit_thread(void *arg)
     int index = 1;
     int count = 0;
     
-    char file_name[20] = {0};
+    char file_name[60] = {0};
     VideoCapture capture(0);
     Mat frame;
 
@@ -480,7 +480,9 @@ void signal_handler(int sig)
 
 int main(int argc, char *argv[])
 {
-    userID = "default";
+    char defUserID[] = "default";
+    userID = strdup(defUserID);
+    
     /* parameter parsing */
     while(1) {
         int option_index = 0, c = 0;
