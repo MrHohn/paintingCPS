@@ -21,6 +21,7 @@
 #include "ImgMatch.h"
 #include <sys/time.h>
 #include <queue>
+#include <getopt.h>
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
@@ -31,6 +32,22 @@ sem_t sem_imgProcess;      // semaphore for result thread
 queue<string> imgQueue;    // queue storing the file names 
 pthread_mutex_t queueLock; // mutex lock for queue operation
 ImgMatch imgM;             // class for image process
+
+/******************************************************************************
+Description.: Display a help message
+Input Value.: argv[0] is the program name and the parameter progname
+Return Value: -
+******************************************************************************/
+void help(void)
+{
+    fprintf(stderr, " ---------------------------------------------------------------\n" \
+            " Help for server-OpenCV application\n" \
+            " ---------------------------------------------------------------\n" \
+            " The following parameters can be passed to this software:\n\n" \
+            " [-h | --help ]........: display this help\n" \
+            " [-v | --version ].....: display version information\n"
+            " ---------------------------------------------------------------\n");
+}
 
 /******************************************************************************
 Description.: print out the error message and exit
@@ -370,6 +387,51 @@ void signal_handler(int sig)
 
 int main(int argc, char *argv[])
 {
+    /* parameter parsing */
+    while(1) {
+        int option_index = 0, c = 0;
+        static struct option long_options[] = {
+            {"h", no_argument, 0, 0},
+            {"help", no_argument, 0, 0},
+            {"v", no_argument, 0, 0},
+            {"version", no_argument, 0, 0},
+            {0, 0, 0, 0}
+        };
+
+        c = getopt_long_only(argc, argv, "", long_options, &option_index);
+
+        /* no more options to parse */
+        if(c == -1) break;
+
+        /* unrecognized option */
+        if(c == '?') {
+            help();
+            return 0;
+        }
+
+        switch(option_index) {
+            /* h, help */
+        case 0:
+        case 1:
+            help();
+            return 0;
+            break;
+
+            /* v, version */
+        case 2:
+        case 3:
+            printf("Real-Time CPS Server Version: 0.1\n" \
+            "Compilation Date.....: unknown\n" \
+            "Compilation Time.....: unknown\n");
+            return 0;
+            break;
+
+        default:
+            help();
+            return 0;
+        }
+    }
+
     /* register signal handler for <CTRL>+C in order to clean up */
     if(signal(SIGINT, signal_handler) == SIG_ERR) {
         printf("could not register signal handler\n");
