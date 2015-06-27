@@ -53,19 +53,22 @@ struct arg_transmit {
 
 /******************************************************************************
 Description.: Display a help message
-Input Value.: argv[0] is the program name and the parameter progname
+Input Value.: -
 Return Value: -
 ******************************************************************************/
 void help(void)
 {
-    fprintf(stderr, " ---------------------------------------------------------------\n" \
+    fprintf(stderr, " \n" \
             " Help for client-OpenCV application\n" \
             " ---------------------------------------------------------------\n" \
             " The following parameters can be passed to this software:\n\n" \
             " [-h | --help ]........: display this help\n" \
             " [-v | --version ].....: display version information\n" \
-            " [-id ]................: user ID to input\n" 
-            " ---------------------------------------------------------------\n");
+            " [-id ]................: user ID to input\n" \
+            " \n" \
+            " ---------------------------------------------------------------\n" \
+            " Please start the client after the server is started\n"
+            " \n");
 }
 
 /*

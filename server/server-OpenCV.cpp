@@ -23,6 +23,7 @@
 #include <queue>
 #include <getopt.h>
 #include <unordered_map>
+// #include <unordered_set>
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
@@ -31,8 +32,12 @@
 int global_stop = 0;       // global flag for quit
 ImgMatch imgM;             // class for image process
 unordered_map<string, queue<string>*> queue_map; // map for result thread to search the queue address
+pthread_mutex_t queue_map_lock; // mutex lock for queue_map operation
 unordered_map<string, sem_t*> sem_map; // map for transmit thread to search the semaphore address
+pthread_mutex_t sem_map_lock; // mutex lock for sem_map operation
+unordered_map<String, uint> user_map; // map to store logged in userID
 // pthread_t* thread_table;
+pthread_mutex_t user_map_lock; // mutex lock for user_map operation
 
 /******************************************************************************
 Description.: Display a help message
@@ -41,13 +46,16 @@ Return Value: -
 ******************************************************************************/
 void help(void)
 {
-    fprintf(stderr, " ---------------------------------------------------------------\n" \
+    fprintf(stderr, " \n" \
             " Help for server-OpenCV application\n" \
             " ---------------------------------------------------------------\n" \
             " The following parameters can be passed to this software:\n\n" \
             " [-h | --help ]........: display this help\n" \
             " [-v | --version ].....: display version information\n"
-            " ---------------------------------------------------------------\n");
+            " \n" \
+            " ---------------------------------------------------------------\n" \
+            " Please start the server first\n"
+            " \n");
 }
 
 /******************************************************************************
@@ -81,7 +89,7 @@ Return Value:
 ******************************************************************************/
 void server_result (int sock, string userID)
 {
-    // printf("result thread\n\n");
+    printf("result thread\n\n");
 
     int n;
     char response[] = "ok";
@@ -92,6 +100,16 @@ void server_result (int sock, string userID)
     sem_t *sem_match = new sem_t(); // create a new semaphore in heap
     queue<string> *imgQueue = 0;    // queue storing the file names 
 
+    //  Init semaphore and put the address of semaphore into map
+    if (sem_init(sem_match, 0, 0) != 0)
+    {
+        errorSocket("ERROR semaphore init failed\n", sock);
+    }
+    // grap the lock
+    pthread_mutex_lock(&sem_map_lock);
+    sem_map[userID] = sem_match;
+    pthread_mutex_unlock(&sem_map_lock);
+
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0)
@@ -99,19 +117,12 @@ void server_result (int sock, string userID)
         error("ERROR writting to socket");
     }
 
-
-    //  Init semaphore and put the address of semaphore into map
-    if (sem_init(sem_match, 0, 0) != 0)
-    {
-        errorSocket("ERROR semaphore init failed\n", sock);
-    }
-    sem_map[userID] = sem_match;
-
     while(!global_stop) 
     {
         sem_wait(sem_match);
         // get the address of image queue
-        if (imgQueue == 0) {
+        if (imgQueue == 0)
+        {
             imgQueue = queue_map[userID];
         }
 
@@ -164,7 +175,7 @@ Return Value:
 ******************************************************************************/
 void server_transmit (int sock, string userID)
 {
-    // printf("transmitting part\n");
+    printf("transmitting part\n");
 
     int n;
     char buffer[BUFFER_SIZE];
@@ -178,21 +189,26 @@ void server_transmit (int sock, string userID)
     int block_count;
     int count = 0;
     queue<string> *imgQueue = new queue<string>();    // queue storing the file names 
+
+    // grap the lock
+    pthread_mutex_lock(&queue_map_lock);
     queue_map[userID] = imgQueue; // put the address if queue into map
+    pthread_mutex_unlock(&queue_map_lock);
+
     pthread_mutex_t queueLock; // mutex lock for queue operation
     sem_t *sem_match = 0;
+
+    // init the mutex lock
+    if (pthread_mutex_init(&queueLock, NULL) != 0)
+    {
+        errorSocket("ERROR mutex init failed\n", sock);
+    }
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0)
     {
         errorSocket("ERROR writting to socket\n", sock);
-    }
-
-    // init the mutex lock
-    if (pthread_mutex_init(&queueLock, NULL) != 0)
-    {
-        errorSocket("ERROR mutex init failed\n", sock);
     }
 
     while (!global_stop)
@@ -246,7 +262,8 @@ void server_transmit (int sock, string userID)
             }  
             bzero(buffer, BUFFER_SIZE);
             ++count;
-            if (count >= block_count) {
+            if (count >= block_count)
+            {
                 // printf("block count full\n");
                 break;
             }
@@ -264,7 +281,8 @@ void server_transmit (int sock, string userID)
 
         pthread_mutex_unlock(&queueLock);
         // get the address of sem_match
-        if (sem_match == 0) {
+        if (sem_match == 0)
+        {
             while (sem_map.find(userID) == sem_map.end());
             sem_match = sem_map[userID];
         }
@@ -305,6 +323,33 @@ void *serverThread (void * inputsock)
 
     threadType = strtok(buffer, ",");
     userID = strtok(NULL, ",");
+
+    // grap the lock
+    pthread_mutex_lock(&user_map_lock);
+    // confirm that this user does not log in
+    if (user_map.find(userID) == user_map.end())
+    {
+        // put the new user into user map
+        user_map[userID] = 1;
+    }
+    else
+    {
+        if (user_map[userID] == 1)
+        {
+            // increase user thread count
+            user_map[userID] = 2;
+        }
+        else
+        {
+            // remember to unlock!
+            pthread_mutex_unlock(&user_map_lock);
+            close(sock); 
+            printf("[server] User exist. Connection closed.\n\n");
+            return 0;
+        }
+    }
+    pthread_mutex_unlock(&user_map_lock);
+
     if (strcmp(threadType, "transmit") == 0) 
     {
         server_transmit(sock, userID);
@@ -403,6 +448,9 @@ void signal_handler(int sig)
     /* signal "stop" to threads */
     printf("\nSetting signal to stop.\n");
     global_stop = 1;
+    pthread_mutex_destroy(&queue_map_lock);
+    pthread_mutex_destroy(&sem_map_lock);
+    pthread_mutex_destroy(&user_map_lock);
     usleep(1000 * 1000);
 
     /* clean up threads */
@@ -469,6 +517,27 @@ int main(int argc, char *argv[])
     if(signal(SIGINT, signal_handler) == SIG_ERR) {
         printf("could not register signal handler\n");
         exit(EXIT_FAILURE);
+    }
+
+    // init the mutex lock
+    if (pthread_mutex_init(&user_map_lock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+
+    // init the mutex lock
+    if (pthread_mutex_init(&queue_map_lock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+
+    // init the mutex lock
+    if (pthread_mutex_init(&sem_map_lock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
     }
 
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
