@@ -130,6 +130,12 @@ void server_result (int sock, string userID)
         // check if the queue is empty
         if (imgQueue->empty())
         {
+            sem_map.erase(userID);
+            queue_map.erase(userID);
+            user_map.erase(userID);
+            delete(sem_match);
+            delete(imgQueue);
+            sem_destroy(sem_match);
             errorSocket("ERROR image queue empty", sock);
         }
 
@@ -217,6 +223,7 @@ void server_transmit (int sock, string userID)
     n = write(sock, response, sizeof(response));
     if (n < 0)
     {
+        pthread_mutex_destroy(&queueLock);
         // signal the result thread to terminate
         sem_post(sem_match);
         errorSocket("ERROR writting to socket", sock);
@@ -229,6 +236,7 @@ void server_transmit (int sock, string userID)
         n = read(sock,buffer, sizeof(buffer));
         if (n <= 0)
         {
+            pthread_mutex_destroy(&queueLock);
             // signal the result thread to terminate
             sem_post(sem_match);
             errorSocket("ERROR reading from socket", sock);
@@ -246,6 +254,7 @@ void server_transmit (int sock, string userID)
         n = write(sock, response, sizeof(response));
         if (n <= 0)
         {
+            pthread_mutex_destroy(&queueLock);
             // signal the result thread to terminate
             sem_post(sem_match);
             errorSocket("ERROR writting to socket", sock);

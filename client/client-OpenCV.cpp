@@ -158,7 +158,8 @@ void *result_thread(void *arg)
     while(!global_stop)
     {
         bzero(buffer, sizeof(buffer));
-        if (recv(sockfd, buffer, sizeof(buffer), 0) < 0) 
+        n = recv(sockfd, buffer, sizeof(buffer), 0);
+        if (n < 0) 
         {
             error("ERROR reading from socket");
         }
@@ -182,10 +183,15 @@ void *result_thread(void *arg)
                 drawResult = 1;
             }
         }
+        else
+        {
+            printf("[client] server closed the connection\n");
+            global_stop = 1;
+        }
     }
 
     close(sockfd); // disconnect server
-    printf("[client] connection closed\n");
+    printf("[client] connection closed --- result\n");
 
     /*---------------------------end--------------------------*/
 
@@ -429,7 +435,7 @@ void *transmit_thread(void *arg)
     }
     
     close(sockfd); // disconnect server
-    printf("[client] connection closed\n\n");
+    printf("[client] connection closed --- transmit\n");
     global_stop = 1;
     // exit(0);
 
