@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <getopt.h>
+#include <errno.h>
 
 using namespace cv;
 using namespace std;
@@ -142,11 +143,17 @@ void *result_thread(void *arg)
     // send the header first
     n = write(sockfd, header, sizeof(header));
     if (n < 0) 
-         error("ERROR writing to socket");
+        error("ERROR writing to socket");
     // get the response
     n = read(sockfd, response, sizeof(response));
     if (n < 0) 
-         error("ERROR reading from socket");
+        error("ERROR reading from socket");
+    if (n != 3)
+    {
+        errno = EACCES;
+        error("ERROR log in failed");
+    }
+
     
     while(!global_stop)
     {
@@ -235,12 +242,12 @@ void *transmit_child(void *arg)
     sprintf(send_info, "%s,%d", file_name, block_count);
     n = write(sockfd, send_info, sizeof(send_info));
     if (n < 0) 
-         error("ERROR writing to socket");
+        error("ERROR writing to socket");
 
     // get the response
     n = read(sockfd, response, sizeof(response));
     if (n < 0) 
-         error("ERROR reading from socket");
+        error("ERROR reading from socket");
 
     FILE *fp = fopen(file_name, "r");  
     if (fp == NULL)  
@@ -351,6 +358,11 @@ void *transmit_thread(void *arg)
     n = read(sockfd, response, sizeof(response));
     if (n < 0) 
          error("ERROR reading from socket");
+    if (n != 3)
+    {
+        errno = EACCES;
+        error("ERROR log in failed");
+    }
   
     /*-------------------end----------------------*/
 

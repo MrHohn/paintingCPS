@@ -23,7 +23,7 @@
 #include <queue>
 #include <getopt.h>
 #include <unordered_map>
-// #include <unordered_set>
+#include <errno.h>
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
@@ -76,6 +76,7 @@ Return Value:
 ******************************************************************************/
 void errorSocket(const char *msg, int sock)
 {
+    errno = EBADF;
     perror(msg);
     close(sock); 
     printf("[server] Connection closed. --- error\n\n");
@@ -89,7 +90,7 @@ Return Value:
 ******************************************************************************/
 void server_result (int sock, string userID)
 {
-    printf("result thread\n\n");
+    // printf("result thread\n\n");
 
     int n;
     char response[] = "ok";
@@ -103,7 +104,7 @@ void server_result (int sock, string userID)
     //  Init semaphore and put the address of semaphore into map
     if (sem_init(sem_match, 0, 0) != 0)
     {
-        errorSocket("ERROR semaphore init failed\n", sock);
+        errorSocket("ERROR semaphore init failed", sock);
     }
     // grap the lock
     pthread_mutex_lock(&sem_map_lock);
@@ -175,7 +176,7 @@ Return Value:
 ******************************************************************************/
 void server_transmit (int sock, string userID)
 {
-    printf("transmitting part\n");
+    // printf("transmitting part\n");
 
     int n;
     char buffer[BUFFER_SIZE];
@@ -201,14 +202,14 @@ void server_transmit (int sock, string userID)
     // init the mutex lock
     if (pthread_mutex_init(&queueLock, NULL) != 0)
     {
-        errorSocket("ERROR mutex init failed\n", sock);
+        errorSocket("ERROR mutex init failed", sock);
     }
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0)
     {
-        errorSocket("ERROR writting to socket\n", sock);
+        errorSocket("ERROR writting to socket", sock);
     }
 
     while (!global_stop)
@@ -218,7 +219,7 @@ void server_transmit (int sock, string userID)
         n = read(sock,buffer, sizeof(buffer));
         if (n <= 0)
         {
-            errorSocket("ERROR reading from socket\n", sock);
+            errorSocket("ERROR reading from socket", sock);
         } 
 
         // store the file name and the block count
@@ -233,7 +234,7 @@ void server_transmit (int sock, string userID)
         n = write(sock, response, sizeof(response));
         if (n <= 0)
         {
-            errorSocket("ERROR writting to socket\n", sock);
+            errorSocket("ERROR writting to socket", sock);
         } 
 
         FILE *fp = fopen(file_name, "w");  
@@ -317,7 +318,7 @@ void *serverThread (void * inputsock)
     n = read(sock, buffer, sizeof(buffer));
     if (n < 0)
     {
-        errorSocket("ERROR reading from socket\n", sock);
+        errorSocket("ERROR reading from socket", sock);
     } 
     printf("[server] header content: %s\n\n",buffer);
 
@@ -343,6 +344,11 @@ void *serverThread (void * inputsock)
         {
             // remember to unlock!
             pthread_mutex_unlock(&user_map_lock);
+            // reponse to the client
+            if (write(sock, "failed", sizeof("failed")) < 0)
+            {
+                errorSocket("ERROR writting to socket", sock);
+            }
             close(sock); 
             printf("[server] User exist. Connection closed.\n\n");
             return 0;
