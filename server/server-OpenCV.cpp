@@ -22,20 +22,21 @@
 #include <sys/time.h>
 #include <queue>
 #include <getopt.h>
+#include <unordered_map>
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
 #define MAX_CONNECTION              10
 
 int global_stop = 0;       // global flag for quit
-sem_t sem_imgProcess;      // semaphore for result thread
-queue<string> imgQueue;    // queue storing the file names 
-pthread_mutex_t queueLock; // mutex lock for queue operation
 ImgMatch imgM;             // class for image process
+unordered_map<string, queue<string>*> queue_map; // map for result thread to search the queue address
+unordered_map<string, sem_t*> sem_map; // map for transmit thread to search the semaphore address
+// pthread_t* thread_table;
 
 /******************************************************************************
 Description.: Display a help message
-Input Value.: argv[0] is the program name and the parameter progname
+Input Value.: -
 Return Value: -
 ******************************************************************************/
 void help(void)
@@ -78,7 +79,7 @@ Description: function for sending back the result
 Input Value.:
 Return Value:
 ******************************************************************************/
-void server_result (int sock)
+void server_result (int sock, string userID)
 {
     // printf("result thread\n\n");
 
@@ -88,22 +89,36 @@ void server_result (int sock)
     int matchedIndex;
     char sendInfo[256];
     vector<float> coord;
+    sem_t *sem_match = new sem_t(); // create a new semaphore in heap
+    queue<string> *imgQueue = 0;    // queue storing the file names 
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0)
     {
         error("ERROR writting to socket");
-    } 
+    }
+
+
+    //  Init semaphore and put the address of semaphore into map
+    if (sem_init(sem_match, 0, 0) != 0)
+    {
+        errorSocket("ERROR semaphore init failed\n", sock);
+    }
+    sem_map[userID] = sem_match;
 
     while(!global_stop) 
     {
-        sem_wait(&sem_imgProcess);
+        sem_wait(sem_match);
+        // get the address of image queue
+        if (imgQueue == 0) {
+            imgQueue = queue_map[userID];
+        }
 
         // printf("\n----------- start matching -------------\n");
-        string file_name = imgQueue.front(); 
+        string file_name = imgQueue->front(); 
         // printf("file name: %s\n", file_name.c_str());
-        imgQueue.pop();
+        imgQueue->pop();
 
         // start matching the image
         imgM.matchImg(file_name);
@@ -137,6 +152,7 @@ void server_result (int sock)
 
     close(sock); 
     printf("[server] Connection closed. --- result\n\n");
+    delete(sem_match);
     pthread_exit(NULL); //terminate calling thread!
 
 }
@@ -146,7 +162,7 @@ Description: function for transmitting the frames
 Input Value.:
 Return Value:
 ******************************************************************************/
-void server_transmit (int sock)
+void server_transmit (int sock, string userID)
 {
     // printf("transmitting part\n");
 
@@ -161,14 +177,23 @@ void server_transmit (int sock)
     char *block_count_char;
     int block_count;
     int count = 0;
-
+    queue<string> *imgQueue = new queue<string>();    // queue storing the file names 
+    queue_map[userID] = imgQueue; // put the address if queue into map
+    pthread_mutex_t queueLock; // mutex lock for queue operation
+    sem_t *sem_match = 0;
 
     // reponse to the client
     n = write(sock, response, sizeof(response));
     if (n < 0)
     {
         errorSocket("ERROR writting to socket\n", sock);
-    } 
+    }
+
+    // init the mutex lock
+    if (pthread_mutex_init(&queueLock, NULL) != 0)
+    {
+        errorSocket("ERROR mutex init failed\n", sock);
+    }
 
     while (!global_stop)
     {
@@ -235,15 +260,21 @@ void server_transmit (int sock)
 
         // store the file name to the waiting queue
         string file_name_string(file_name_temp);
-        imgQueue.push(file_name_string);
+        imgQueue->push(file_name_string);
 
         pthread_mutex_unlock(&queueLock);
+        // get the address of sem_match
+        if (sem_match == 0) {
+            while (sem_map.find(userID) == sem_map.end());
+            sem_match = sem_map[userID];
+        }
         // signal the result thread to do image processing
-        sem_post(&sem_imgProcess);
+        sem_post(sem_match);
     }
 
     close(sock); 
     printf("[server] Connection closed. --- transmit\n\n");
+    delete(imgQueue);
     pthread_exit(NULL); //terminate calling thread!
 
 }
@@ -259,10 +290,12 @@ void *serverThread (void * inputsock)
 {
     int sock = *((int *)inputsock);
     int n;
-    char buffer[20];
+    char buffer[100];
+    string userID;
+    char *threadType;
 
     // Receive the header
-    bzero(buffer,20);
+    bzero(buffer, 100);
     n = read(sock, buffer, sizeof(buffer));
     if (n < 0)
     {
@@ -270,13 +303,15 @@ void *serverThread (void * inputsock)
     } 
     printf("[server] header content: %s\n\n",buffer);
 
-    if (strcmp(buffer, "transmit") == 0) 
+    threadType = strtok(buffer, ",");
+    userID = strtok(NULL, ",");
+    if (strcmp(threadType, "transmit") == 0) 
     {
-        server_transmit(sock);
+        server_transmit(sock, userID);
     }
-    else if (strcmp(buffer, "result") == 0) 
+    else if (strcmp(threadType, "result") == 0) 
     {
-        server_result(sock);
+        server_result(sock, userID);
     }
     else
     {
@@ -368,8 +403,6 @@ void signal_handler(int sig)
     /* signal "stop" to threads */
     printf("\nSetting signal to stop.\n");
     global_stop = 1;
-    sem_destroy(&sem_imgProcess);
-    pthread_mutex_destroy(&queueLock);
     usleep(1000 * 1000);
 
     /* clean up threads */
@@ -436,21 +469,6 @@ int main(int argc, char *argv[])
     if(signal(SIGINT, signal_handler) == SIG_ERR) {
         printf("could not register signal handler\n");
         exit(EXIT_FAILURE);
-    }
-
-    const unsigned int nSemaphoreCount = 0; //initial value of semaphore
-    int nRet = -1;
-    nRet = sem_init(&sem_imgProcess, 0, nSemaphoreCount);
-    if (0 != nRet)
-    {
-        printf("\n semaphore init failed\n");
-        return -1;
-    }
-
-    if (pthread_mutex_init(&queueLock, NULL) != 0)
-    {
-        printf("\n mutex init failed\n");
-        return 1;
     }
 
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");

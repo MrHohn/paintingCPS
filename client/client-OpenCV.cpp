@@ -98,7 +98,8 @@ void *result_thread(void *arg)
     struct hostent *server;
     struct in_addr ipv4addr;
     char buffer[256];
-    char header[] = "result";
+    char header[100];
+    sprintf(header, "result,%s", userID);
     char response[10];
     char *resultTemp;
 
@@ -205,7 +206,7 @@ void *transmit_child(void *arg)
     // stat of file, to get the size
     struct stat file_stat;
     int block_count = 0;
-    char send_info[70];
+    char send_info[100];
 
     // get the status of file
     if (stat(file_name, &file_stat) == -1)
@@ -283,7 +284,7 @@ void *transmit_thread(void *arg)
     int index = 1;
     int count = 0;
     
-    char file_name[60] = {0};
+    char file_name[100] = {0};
     VideoCapture capture(0);
     Mat frame;
 
@@ -303,7 +304,8 @@ void *transmit_thread(void *arg)
     struct in_addr ipv4addr;
     portno = PORT_NO;
     char response[10];
-    char header[] = "transmit";
+    char header[100];
+    sprintf(header, "transmit,%s", userID);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
@@ -527,7 +529,6 @@ int main(int argc, char *argv[])
         case 4:
             userID = strdup(optarg);
             // printf("userID: %s\n", userID);
-            // return 0;
             break;
 
         default:

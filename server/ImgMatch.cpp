@@ -164,7 +164,7 @@ void ImgMatch::matchImg(string srcImgAdd){
     \if max matched times is smaller than 3, it fails to find a matched object
     */
     if (maxFreq < 3){
-        cout << "Not find matched ojbect" << endl;
+        cout << "Do not find matched ojbect" << endl;
         return;
     }
     for (auto &t : imgFreq){ 
