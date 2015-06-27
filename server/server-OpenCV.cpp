@@ -127,6 +127,12 @@ void server_result (int sock, string userID)
             imgQueue = queue_map[userID];
         }
 
+        // check if the queue is empty
+        if (imgQueue->empty())
+        {
+            errorSocket("ERROR image queue empty", sock);
+        }
+
         // printf("\n----------- start matching -------------\n");
         string file_name = imgQueue->front(); 
         // printf("file name: %s\n", file_name.c_str());
@@ -202,6 +208,8 @@ void server_transmit (int sock, string userID)
     // init the mutex lock
     if (pthread_mutex_init(&queueLock, NULL) != 0)
     {
+        // signal the result thread to terminate
+        sem_post(sem_match);
         errorSocket("ERROR mutex init failed", sock);
     }
 
@@ -209,6 +217,8 @@ void server_transmit (int sock, string userID)
     n = write(sock, response, sizeof(response));
     if (n < 0)
     {
+        // signal the result thread to terminate
+        sem_post(sem_match);
         errorSocket("ERROR writting to socket", sock);
     }
 
@@ -219,6 +229,8 @@ void server_transmit (int sock, string userID)
         n = read(sock,buffer, sizeof(buffer));
         if (n <= 0)
         {
+            // signal the result thread to terminate
+            sem_post(sem_match);
             errorSocket("ERROR reading from socket", sock);
         } 
 
@@ -234,6 +246,8 @@ void server_transmit (int sock, string userID)
         n = write(sock, response, sizeof(response));
         if (n <= 0)
         {
+            // signal the result thread to terminate
+            sem_post(sem_match);
             errorSocket("ERROR writting to socket", sock);
         } 
 
