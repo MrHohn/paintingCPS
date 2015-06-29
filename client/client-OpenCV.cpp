@@ -36,9 +36,11 @@ using namespace std;
 
 static pthread_t transmitThread;
 static pthread_t resultThread;
+static pthread_t orbitThread;
 pthread_mutex_t sendLock; // mutex lock to make sure transmit order
 
 int global_stop = 0;
+int orbit = 0;
 char *userID;
 // Point center = Point(255,255);
 // int r = 100;
@@ -66,6 +68,7 @@ void help(void)
             " [-h | --help ]........: display this help\n" \
             " [-v | --version ].....: display version information\n" \
             " [-id ]................: user ID to input\n" \
+            " [-orbit ].............: run in orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -443,6 +446,137 @@ void *transmit_thread(void *arg)
 }
 
 /******************************************************************************
+Description.: this is the orbit thread
+              it loops forever, send a sample image out to the server in 
+              a certain frequency
+Input Value.:
+Return Value:
+******************************************************************************/
+void *orbit_thread(void *arg)
+{
+    printf("\n---------- RUN IN ORBIT MODE ----------\n");
+
+    int index = 1;
+    int count = 0;
+    
+    char file_name[100] = {0};
+
+    /*-----------------network part--------------*/
+
+    int sockfd, portno, n;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+    struct in_addr ipv4addr;
+    portno = PORT_NO;
+    char response[10];
+    char header[100];
+    sprintf(header, "transmit,%s", userID);
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+    char server_addr[] = "127.0.0.1";
+    inet_pton(AF_INET, server_addr, &ipv4addr);
+    server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+    // printf("\n[client] Host name: %s\n", server->h_name);
+    printf("\n[client] Server address: %s\n", server_addr);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
+    serv_addr.sin_port = htons(portno);
+
+    // finished initialize, try to connect
+
+    if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+    {
+        printf("-------- The server is not available now. ---------\n\n");
+        global_stop = 1;
+        exit(0);
+        // error("ERROR connecting");
+    }
+    else
+    {
+        printf("[client] transmit thread get connection to server\n");
+        printf("[client] start transmitting current frame\n\n");
+    }
+
+    // send the header first
+    n = write(sockfd, header, sizeof(header));
+    if (n < 0) 
+         error("ERROR writing to socket");
+
+    // get the response
+    n = read(sockfd, response, sizeof(response));
+    if (n < 0) 
+         error("ERROR reading from socket");
+    if (n != 3)
+    {
+        errno = EACCES;
+        error("ERROR log in failed");
+    }
+  
+    /*-------------------end----------------------*/
+
+
+    while (!global_stop)
+    {
+        ++count;
+    
+        if (count >= 60) {
+            count = 0;
+
+            printf("[orbit mode] send an image\n");
+
+            // set up the file name and encode the frame to jpeg
+            sprintf(file_name, "pics/default-orbit.jpeg");
+            ++index;
+
+
+            /*-------------------send current frame here--------------*/
+
+            pthread_t thread_id;
+            struct arg_transmit trans_info;
+            trans_info.sock = sockfd;
+            strcpy(trans_info.file_name, file_name);
+            /* create thread and pass socket and file name to send file */
+            if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+            {
+                fprintf(stderr,"pthread_create error!\n");
+                break; //break while loop
+            }
+            pthread_detach(thread_id);
+
+            /*---------------------------end--------------------------*/
+        }
+        
+        if (drawResult)
+        {
+            printf("\n[orbit] got result from server\n");
+            printf("[orbit] %s\n", resultShown.c_str());
+            printf("[orbit] coordinates as below:\n");
+            printf("%f, %f\n", coord[0], coord[1]);
+            printf("%f, %f\n", coord[2], coord[3]);
+            printf("%f, %f\n", coord[4], coord[5]);
+            printf("%f, %f\n\n", coord[6], coord[7]);
+            drawResult = 0;
+        }
+
+        usleep(1000 * 40); // sleep a while to imitate video catching
+    }
+    
+    close(sockfd); // disconnect server
+    printf("[client] connection closed --- transmit\n");
+    global_stop = 1;
+    // exit(0);
+
+    return NULL;
+}
+
+/******************************************************************************
 Description.: calling this function stops the running threads
 Input Value.: -
 Return Value: always 0
@@ -451,7 +585,15 @@ int client_stop()
 {
     // DBG("will cancel threads\n");
     printf("Canceling threads.\n");
-    pthread_cancel(transmitThread);
+    if (!orbit)
+    {
+        pthread_cancel(transmitThread);
+    }
+    else
+    {
+        // cancel orbit thread
+        pthread_cancel(orbitThread);
+    }
     pthread_cancel(resultThread);
     return 0;
 }
@@ -465,8 +607,17 @@ int client_run()
 {
     // DBG("launching threads\n");
     printf("\nLaunching threads.\n");
-    pthread_create(&transmitThread, 0, transmit_thread, NULL);
-    pthread_detach(transmitThread);
+    if (!orbit)
+    {
+        pthread_create(&transmitThread, 0, transmit_thread, NULL);
+        pthread_detach(transmitThread);
+    }
+    // run in orbit mode
+    else
+    {
+        pthread_create(&orbitThread, 0, orbit_thread, NULL);
+        pthread_detach(orbitThread);
+    }
     pthread_create(&resultThread, 0, result_thread, NULL);
     pthread_detach(resultThread);
     return 0;
@@ -515,6 +666,7 @@ int main(int argc, char *argv[])
             {"v", no_argument, 0, 0},
             {"version", no_argument, 0, 0},
             {"id", required_argument, 0, 0},
+            {"orbit", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -550,6 +702,11 @@ int main(int argc, char *argv[])
         case 4:
             userID = strdup(optarg);
             // printf("userID: %s\n", userID);
+            break;
+
+            /* orbit, run in orbit mode */
+        case 5:
+            orbit = 1;
             break;
 
         default:
