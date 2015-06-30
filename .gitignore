@@ -17,10 +17,8 @@ server/server-OpenCV
 *.jpeg
 
 # cmake files
-client/Makefile
 client/CMakeCache.txt
 client/CMakeFiles/*
-server/Makefile
 server/CMakeCache.txt
 server/CMakeFiles/*
 *.cmake
