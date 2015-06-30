@@ -618,8 +618,6 @@ int client_run()
     {
         pthread_create(&orbitThread, 0, orbit_thread, NULL);
         pthread_detach(orbitThread);
-        // sleep a while incase two thread gain the same socket id
-        usleep(1000 * 50);
     }
     pthread_create(&resultThread, 0, result_thread, NULL);
     pthread_detach(resultThread);

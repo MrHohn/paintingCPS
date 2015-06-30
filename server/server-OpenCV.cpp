@@ -339,7 +339,6 @@ void *serverThread (void * inputsock)
 
     // Receive the header
     bzero(buffer, 100);
-    printf("wait for header: %d\n", sock);
     n = read(sock, buffer, sizeof(buffer));
     if (n < 0)
     {
@@ -451,7 +450,7 @@ void run_server()
             continue; //ignore current socket ,continue while loop.
         }
         else 
-            printf ("[server] server has got connect from %s.\n", (char *)inet_ntoa(cli_addr.sin_addr));
+            printf ("[server] server has got connect from %s, socket id: %d.\n", (char *)inet_ntoa(cli_addr.sin_addr), newsockfd);
 
         /* create thread and pass context to thread function */
         if (pthread_create(&thread_id, 0, serverThread, (void *)&(newsockfd)) == -1)
@@ -460,6 +459,7 @@ void run_server()
             break; //break while loop
         }
         pthread_detach(thread_id);
+        usleep(1000 * 5); //  sleep 5ms to avoid clients gain same sock
 
     } /* end of while */
     close(sockfd);
