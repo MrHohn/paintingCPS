@@ -141,13 +141,14 @@ void *result_thread(void *arg)
     else
     {
         printf("[client] result thread get connection to server\n");
-        printf("[client] start receiving the result\n");   
+        printf("[client] start receiving the result\n\n");   
     }
 
     // send the header first
     n = write(sockfd, header, sizeof(header));
     if (n < 0) 
         error("ERROR writing to socket");
+
     // get the response
     n = read(sockfd, response, sizeof(response));
     if (n < 0) 
@@ -157,7 +158,6 @@ void *result_thread(void *arg)
         errno = EACCES;
         error("ERROR log in failed");
     }
-
     
     while(!global_stop)
     {
@@ -618,6 +618,8 @@ int client_run()
     {
         pthread_create(&orbitThread, 0, orbit_thread, NULL);
         pthread_detach(orbitThread);
+        // sleep a while incase two thread gain the same socket id
+        usleep(1000 * 50);
     }
     pthread_create(&resultThread, 0, result_thread, NULL);
     pthread_detach(resultThread);

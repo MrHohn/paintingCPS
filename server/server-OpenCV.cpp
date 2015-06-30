@@ -339,6 +339,7 @@ void *serverThread (void * inputsock)
 
     // Receive the header
     bzero(buffer, 100);
+    printf("wait for header: %d\n", sock);
     n = read(sock, buffer, sizeof(buffer));
     if (n < 0)
     {
