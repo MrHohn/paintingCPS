@@ -31,6 +31,7 @@
 #define MAX_CONNECTION              10
 
 int global_stop = 0;       // global flag for quit
+int orbit = 0;
 ImgMatch imgM;             // class for image process
 unordered_map<string, queue<string>*> queue_map; // map for result thread to search the queue address
 pthread_mutex_t queue_map_lock; // mutex lock for queue_map operation
@@ -53,6 +54,7 @@ void help(void)
             " The following parameters can be passed to this software:\n\n" \
             " [-h | --help ]........: display this help\n" \
             " [-v | --version ].....: display version information\n"
+            " [-orbit ].............: run in orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -536,6 +538,11 @@ int main(int argc, char *argv[])
             "Compilation Date.....: unknown\n" \
             "Compilation Time.....: unknown\n");
             return 0;
+            break;
+
+            /* orbit, run in orbit mode */
+        case 4:
+            orbit = 1;
             break;
 
         default:
