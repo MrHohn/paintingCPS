@@ -9,7 +9,7 @@
 
 CC = g++
 
-CFLAGS +=-c -g -O0 -Wall -std=c++11 -I$(MF_HOME)/common -I$(MF_HOME)/netapi/c/src -DLINUX
+CFLAGS +=-c -g -O0 -Wall -std=c++11 -I$(MF_HOME)/common -I$(MF_HOME)/netapi/c -DLINUX
 
 LFLAGS = -lmfapi -lpthread `pkg-config --cflags --libs opencv`
 
