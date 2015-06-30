@@ -65,7 +65,7 @@ void init_infoDB(string add_DB){
     const int infoDB_Size = 20;
     string infoDB[infoDB_Size] = { "winlab logo", "microware", "file extinguisher", "winlab door", "winlab inner door", "sofa", "working desk", "trash box", "orbit machine", "car", "computer display" };
  
-    for (int i = 0; i < sizeof(infoDB) / sizeof(*infoDB); i++){
+    for (uint i = 0; i < sizeof(infoDB) / sizeof(*infoDB); i++){
         if (infoDB[i] != "\0"){
             char filename[100];
             sprintf(filename, "INFO_%d.txt", i);
@@ -243,7 +243,7 @@ vector<float> ImgMatch::calLocation(){
     vector<Point2f> obj;
     vector<Point2f> scene;
  
-    for (int i = 0; i < good_matches.size(); i++)
+    for (uint i = 0; i < good_matches.size(); i++)
     {
         //-- Get the keypoints from the good matches
         obj.push_back(keyPoints2[good_matches[i].queryIdx].pt);

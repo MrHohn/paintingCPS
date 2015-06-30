@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <errno.h>
+#include <mfapi.h>
 
 using namespace cv;
 using namespace std;
