@@ -208,7 +208,7 @@ void server_transmit (int sock, string userID)
 
     // grap the lock
     pthread_mutex_lock(&queue_map_lock);
-    queue_map[userID] = imgQueue; // put the address if queue into map
+    queue_map[userID] = imgQueue; // put the address of queue into map
     pthread_mutex_unlock(&queue_map_lock);
 
     pthread_mutex_t queueLock; // mutex lock for queue operation
@@ -217,8 +217,6 @@ void server_transmit (int sock, string userID)
     // init the mutex lock
     if (pthread_mutex_init(&queueLock, NULL) != 0)
     {
-        // signal the result thread to terminate
-        sem_post(sem_match);
         errorSocket("ERROR mutex init failed", sock);
     }
 
@@ -227,8 +225,6 @@ void server_transmit (int sock, string userID)
     if (n < 0)
     {
         pthread_mutex_destroy(&queueLock);
-        // signal the result thread to terminate
-        sem_post(sem_match);
         errorSocket("ERROR writting to socket", sock);
     }
 
