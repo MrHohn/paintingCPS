@@ -26,7 +26,6 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <errno.h>
-#include <mfapi.h>
 
 using namespace cv;
 using namespace std;
@@ -141,14 +140,13 @@ void *result_thread(void *arg)
     else
     {
         printf("[client] result thread get connection to server\n");
-        printf("[client] start receiving the result\n\n");   
+        printf("[client] start receiving the result\n");   
     }
 
     // send the header first
     n = write(sockfd, header, sizeof(header));
     if (n < 0) 
         error("ERROR writing to socket");
-
     // get the response
     n = read(sockfd, response, sizeof(response));
     if (n < 0) 
@@ -158,6 +156,7 @@ void *result_thread(void *arg)
         errno = EACCES;
         error("ERROR log in failed");
     }
+
     
     while(!global_stop)
     {
@@ -219,6 +218,7 @@ void *transmit_child(void *arg)
     struct arg_transmit *args = (struct arg_transmit *)arg;
     int sockfd = args->sock;
     char *file_name = args->file_name;
+
     int n;
     char bufferSend[BUFFER_SIZE];
     char response[10];
@@ -250,6 +250,8 @@ void *transmit_child(void *arg)
     // send the file info, combine with ','
     printf("[client] file name: %s\n", file_name);
     sprintf(send_info, "%s,%d", file_name, block_count);
+
+    // send and read through the tcp socket
     n = write(sockfd, send_info, sizeof(send_info));
     if (n < 0) 
         error("ERROR writing to socket");
@@ -447,6 +449,95 @@ void *transmit_thread(void *arg)
 }
 
 /******************************************************************************
+Description.: this is the orbit child thread
+              it is responsible for send out one frame
+Input Value.:
+Return Value:
+******************************************************************************/
+void *orbit_child(void *arg)
+{
+    // printf("here\n");
+
+    struct arg_transmit *args = (struct arg_transmit *)arg;
+    int sockfd = args->sock;
+    char *file_name = args->file_name;
+
+    int n;
+    char bufferSend[BUFFER_SIZE];
+    char response[10];
+
+    // stat of file, to get the size
+    struct stat file_stat;
+    int block_count = 0;
+    char send_info[100];
+
+    // get the status of file
+    if (stat(file_name, &file_stat) == -1)
+    {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
+    if (file_stat.st_size % BUFFER_SIZE == 0)
+    {
+        block_count = file_stat.st_size / 1024;
+    }
+    else
+    {
+        block_count = file_stat.st_size / 1024 + 1;
+    }
+    // printf("block count: %d\n", block_count);
+
+    // gain the lock, insure transmit order
+    pthread_mutex_lock(&sendLock);
+
+    // send the file info, combine with ','
+    printf("[client] file name: %s\n", file_name);
+    sprintf(send_info, "%s,%d", file_name, block_count);
+
+    // send and read through the tcp socket
+    n = write(sockfd, send_info, sizeof(send_info));
+    if (n < 0) 
+        error("ERROR writing to socket");
+
+    // get the response
+    n = read(sockfd, response, sizeof(response));
+    if (n < 0) 
+        error("ERROR reading from socket");
+
+    FILE *fp = fopen(file_name, "r");  
+    if (fp == NULL)  
+    {  
+        // printf("File:\t%s Not Found!\n", file_name);  
+        printf("File:\t%s Not Found!\n", file_name);  
+    }  
+    else  
+    {  
+        bzero(bufferSend, BUFFER_SIZE);  
+        int file_block_length = 0;
+        // start transmitting the file
+        while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
+        {  
+            // send data to the client side  
+            if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
+            {  
+                printf("Send File: %s Failed!\n", file_name);  
+                break;  
+            }  
+
+            bzero(bufferSend, BUFFER_SIZE);  
+        }
+
+        fclose(fp);  
+        printf("[client] Transfer Finished!\n\n");  
+    }
+
+    pthread_mutex_unlock(&sendLock);
+    pthread_exit(NULL);
+
+    return NULL;
+}
+
+/******************************************************************************
 Description.: this is the orbit thread
               it loops forever, send a sample image out to the server in 
               a certain frequency
@@ -544,7 +635,7 @@ void *orbit_thread(void *arg)
             trans_info.sock = sockfd;
             strcpy(trans_info.file_name, file_name);
             /* create thread and pass socket and file name to send file */
-            if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+            if (pthread_create(&thread_id, 0, orbit_child, (void *)&(trans_info)) == -1)
             {
                 fprintf(stderr,"pthread_create error!\n");
                 break; //break while loop
@@ -619,8 +710,8 @@ int client_run()
         pthread_create(&orbitThread, 0, orbit_thread, NULL);
         pthread_detach(orbitThread);
     }
-    pthread_create(&resultThread, 0, result_thread, NULL);
-    pthread_detach(resultThread);
+    // pthread_create(&resultThread, 0, result_thread, NULL);
+    // pthread_detach(resultThread);
     return 0;
 }
 
