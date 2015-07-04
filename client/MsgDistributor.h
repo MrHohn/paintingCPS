@@ -26,15 +26,15 @@ public:
     MsgDistributor();
     ~MsgDistributor();
     void init(int src_GUID, int dst_GUID);
+    int listen();
     int connect();
     int accept();
-    //  send and receive the message according to the socket id
     int send(int sock, char* buffer, int size);
     int recv(int sock, char* buffer, int size); 
-    // close the message channel
     int close(int sock);
 
 private:
+    int stop = 0;
     int BUFFER_SIZE = 1024;
     int src_GUID;
     int dst_GUID;
@@ -42,7 +42,10 @@ private:
     struct Handle handle;
     pthread_mutex_t send_lock;          // lock for send
     pthread_mutex_t recv_lock;          // lock for receive
-    pthread_mutex_t id_lock;            // lock for modify socked id
+    pthread_mutex_t id_lock;            // lock for id operation
+    sem_t connect_sem;
+    queue<int> connect_queue;
+    sem_t accept_sem;
     unordered_map<int, sem_t*> sem_map; // map from mf socket id to semaphore 
     pthread_mutex_t sem_map_lock;       // mutex lock for sem_map operation
     unordered_map<int, queue<string>*> queue_map; // map from mf socket if to  message queue 
