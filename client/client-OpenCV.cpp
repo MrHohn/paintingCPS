@@ -26,6 +26,8 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <errno.h>
+#include <mfapi.h>
+#include "MsgDistributor.h"
 
 using namespace cv;
 using namespace std;
@@ -42,6 +44,7 @@ pthread_mutex_t sendLock; // mutex lock to make sure transmit order
 int global_stop = 0;
 int orbit = 0;
 char *userID;
+int debug = 0;
 // Point center = Point(255,255);
 // int r = 100;
 // int drawCircle = 0;
@@ -67,8 +70,9 @@ void help(void)
             " The following parameters can be passed to this software:\n\n" \
             " [-h | --help ]........: display this help\n" \
             " [-v | --version ].....: display version information\n" \
-            " [-id ]................: user ID to input\n" \
-            " [-orbit ].............: run in orbit mode\n" \
+            " [-id].................: user ID to input\n" \
+            " [-orbit]..............: run in orbit mode\n" \
+            " [-d]..................: debug mode, print more details\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -97,104 +101,109 @@ Return Value:
 void *result_thread(void *arg)
 {
     // printf("In the receiver thread.\n");
+    char buffer[256];
+    char header[100];
+    char response[10];
+    sprintf(header, "result,%s", userID);
+    char *resultTemp;
 
     /*-----------------network part--------------*/
 
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-    struct in_addr ipv4addr;
-    char buffer[256];
-    char header[100];
-    sprintf(header, "result,%s", userID);
-    char response[10];
-    char *resultTemp;
-
-    portno = PORT_NO;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    char server_addr[] = "127.0.0.1";
-    inet_pton(AF_INET, server_addr, &ipv4addr);
-    server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-    // printf("\n[client] Host name: %s\n", server->h_name);
-    printf("\n[client] Server address: %s\n", server_addr);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
-    serv_addr.sin_port = htons(portno);
-
-    // finished initialize, try to connect
-
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+    if (!orbit)
     {
-        printf("-------- The server is not available now. ---------\n\n");
-        global_stop = 1;
-        exit(0);
-        // error("ERROR connecting");
-    }
-    else
-    {
-        printf("[client] result thread get connection to server\n");
-        printf("[client] start receiving the result\n");   
-    }
-
-    // send the header first
-    n = write(sockfd, header, sizeof(header));
-    if (n < 0) 
-        error("ERROR writing to socket");
-    // get the response
-    n = read(sockfd, response, sizeof(response));
-    if (n < 0) 
-        error("ERROR reading from socket");
-    if (n != 3)
-    {
-        errno = EACCES;
-        error("ERROR log in failed");
-    }
-
-    
-    while(!global_stop)
-    {
-        bzero(buffer, sizeof(buffer));
-        n = recv(sockfd, buffer, sizeof(buffer), 0);
-        if (n < 0) 
+        int sockfd, portno, n;
+        struct sockaddr_in serv_addr;
+        struct hostent *server;
+        struct in_addr ipv4addr;
+        portno = PORT_NO;
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0) 
+            error("ERROR opening socket");
+        char server_addr[] = "127.0.0.1";
+        inet_pton(AF_INET, server_addr, &ipv4addr);
+        server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+        // printf("\n[client] Host name: %s\n", server->h_name);
+        printf("\n[client] Server address: %s\n", server_addr);
+        if (server == NULL) 
         {
-            error("ERROR reading from socket");
+            fprintf(stderr,"ERROR, no such host\n");
+            exit(0);
         }
-        else if (n > 0)
+        bzero((char *) &serv_addr, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
+        serv_addr.sin_port = htons(portno);
+
+        // finished initialize, try to connect
+
+        if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
         {
-            if (strcmp(buffer, "none") == 0)
-            {
-                drawResult = 0;
-            }
-            else
-            {
-                drawResult = 0;
-                // printf("result: %s\n", buffer);
-                resultShown = strtok(buffer, ",");
-                resultShown = "matched index: " + resultShown;
-                for (int i = 0; i < 8; ++i) {
-                    resultTemp = strtok(NULL, ",");
-                    coord[i] = atof(resultTemp);
-                    // printf("%f\n", coord[i]);
-                }
-                drawResult = 1;
-            }
+            printf("-------- The server is not available now. ---------\n\n");
+            global_stop = 1;
+            exit(0);
+            // error("ERROR connecting");
         }
         else
         {
-            printf("[client] server closed the connection\n");
-            global_stop = 1;
+            printf("[client] result thread get connection to server\n");
+            printf("[client] start receiving the result\n");   
         }
+        // send the header first
+        n = write(sockfd, header, sizeof(header));
+        if (n < 0) 
+            error("ERROR writing to socket");
+        // get the response
+        n = read(sockfd, response, sizeof(response));
+        if (n < 0) 
+            error("ERROR reading from socket");
+        if (n != 3)
+        {
+            errno = EACCES;
+            error("ERROR log in failed");
+        }
+        
+        while(!global_stop)
+        {
+            bzero(buffer, sizeof(buffer));
+            n = recv(sockfd, buffer, sizeof(buffer), 0);
+            if (n < 0) 
+            {
+                error("ERROR reading from socket");
+            }
+            else if (n > 0)
+            {
+                if (strcmp(buffer, "none") == 0)
+                {
+                    drawResult = 0;
+                }
+                else
+                {
+                    drawResult = 0;
+                    // printf("result: %s\n", buffer);
+                    resultShown = strtok(buffer, ",");
+                    resultShown = "matched index: " + resultShown;
+                    for (int i = 0; i < 8; ++i) {
+                        resultTemp = strtok(NULL, ",");
+                        coord[i] = atof(resultTemp);
+                        // printf("%f\n", coord[i]);
+                    }
+                    drawResult = 1;
+                }
+            }
+            else
+            {
+                printf("[client] server closed the connection\n");
+                global_stop = 1;
+            }
+        }
+        close(sockfd); // disconnect server
+        printf("[client] connection closed --- result\n");
+    }
+    else
+    {
+
     }
 
-    close(sockfd); // disconnect server
-    printf("[client] connection closed --- result\n");
 
     /*---------------------------end--------------------------*/
 
@@ -251,41 +260,47 @@ void *transmit_child(void *arg)
     printf("[client] file name: %s\n", file_name);
     sprintf(send_info, "%s,%d", file_name, block_count);
 
-    // send and read through the tcp socket
-    n = write(sockfd, send_info, sizeof(send_info));
-    if (n < 0) 
-        error("ERROR writing to socket");
 
-    // get the response
-    n = read(sockfd, response, sizeof(response));
-    if (n < 0) 
-        error("ERROR reading from socket");
+    if (!orbit) {
+        // send and read through the tcp socket
+        n = write(sockfd, send_info, sizeof(send_info));
+        if (n < 0) 
+            error("ERROR writing to socket");
 
-    FILE *fp = fopen(file_name, "r");  
-    if (fp == NULL)  
-    {  
-        // printf("File:\t%s Not Found!\n", file_name);  
-        printf("File:\t%s Not Found!\n", file_name);  
-    }  
-    else  
-    {  
-        bzero(bufferSend, BUFFER_SIZE);  
-        int file_block_length = 0;
-        // start transmitting the file
-        while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
+        // get the response
+        n = read(sockfd, response, sizeof(response));
+        if (n < 0) 
+            error("ERROR reading from socket");
+
+        FILE *fp = fopen(file_name, "r");  
+        if (fp == NULL)  
         {  
-            // send data to the client side  
-            if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
-            {  
-                printf("Send File: %s Failed!\n", file_name);  
-                break;  
-            }  
-
+            // printf("File:\t%s Not Found!\n", file_name);  
+            printf("File:\t%s Not Found!\n", file_name);  
+        }  
+        else  
+        {  
             bzero(bufferSend, BUFFER_SIZE);  
-        }
+            int file_block_length = 0;
+            // start transmitting the file
+            while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
+            {  
+                // send data to the client side  
+                if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
+                {  
+                    printf("Send File: %s Failed!\n", file_name);  
+                    break;  
+                }  
 
-        fclose(fp);  
-        printf("[client] Transfer Finished!\n\n");  
+                bzero(bufferSend, BUFFER_SIZE);  
+            }
+
+            fclose(fp);  
+            printf("[client] Transfer Finished!\n\n");  
+        }
+    }
+    else {
+
     }
 
     pthread_mutex_unlock(&sendLock);
@@ -449,95 +464,6 @@ void *transmit_thread(void *arg)
 }
 
 /******************************************************************************
-Description.: this is the orbit child thread
-              it is responsible for send out one frame
-Input Value.:
-Return Value:
-******************************************************************************/
-void *orbit_child(void *arg)
-{
-    // printf("here\n");
-
-    struct arg_transmit *args = (struct arg_transmit *)arg;
-    int sockfd = args->sock;
-    char *file_name = args->file_name;
-
-    int n;
-    char bufferSend[BUFFER_SIZE];
-    char response[10];
-
-    // stat of file, to get the size
-    struct stat file_stat;
-    int block_count = 0;
-    char send_info[100];
-
-    // get the status of file
-    if (stat(file_name, &file_stat) == -1)
-    {
-        perror("stat");
-        exit(EXIT_FAILURE);
-    }
-    if (file_stat.st_size % BUFFER_SIZE == 0)
-    {
-        block_count = file_stat.st_size / 1024;
-    }
-    else
-    {
-        block_count = file_stat.st_size / 1024 + 1;
-    }
-    // printf("block count: %d\n", block_count);
-
-    // gain the lock, insure transmit order
-    pthread_mutex_lock(&sendLock);
-
-    // send the file info, combine with ','
-    printf("[client] file name: %s\n", file_name);
-    sprintf(send_info, "%s,%d", file_name, block_count);
-
-    // send and read through the tcp socket
-    n = write(sockfd, send_info, sizeof(send_info));
-    if (n < 0) 
-        error("ERROR writing to socket");
-
-    // get the response
-    n = read(sockfd, response, sizeof(response));
-    if (n < 0) 
-        error("ERROR reading from socket");
-
-    FILE *fp = fopen(file_name, "r");  
-    if (fp == NULL)  
-    {  
-        // printf("File:\t%s Not Found!\n", file_name);  
-        printf("File:\t%s Not Found!\n", file_name);  
-    }  
-    else  
-    {  
-        bzero(bufferSend, BUFFER_SIZE);  
-        int file_block_length = 0;
-        // start transmitting the file
-        while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
-        {  
-            // send data to the client side  
-            if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
-            {  
-                printf("Send File: %s Failed!\n", file_name);  
-                break;  
-            }  
-
-            bzero(bufferSend, BUFFER_SIZE);  
-        }
-
-        fclose(fp);  
-        printf("[client] Transfer Finished!\n\n");  
-    }
-
-    pthread_mutex_unlock(&sendLock);
-    pthread_exit(NULL);
-
-    return NULL;
-}
-
-/******************************************************************************
 Description.: this is the orbit thread
               it loops forever, send a sample image out to the server in 
               a certain frequency
@@ -635,7 +561,7 @@ void *orbit_thread(void *arg)
             trans_info.sock = sockfd;
             strcpy(trans_info.file_name, file_name);
             /* create thread and pass socket and file name to send file */
-            if (pthread_create(&thread_id, 0, orbit_child, (void *)&(trans_info)) == -1)
+            if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
             {
                 fprintf(stderr,"pthread_create error!\n");
                 break; //break while loop
@@ -759,6 +685,7 @@ int main(int argc, char *argv[])
             {"version", no_argument, 0, 0},
             {"id", required_argument, 0, 0},
             {"orbit", no_argument, 0, 0},
+            {"d", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -793,12 +720,17 @@ int main(int argc, char *argv[])
             /* id, user id */
         case 4:
             userID = strdup(optarg);
-            // printf("userID: %s\n", userID);
+            if (debug) printf("userID: %s\n", userID);
             break;
 
             /* orbit, run in orbit mode */
         case 5:
             orbit = 1;
+            break;
+
+            /* debug mode */
+        case 6:
+            debug = 1;
             break;
 
         default:

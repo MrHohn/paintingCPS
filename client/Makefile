@@ -13,7 +13,7 @@ CFLAGS +=-c -g -O0 -Wall -std=c++11 -I$(MF_HOME)/common -I$(MF_HOME)/netapi/c -D
 
 LFLAGS = -lmfapi -lpthread `pkg-config --cflags --libs opencv`
 
-SOURCES = client-OpenCV.cpp
+SOURCES = client-OpenCV.cpp MsgDistributor.cpp
 
 OBJECTS = $(SOURCES:.cpp=.o)
 

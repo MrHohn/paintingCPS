@@ -30,16 +30,25 @@
 #define PORT_NO                  20001
 #define MAX_CONNECTION              10
 
-int global_stop = 0;       // global flag for quit
+// global flag for quit
+int global_stop = 0;       
 int orbit = 0;
-ImgMatch imgM;             // class for image process
-unordered_map<string, queue<string>*> queue_map; // map for result thread to search the queue address
-pthread_mutex_t queue_map_lock; // mutex lock for queue_map operation
-unordered_map<string, sem_t*> sem_map; // map for transmit thread to search the semaphore address
-pthread_mutex_t sem_map_lock; // mutex lock for sem_map operation
-unordered_map<String, uint> user_map; // map to store logged in userID
+int debug = 0;
+// class for image process
+ImgMatch imgM;             
+// map for result thread to search the queue address
+unordered_map<string, queue<string>*> queue_map; 
+// mutex lock for queue_map operation
+pthread_mutex_t queue_map_lock; 
+// map for transmit thread to search the semaphore address
+unordered_map<string, sem_t*> sem_map; 
+// mutex lock for sem_map operation
+pthread_mutex_t sem_map_lock; 
+// map to store logged in userID
+unordered_map<String, uint> user_map; 
 // pthread_t* thread_table;
-pthread_mutex_t user_map_lock; // mutex lock for user_map operation
+// mutex lock for user_map operation
+pthread_mutex_t user_map_lock; 
 
 /******************************************************************************
 Description.: Display a help message
@@ -54,7 +63,8 @@ void help(void)
             " The following parameters can be passed to this software:\n\n" \
             " [-h | --help ]........: display this help\n" \
             " [-v | --version ].....: display version information\n"
-            " [-orbit ].............: run in orbit mode\n" \
+            " [-orbit]..............: run in orbit mode\n" \
+            " [-d]..................: debug mode, print more details\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -464,285 +474,6 @@ void run_server()
 }
 
 /******************************************************************************
-Description: function for transmitting the frames
-Input Value.:
-Return Value:
-******************************************************************************/
-void orbit_transmit (int sock, string userID)
-{
-    // printf("transmitting part\n");
-
-    int n;
-    char buffer[BUFFER_SIZE];
-    char response[] = "ok";
-
-    char file_name_temp[60];
-    char *file_name;
-    int write_length = 0;
-    int length = 0;
-    char *block_count_char;
-    int block_count;
-    int count = 0;
-    queue<string> *imgQueue = new queue<string>();    // queue storing the file names 
-
-    // grap the lock
-    pthread_mutex_lock(&queue_map_lock);
-    queue_map[userID] = imgQueue; // put the address of queue into map
-    pthread_mutex_unlock(&queue_map_lock);
-
-    pthread_mutex_t queueLock; // mutex lock for queue operation
-    sem_t *sem_match = 0;
-
-    // init the mutex lock
-    if (pthread_mutex_init(&queueLock, NULL) != 0)
-    {
-        errorSocket("ERROR mutex init failed", sock);
-    }
-
-    // reponse to the client
-    n = write(sock, response, sizeof(response));
-    if (n < 0)
-    {
-        pthread_mutex_destroy(&queueLock);
-        errorSocket("ERROR writting to socket", sock);
-    }
-
-    while (!global_stop)
-    {
-        // receive the file info
-        bzero(buffer,BUFFER_SIZE);
-        n = read(sock,buffer, sizeof(buffer));
-        if (n <= 0)
-        {
-            pthread_mutex_destroy(&queueLock);
-            // signal the result thread to terminate
-            sem_post(sem_match);
-            errorSocket("ERROR reading from socket", sock);
-        } 
-
-        // store the file name and the block count
-        file_name = strtok(buffer, ",");
-        strcpy(file_name_temp, file_name);
-        printf("\n[server] file name: %s\n", file_name);
-        block_count_char = strtok(NULL, ",");
-        block_count = strtol(block_count_char, NULL, 10);
-        // printf("block count: %d\n", block_count);
-
-        // reponse to the client
-        n = write(sock, response, sizeof(response));
-        if (n <= 0)
-        {
-            pthread_mutex_destroy(&queueLock);
-            // signal the result thread to terminate
-            sem_post(sem_match);
-            errorSocket("ERROR writting to socket", sock);
-        } 
-
-        FILE *fp = fopen(file_name, "w");  
-        if (fp == NULL)  
-        {  
-            printf("File:\t%s Can Not Open To Write!\n", file_name);  
-            break;
-        }  
-
-        // receive the data from server and store them into buffer
-        bzero(buffer, sizeof(buffer));
-        count = 0;
-        while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
-        {
-            if (length < 0)  
-            {  
-                printf("Recieve Data From Client Failed!\n");  
-                break;  
-            }
-      
-            write_length = fwrite(buffer, sizeof(char), length, fp);  
-            if (write_length < length)  
-            {  
-                printf("File:\t Write Failed!\n");  
-                break;  
-            }  
-            bzero(buffer, BUFFER_SIZE);
-            ++count;
-            if (count >= block_count)
-            {
-                // printf("block count full\n");
-                break;
-            }
-        }
-        printf("[server] Recieve Finished!\n\n");  
-        // finished 
-        fclose(fp);
-
-        // lock the queue, ensure there is only one thread modifying the queue
-        pthread_mutex_lock(&queueLock);
-
-        // store the file name to the waiting queue
-        string file_name_string(file_name_temp);
-        imgQueue->push(file_name_string);
-
-        pthread_mutex_unlock(&queueLock);
-        // get the address of sem_match
-        if (sem_match == 0)
-        {
-            while (sem_map.find(userID) == sem_map.end());
-            sem_match = sem_map[userID];
-        }
-        // signal the result thread to do image processing
-        sem_post(sem_match);
-    }
-
-    close(sock); 
-    printf("[server] Connection closed. --- transmit\n\n");
-    delete(imgQueue);
-    pthread_exit(NULL); //terminate calling thread!
-
-}
-
-/******************************************************************************
-Description.: There is a separate instance of this function 
-              for each connection.  It handles all communication
-              once a connnection has been established.
-Input Value.:
-Return Value: -
-******************************************************************************/
-void *orbitThread (void * inputsock)
-{
-    int sock = *((int *)inputsock);
-    int n;
-    char buffer[100];
-    string userID;
-    char *threadType;
-
-    // Receive the header
-    bzero(buffer, 100);
-    n = read(sock, buffer, sizeof(buffer));
-    if (n < 0)
-    {
-        errorSocket("ERROR reading from socket", sock);
-    } 
-    printf("[server] header content: %s\n\n",buffer);
-
-    threadType = strtok(buffer, ",");
-    userID = strtok(NULL, ",");
-
-    // grap the lock
-    pthread_mutex_lock(&user_map_lock);
-    // confirm that this user does not log in
-    if (user_map.find(userID) == user_map.end())
-    {
-        // put the new user into user map
-        user_map[userID] = 1;
-    }
-    else
-    {
-        if (user_map[userID] == 1)
-        {
-            // increase user thread count
-            user_map[userID] = 2;
-        }
-        else
-        {
-            // remember to unlock!
-            pthread_mutex_unlock(&user_map_lock);
-            // reponse to the client
-            if (write(sock, "failed", sizeof("failed")) < 0)
-            {
-                errorSocket("ERROR writting to socket", sock);
-            }
-            close(sock); 
-            printf("[server] User exist. Connection closed.\n\n");
-            return 0;
-        }
-    }
-    pthread_mutex_unlock(&user_map_lock);
-
-    if (strcmp(threadType, "transmit") == 0) 
-    {
-        server_transmit(sock, userID);
-    }
-    else if (strcmp(threadType, "result") == 0) 
-    {
-        server_result(sock, userID);
-    }
-    else
-    {
-        close(sock); 
-        printf("[server] Command Unknown. Connection closed.\n\n");
-    }
-
-    return 0;
-}
-
-/******************************************************************************
-Description.: calling this function creates and starts the server threads
-Input Value.: -
-Return Value: -
-******************************************************************************/
-void run_orbit()
-{
-    // init part
-    printf("\n[server] start initializing\n");
-    int sockfd, newsockfd, portno;
-    socklen_t clilen;
-    struct sockaddr_in serv_addr, cli_addr;
-    clilen = sizeof(cli_addr);
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-    {
-        error("ERROR opening socket");
-    } 
-    else 
-        printf ("[server] obtain socket descriptor successfully.\n"); 
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    // set up the port number
-    portno = PORT_NO;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-    {
-        error("ERROR on binding");
-    }
-    else
-        printf("[server] bind tcp port %d sucessfully.\n",portno);
-
-    if(listen(sockfd,5))
-    {
-        error("ERROR listening");
-    }
-    else 
-        printf ("[server] listening the port %d sucessfully.\n\n", portno);    
-    
-    // init finished, now wait for a client
-    while (!global_stop) {
-        pthread_t thread_id;
-        //Block here. Until server accpets a new connection.
-        newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-        if (newsockfd < 0)
-        {
-            // error("ERROR on accept");
-            fprintf(stderr,"Accept error!\n");
-            continue; //ignore current socket ,continue while loop.
-        }
-        else 
-            printf ("[server] server has got connect from %s, socket id: %d.\n", (char *)inet_ntoa(cli_addr.sin_addr), newsockfd);
-
-        /* create thread and pass context to thread function */
-        if (pthread_create(&thread_id, 0, orbitThread, (void *)&(newsockfd)) == -1)
-        {
-            fprintf(stderr,"pthread_create error!\n");
-            break; //break while loop
-        }
-        pthread_detach(thread_id);
-        usleep(1000 * 5); //  sleep 5ms to avoid clients gain same sock
-
-    } /* end of while */
-    close(sockfd);
-}
-
-/******************************************************************************
 Description.: pressing CTRL+C sends signals to this process instead of just
               killing the threads can tidily shutdown and free allocated
               resources. The function prototype is defined by the system,
@@ -784,7 +515,8 @@ int main(int argc, char *argv[])
             {"help", no_argument, 0, 0},
             {"v", no_argument, 0, 0},
             {"version", no_argument, 0, 0},
-            {"orbit", no_argument, 0, 0},            
+            {"orbit", no_argument, 0, 0},
+            {"d", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -819,6 +551,11 @@ int main(int argc, char *argv[])
             /* orbit, run in orbit mode */
         case 4:
             orbit = 1;
+            break;
+
+            /* debug mode */
+        case 5:
+            debug = 1;
             break;
 
         default:
@@ -857,12 +594,7 @@ int main(int argc, char *argv[])
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
     imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
-    if (!orbit) {
-        run_server();
-    }
-    else {
-        run_orbit();
-    }
+    run_server();
 
     return 0; /* we never get here */
 }
