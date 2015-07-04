@@ -65,6 +65,8 @@ void help(void)
             " [-v | --version ].....: display version information\n"
             " [-orbit]..............: run in orbit mode\n" \
             " [-d]..................: debug mode, print more details\n" \
+            " [-m]..................: mine GUID, a.k.a src_GUID\n" \
+            " [-o]..................: other's GUID, a.k.a dst_GUID\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -507,16 +509,21 @@ void signal_handler(int sig)
 
 int main(int argc, char *argv[])
 {
+    int src_GUID = -1, dst_GUID = -1;
+
     /* parameter parsing */
     while(1) {
         int option_index = 0, c = 0;
-        static struct option long_options[] = {
+        static struct option long_options[] =
+        {
             {"h", no_argument, 0, 0},
             {"help", no_argument, 0, 0},
             {"v", no_argument, 0, 0},
             {"version", no_argument, 0, 0},
             {"orbit", no_argument, 0, 0},
             {"d", no_argument, 0, 0},
+            {"m", required_argument, 0, 0},
+            {"o", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -526,12 +533,14 @@ int main(int argc, char *argv[])
         if(c == -1) break;
 
         /* unrecognized option */
-        if(c == '?') {
+        if(c == '?')
+        {
             help();
             return 0;
         }
 
-        switch(option_index) {
+        switch(option_index)
+        {
             /* h, help */
         case 0:
         case 1:
@@ -558,6 +567,16 @@ int main(int argc, char *argv[])
             debug = 1;
             break;
 
+            /* mine GUID */
+        case 6:
+            src_GUID = strtol(optarg, NULL, 10);
+            break;
+
+            /* other's GUID */
+        case 7:
+            dst_GUID = strtol(optarg, NULL, 10);
+            break;
+
         default:
             help();
             return 0;
@@ -565,7 +584,8 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    if(signal(SIGINT, signal_handler) == SIG_ERR) {
+    if(signal(SIGINT, signal_handler) == SIG_ERR)
+    {
         printf("could not register signal handler\n");
         exit(EXIT_FAILURE);
     }
@@ -589,6 +609,22 @@ int main(int argc, char *argv[])
     {
         printf("\n mutex init failed\n");
         return 1;
+    }
+
+    if (orbit)
+    {
+        if (src_GUID != -1 && dst_GUID != -1)
+        {
+            if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
+            /* init new Message Distributor */
+            // MsgD.init(src_GUID, dst_GUID);
+        }
+        else
+        {
+            printf("ERROR: please enter src_GUID and dst_GUID with flags -m & -o\n");
+            exit(1);
+        }
+
     }
 
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");

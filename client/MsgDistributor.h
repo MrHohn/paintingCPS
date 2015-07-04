@@ -23,31 +23,30 @@ using namespace std;
 class MsgDistributor
 {
 public:
-    MsgDistributor(int src_GUID);
+    MsgDistributor();
     ~MsgDistributor();
-    // init a new mf socket and return the new created mf socket id
-    int MsgConnect();
-    int MsgAccept();
+    void init(int src_GUID, int dst_GUID);
+    int connect();
+    int accept();
     //  send and receive the message according to the socket id
-    int MsgSend(int sock, char* buffer, int size);
-    int MsgRecv(int sock, char* buffer, int size); 
+    int send(int sock, char* buffer, int size);
+    int recv(int sock, char* buffer, int size); 
     // close the message channel
-    int MsgClose(int sock);
+    int close(int sock);
 
 private:
+    int BUFFER_SIZE = 1024;
     int src_GUID;
+    int dst_GUID;
     int mfsockid;
     struct Handle handle;
-    // lock for socked id
-    pthread_mutex_t id_lock;
-    // map from mf socket id to semaphore 
-    unordered_map<int, sem_t*> sem_map; 
-    // mutex lock for sem_map operation
-    pthread_mutex_t sem_map_lock; 
-    // map from mf socket if to  message queue 
-    unordered_map<int, queue<string>*> queue_map; 
-    // mutex lock for queue_map operation
-    pthread_mutex_t queue_map_lock; 
+    pthread_mutex_t send_lock;          // lock for send
+    pthread_mutex_t recv_lock;          // lock for receive
+    pthread_mutex_t id_lock;            // lock for modify socked id
+    unordered_map<int, sem_t*> sem_map; // map from mf socket id to semaphore 
+    pthread_mutex_t sem_map_lock;       // mutex lock for sem_map operation
+    unordered_map<int, queue<string>*> queue_map; // map from mf socket if to  message queue 
+    pthread_mutex_t queue_map_lock;     // mutex lock for queue_map operation
 };
 
 #endif /* MSGDISTRIBUTOR_H */
