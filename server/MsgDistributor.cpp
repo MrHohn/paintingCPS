@@ -94,6 +94,7 @@ int MsgDistributor::listen()
     char buffer[BUFFER_SIZE];
 
     // get the new message
+    if (debug) printf("start listening on GUID: %d\n", src_GUID);
     ret = mfrecv_blk(&handle, NULL, buffer, BUFFER_SIZE, NULL, 0);
     if(ret < 0)
     {

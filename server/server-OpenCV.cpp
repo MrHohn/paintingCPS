@@ -529,6 +529,7 @@ void signal_handler(int sig)
     /* signal "stop" to threads */
     printf("\nSetting signal to stop.\n");
     global_stop = 1;
+    pthread_cancel(mflistenThread);
     pthread_mutex_destroy(&queue_map_lock);
     pthread_mutex_destroy(&sem_map_lock);
     pthread_mutex_destroy(&user_map_lock);

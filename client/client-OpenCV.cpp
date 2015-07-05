@@ -630,6 +630,7 @@ int client_stop()
     {
         // cancel orbit thread
         pthread_cancel(orbitThread);
+        pthread_cancel(mflistenThread);
     }
     pthread_cancel(resultThread);
     return 0;
