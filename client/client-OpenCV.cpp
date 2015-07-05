@@ -809,9 +809,16 @@ int main(int argc, char *argv[])
 
     client_run();
 
-    MsgD.connect();
+    int id1 = MsgD.connect();
+    char message1[BUFFER_SIZE];
+    sprintf(message1, "hello");
+    MsgD.send(id1, message1, BUFFER_SIZE);
 
-    pause();
+    int id2 = MsgD.connect();
+    char message2[BUFFER_SIZE];
+    sprintf(message2, "who");
+    MsgD.send(id2, message2, BUFFER_SIZE);
+    // pause();
 
     return 0;
 }

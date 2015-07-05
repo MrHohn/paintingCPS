@@ -510,7 +510,16 @@ void server_run()
     }
     pthread_detach(mflistenThread);
 
-    MsgD.accept();
+    string message;
+    int id1 = MsgD.accept();
+    message = MsgD.recv(id1);
+    printf("receive message: [%s]\n", message.c_str());
+    cout << "[" << message << "]" << endl;
+
+    int id2 = MsgD.accept();
+    message = MsgD.recv(id2);
+    printf("receive message: [%s]\n", message.c_str());
+    cout << "[" << message << "]" << endl;
 
    // server_main();
 }

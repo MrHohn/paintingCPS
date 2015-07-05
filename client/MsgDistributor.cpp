@@ -199,7 +199,7 @@ int MsgDistributor::connect()
     pthread_mutex_lock(&sem_map_lock);
     queue_map[newID] = new_connection_queue; // put the address of queue into map
     sem_map[newID] = new_connection_sem; // put the address of semaphore into map
-    if (debug) printf("create and put adds of new queue and semaphore into maps\n");
+    if (debug) printf("create and put addrs of new queue and semaphore into maps\n");
     pthread_mutex_unlock(&queue_map_lock);
     pthread_mutex_unlock(&sem_map_lock);
 
@@ -261,7 +261,7 @@ int MsgDistributor::accept()
     pthread_mutex_lock(&sem_map_lock);
     queue_map[newID] = new_connection_queue; // put the address of queue into map
     sem_map[newID] = new_connection_sem; // put the address of semaphore into map
-    if (debug) printf("create and put adds of new queue and semaphore into maps\n");  
+    if (debug) printf("create and put addrs of new queue and semaphore into maps\n");  
     pthread_mutex_unlock(&queue_map_lock);
     pthread_mutex_unlock(&sem_map_lock);
 
@@ -287,7 +287,7 @@ int MsgDistributor::send(int sock, char* buffer, int size)
     pthread_mutex_lock(&send_lock);
     int ret = 0;
     char content[BUFFER_SIZE];
-    sprintf(content, "sockid, %d, %s", sock, buffer);
+    sprintf(content, "sockid,%d,%s", sock, buffer);
     if (debug) printf("now send message in socket: %d\n", sock);
     ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
     if(ret < 0)
@@ -360,7 +360,7 @@ int MsgDistributor::close(int sock)
     int ret = 0;
     char content[BUFFER_SIZE];
     char command[6] = "close";
-    sprintf(content, "sockid, %d, %s", sock, command);
+    sprintf(content, "sockid,%d,%s", sock, command);
     ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
     if(ret < 0)
     {
