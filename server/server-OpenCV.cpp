@@ -25,15 +25,19 @@
 #include <unordered_map>
 #include <errno.h>
 #include <mfapi.h>
+#include "MsgDistributor.h"
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
 #define MAX_CONNECTION              10
 
+static pthread_t mflistenThread;
+
 // global flag for quit
 int global_stop = 0;       
 int orbit = 0;
 int debug = 0;
+MsgDistributor MsgD;
 // class for image process
 ImgMatch imgM;             
 // map for result thread to search the queue address
@@ -412,7 +416,7 @@ Description.: calling this function creates and starts the server threads
 Input Value.: -
 Return Value: -
 ******************************************************************************/
-void run_server()
+void server_main()
 {
     // init part
     printf("\n[server] start initializing\n");
@@ -473,6 +477,42 @@ void run_server()
 
     } /* end of while */
     close(sockfd);
+}
+
+/******************************************************************************
+Description.: this is the mflisten thread
+              it loops forever, listen on the src_GUID
+Input Value.:
+Return Value:
+******************************************************************************/
+void *mflisten_thread(void *arg)
+{
+    printf("\nin listen thread\n");
+    while (!global_stop) {
+        MsgD.listen();
+    }
+
+    return NULL;
+}
+
+/******************************************************************************
+Description.: calling this function start the server and listener
+Input Value.: -
+Return Value: -
+******************************************************************************/
+void server_run()
+{
+    /* create thread and pass context to thread function */
+    if (pthread_create(&mflistenThread, 0, mflisten_thread, NULL) == -1)
+    {
+        fprintf(stderr,"pthread_create error!\n");
+        exit(1);
+    }
+    pthread_detach(mflistenThread);
+
+    MsgD.accept();
+
+   // server_main();
 }
 
 /******************************************************************************
@@ -617,7 +657,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            // MsgD.init(src_GUID, dst_GUID);
+            MsgD.init(src_GUID, dst_GUID);
         }
         else
         {
@@ -628,9 +668,9 @@ int main(int argc, char *argv[])
     }
 
     // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
-    imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
+    // imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
-    run_server();
+    server_run();
 
     return 0; /* we never get here */
 }

@@ -1,7 +1,7 @@
 /*************************************************
 #
 # Purpose: "Message Distributor" aims to distribute the message
-			received through the unique GUID
+            received through the unique GUID
 # Author.: Zihong Zheng
 # Version: 0.1
 # License: 
@@ -33,8 +33,8 @@ MsgDistributor::~MsgDistributor()
     sem_destroy(&accept_sem);
     if (mfsockid != -1)
     {
-    	// close mf here
-    	mfclose(&handle);
+        // close mf here
+        mfclose(&handle);
     }
 }
 

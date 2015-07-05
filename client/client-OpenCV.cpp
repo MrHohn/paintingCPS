@@ -38,6 +38,7 @@ using namespace std;
 static pthread_t transmitThread;
 static pthread_t resultThread;
 static pthread_t orbitThread;
+static pthread_t mflistenThread;
 pthread_mutex_t sendLock; // mutex lock to make sure transmit order
 
 int global_stop = 0;
@@ -597,6 +598,22 @@ void *orbit_thread(void *arg)
 }
 
 /******************************************************************************
+Description.: this is the mflisten thread
+              it loops forever, listen on the src_GUID
+Input Value.:
+Return Value:
+******************************************************************************/
+void *mflisten_thread(void *arg)
+{
+    printf("\nin listen thread\n");
+    while (!global_stop) {
+        MsgD.listen();
+    }
+
+    return NULL;
+}
+
+/******************************************************************************
 Description.: calling this function stops the running threads
 Input Value.: -
 Return Value: always 0
@@ -635,8 +652,10 @@ int client_run()
     // run in orbit mode
     else
     {
-        pthread_create(&orbitThread, 0, orbit_thread, NULL);
-        pthread_detach(orbitThread);
+        // pthread_create(&orbitThread, 0, orbit_thread, NULL);
+        // pthread_detach(orbitThread);
+        pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
+        pthread_detach(mflistenThread);
     }
     // pthread_create(&resultThread, 0, result_thread, NULL);
     // pthread_detach(resultThread);
@@ -777,7 +796,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            // MsgD.init(src_GUID, dst_GUID);
+            MsgD.init(src_GUID, dst_GUID);
         }
         else
         {
@@ -787,13 +806,11 @@ int main(int argc, char *argv[])
 
     }
 
-    // char test[] = "hello";
-    // string resultShown = strtok(test, ",");
-    // printf("%s\n", resultShown.c_str());
-    
-    // client_run();
+    client_run();
 
-    // pause();
+    MsgD.connect();
+
+    pause();
 
     return 0;
 }
