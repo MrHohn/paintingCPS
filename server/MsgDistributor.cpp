@@ -118,7 +118,8 @@ int MsgDistributor::listen()
     else if (strcmp(new_message, "sockid") == 0)
     {
         char *id_char = strtok(NULL, ",");
-        string content = strtok(NULL, ",");
+        // get the remain all part as content
+        string content = strtok(NULL, "");
         int id = strtol(id_char, NULL, 10);
         if (sem_map.find(id) == sem_map.end())
         {
