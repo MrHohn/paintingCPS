@@ -502,26 +502,18 @@ Return Value: -
 ******************************************************************************/
 void server_run()
 {
-    /* create thread and pass context to thread function */
-    if (pthread_create(&mflistenThread, 0, mflisten_thread, NULL) == -1)
+    if (orbit)
     {
-        fprintf(stderr,"pthread_create error!\n");
-        exit(1);
+        /* create thread and pass context to thread function */
+        if (pthread_create(&mflistenThread, 0, mflisten_thread, NULL) == -1)
+        {
+            fprintf(stderr,"pthread_create error!\n");
+            exit(1);
+        }
+        pthread_detach(mflistenThread);   
     }
-    pthread_detach(mflistenThread);
 
-    string message;
-    int id1 = MsgD.accept();
-    message = MsgD.recv(id1);
-    printf("receive message: [%s]\n", message.c_str());
-    cout << "[" << message << "]" << endl;
-
-    int id2 = MsgD.accept();
-    message = MsgD.recv(id2);
-    printf("receive message: [%s]\n", message.c_str());
-    cout << "[" << message << "]" << endl;
-
-   // server_main();
+    // server_main();
 }
 
 /******************************************************************************
@@ -681,6 +673,32 @@ int main(int argc, char *argv[])
     // imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
     server_run();
+
+    string message;
+    int id1 = MsgD.accept();
+    message = MsgD.recv(id1);
+    printf("receive message: [%s]\n", message.c_str());
+
+    int id2 = MsgD.accept();
+    message = MsgD.recv(id2);
+    printf("receive message: [%s]\n", message.c_str());
+
+    // test incorrect id case
+    MsgD.recv(101);
+
+    message = MsgD.recv(id1);
+    printf("receive message: [%s]\n", message.c_str());
+    message = MsgD.recv(id1);
+    printf("receive message: [%s]\n", message.c_str());
+    message = MsgD.recv(id1);
+    printf("receive message: [%s]\n", message.c_str());
+
+    message = MsgD.recv(id2);
+    printf("receive message: [%s]\n", message.c_str());
+    message = MsgD.recv(id2);
+    printf("receive message: [%s]\n", message.c_str());
+    message = MsgD.recv(id2);
+    printf("receive message: [%s]\n", message.c_str());
 
     return 0; /* we never get here */
 }

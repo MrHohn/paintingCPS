@@ -820,5 +820,16 @@ int main(int argc, char *argv[])
     MsgD.send(id2, message2, BUFFER_SIZE);
     // pause();
 
+    // test incorrect id case
+    MsgD.send(101, message1, BUFFER_SIZE);
+
+    MsgD.send(id1, message1, BUFFER_SIZE);
+    MsgD.send(id1, message1, BUFFER_SIZE);
+    MsgD.send(id1, message1, BUFFER_SIZE);
+
+    MsgD.send(id2, message2, BUFFER_SIZE);
+    MsgD.send(id2, message2, BUFFER_SIZE);
+    MsgD.send(id2, message2, BUFFER_SIZE);
+
     return 0;
 }
