@@ -38,12 +38,12 @@ MsgDistributor::~MsgDistributor()
     }
 }
 
-void MsgDistributor::init(int src_GUID, int dst_GUID)
+int MsgDistributor::init(int src_GUID, int dst_GUID)
 {
     if (mfsockid != -1)
     {
         printf("ERROR: Dont reinit MsgDistributor!\n");
-        exit(1);
+        return -1;
     }
 
     mfsockid = 0;
@@ -69,7 +69,7 @@ void MsgDistributor::init(int src_GUID, int dst_GUID)
         || pthread_mutex_init(&recv_lock, NULL) != 0)
     {
         printf("\n mutex init failed\n");
-        exit(1);
+        return -1;
     }
 
     if (sem_init(&connect_sem, 0, 0) != 0
@@ -78,6 +78,7 @@ void MsgDistributor::init(int src_GUID, int dst_GUID)
         printf("semaphore init failed\n");
     }
 
+    return 0;
 }
 
 // listen on the GUID
@@ -86,7 +87,7 @@ int MsgDistributor::listen()
     if (mfsockid == -1)
     {
         printf("ERROR: Init MsgDistributor first!\n");
-        exit(1);
+        return -1;
     }
 
     int ret = 0;
@@ -94,12 +95,14 @@ int MsgDistributor::listen()
 
     // get the new message
     ret = mfrecv_blk(&handle, NULL, buffer, BUFFER_SIZE, NULL, 0);
-    if(ret < 0){
+    if(ret < 0)
+    {
         printf("mfrec error\n"); 
-        exit(1);
+        return -1;
     }
 
     char *new_message = strtok(buffer, ",");
+    printf("receive new message, header: %s\n", new_message);
     if (strcmp(new_message, "create") == 0)
     {
         sem_post(&accept_sem);
@@ -111,15 +114,28 @@ int MsgDistributor::listen()
         connect_queue.push(created_id);
         sem_post(&connect_sem);
     }
-    else if (strcmp(new_message, "sock") == 0)
+    else if (strcmp(new_message, "sockid") == 0)
     {
         char *id_char = strtok(NULL, ",");
         string content = strtok(NULL, ",");
         int id = strtol(id_char, NULL, 10);
-        queue<string> *id_queue = queue_map[id];
-        id_queue->push(content);
-        sem_t *id_sem = sem_map[id];
-        sem_post(id_sem);
+        if (sem_map.find(id) == sem_map.end())
+        {
+            printf("ERROR: Socket ID not exist\n");
+            return -1;
+        }
+        // check whether it is close command
+        if (content.compare("close") == 0)
+        {
+            this->close(id);
+        }
+        else
+        {
+            queue<string> *id_queue = queue_map[id];
+            id_queue->push(content);
+            sem_t *id_sem = sem_map[id];
+            sem_post(id_sem);
+        }
     }
     else
     {
@@ -127,8 +143,7 @@ int MsgDistributor::listen()
         return -1;
     }
 
-
-    return mfsockid;
+    return 0;
 }
 
 // init a new mf socket and return the new created mf socket id, intiative side
@@ -137,7 +152,7 @@ int MsgDistributor::connect()
     if (mfsockid == -1)
     {
         printf("ERROR: Init MsgDistributor first!\n");
-        exit(1);
+        return -1;
     }
 
     int ret = 0;
@@ -148,11 +163,12 @@ int MsgDistributor::connect()
     // send the connect request
     pthread_mutex_lock(&send_lock);
     ret = mfsend(&handle, header, sizeof(header), dst_GUID, 0);
-    if(ret < 0){
+    if(ret < 0)
+    {
         printf ("mfsendmsg error\n");
         pthread_mutex_unlock(&send_lock);
         pthread_mutex_unlock(&id_lock);
-        exit(1);
+        return -1;
     }
     pthread_mutex_unlock(&send_lock);
 
@@ -160,6 +176,7 @@ int MsgDistributor::connect()
     sem_wait(&connect_sem);
     if (stop)
     {
+        printf("connect stop\n");
         return -1;
     }
 
@@ -191,18 +208,20 @@ int MsgDistributor::accept()
     if (mfsockid == -1)
     {
         printf("ERROR: Init MsgDistributor first!\n");
-        exit(1);
+        return -1;
     }
 
     sem_wait(&accept_sem);
     if (stop)
     {
+        printf("accept stop\n");
         return -1;
     }
     pthread_mutex_lock(&id_lock);
     // got a new connection, need to accpet, create a new id for it
     ++mfsockid;
-    while (sem_map.find(mfsockid) != sem_map.end()) {
+    while (sem_map.find(mfsockid) != sem_map.end())
+    {
         ++mfsockid;
     }
 
@@ -211,7 +230,8 @@ int MsgDistributor::accept()
     sprintf(header, "accepted,%d", mfsockid);
     pthread_mutex_lock(&send_lock);
     ret = mfsend(&handle, header, sizeof(header), dst_GUID, 0);
-    if(ret < 0){
+    if(ret < 0)
+    {
         printf ("mfsendmsg error\n");
         pthread_mutex_unlock(&send_lock);
         pthread_mutex_unlock(&id_lock);
@@ -242,18 +262,99 @@ int MsgDistributor::accept()
 //  send the message according to the socket id
 int MsgDistributor::send(int sock, char* buffer, int size)
 {
+    if (mfsockid == -1)
+    {
+        printf("ERROR: Init MsgDistributor first!\n");
+        return -1;
+    }
+    if (sem_map.find(sock) == sem_map.end())
+    {
+        printf("ERROR: Socket ID not exist\n");
+        return -1;
+    }
+
+    pthread_mutex_lock(&send_lock);
+    int ret = 0;
+    char content[BUFFER_SIZE];
+    sprintf(content, "sockid, %d, %s", sock, buffer);
+    ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
+    if(ret < 0)
+    {
+        printf ("mfsendmsg error\n");
+        pthread_mutex_unlock(&send_lock);
+        return -1;
+    }
+
+    pthread_mutex_unlock(&send_lock);
 
     return 0;
 }
 
 //  receive the message according to the socket id
-int MsgDistributor::recv(int sock, char* buffer, int size)
+string MsgDistributor::recv(int sock)
 {
-    return 0;
+    if (mfsockid == -1)
+    {
+        printf("ERROR: Init MsgDistributor first!\n");
+        return "";
+    }
+    if (sem_map.find(sock) == sem_map.end())
+    {
+        printf("ERROR: Socket ID not exist\n");
+        return "";
+    }
+
+    sem_t *recv_sem = sem_map[sock];
+    // wait for buffer filled
+    sem_wait(recv_sem);
+    if (stop)
+    {
+        printf("recv stop\n");
+        return "";
+    }
+
+    queue<string> *recv_queue = queue_map[sock];
+    string recv_string = recv_queue->front();
+    recv_queue->pop();
+
+    return recv_string;
 }
 
 // close the message channel
 int MsgDistributor::close(int sock)
 {
+    if (mfsockid == -1)
+    {
+        printf("ERROR: Init MsgDistributor first!\n");
+        exit(1);
+    }
+    if (sem_map.find(sock) == sem_map.end())
+    {
+        printf("ERROR: Socket ID not exist\n");
+        return -1;
+    }
+
+    sem_t *close_sem = sem_map[sock];
+    queue<string> *close_queue = queue_map[sock];
+    delete(close_sem);
+    delete(close_queue);
+    sem_map.erase(sock);
+    queue_map.erase(sock);
+
+    pthread_mutex_lock(&send_lock);
+    int ret = 0;
+    char content[BUFFER_SIZE];
+    char command[6] = "close";
+    sprintf(content, "sockid, %d, %s", sock, command);
+    ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
+    if(ret < 0)
+    {
+        printf ("mfsendmsg error\n");
+        pthread_mutex_unlock(&send_lock);
+        return -1;
+    }
+
+    pthread_mutex_unlock(&send_lock);
+
     return 0;
 }

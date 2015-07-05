@@ -25,12 +25,12 @@ class MsgDistributor
 public:
     MsgDistributor();
     ~MsgDistributor();
-    void init(int src_GUID, int dst_GUID);
+    int init(int src_GUID, int dst_GUID);
     int listen();
     int connect();
     int accept();
     int send(int sock, char* buffer, int size);
-    int recv(int sock, char* buffer, int size); 
+    string recv(int sock);
     int close(int sock);
 
 private:
