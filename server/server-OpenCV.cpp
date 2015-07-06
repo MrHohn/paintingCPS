@@ -716,7 +716,7 @@ int main(int argc, char *argv[])
     printf("\n[server] file name: %s\n", file_name);
     block_count_char = strtok(NULL, ",");
     block_count = strtol(block_count_char, NULL, 10);
-    // printf("block count: %d\n", block_count);
+    printf("block count: %d\n", block_count);
 
     FILE *fp = fopen(file_name, "w");  
     if (fp == NULL)  
@@ -735,6 +735,7 @@ int main(int argc, char *argv[])
             printf("Recieve Data From Client Failed!\n");  
             break;  
         }
+        printf("string length: %d\n", msg_recv.length());
         
         write_length = fwrite(msg_recv.c_str(), sizeof(char), msg_recv.length(), fp);  
         if (write_length < (int)msg_recv.length())  

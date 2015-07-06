@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
     // get the id length
     int id_length = 1;
     int divisor = 10;
-    while (file_stat.st_size / divisor != 0)
+    while (id1 / divisor > 0)
     {
         ++id_length;
         divisor *= 10;
@@ -899,6 +899,7 @@ int main(int argc, char *argv[])
         // start transmitting the file
         while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
         {  
+            printf("send length: %d\n", file_block_length);
             // send data to the client side  
             if (MsgD.send(id1, bufferSend, BUFFER_SIZE) < 0)  
             {  
