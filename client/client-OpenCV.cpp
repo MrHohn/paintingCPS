@@ -816,20 +816,102 @@ int main(int argc, char *argv[])
 
     int id2 = MsgD.connect();
     char message2[BUFFER_SIZE];
-    sprintf(message2, "who");
+    sprintf(message2, "who,me");
     MsgD.send(id2, message2, BUFFER_SIZE);
     // pause();
 
-    // test incorrect id case
-    MsgD.send(101, message1, BUFFER_SIZE);
+    // // test incorrect id case
+    // MsgD.send(101, message1, BUFFER_SIZE);
 
-    MsgD.send(id1, message1, BUFFER_SIZE);
-    MsgD.send(id1, message1, BUFFER_SIZE);
-    MsgD.send(id1, message1, BUFFER_SIZE);
+    // MsgD.send(id1, message1, BUFFER_SIZE);
+    // MsgD.send(id1, message1, BUFFER_SIZE);
+    // MsgD.send(id1, message1, BUFFER_SIZE);
 
-    MsgD.send(id2, message2, BUFFER_SIZE);
-    MsgD.send(id2, message2, BUFFER_SIZE);
-    MsgD.send(id2, message2, BUFFER_SIZE);
+    // MsgD.send(id2, message2, BUFFER_SIZE);
+    // MsgD.send(id2, message2, BUFFER_SIZE);
+    // MsgD.send(id2, message2, BUFFER_SIZE);
+
+
+
+
+    printf("\nstart sending file\n");
+
+    char file_name[100];
+    sprintf(file_name, "pics/default-orbit.jpeg");
+
+    int n;
+    char bufferSend[BUFFER_SIZE];
+
+    // stat of file, to get the size
+    struct stat file_stat;
+    int block_count = 0;
+    char send_info[BUFFER_SIZE];
+
+    // get the status of file
+    if (stat(file_name, &file_stat) == -1)
+    {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
+    // get the id length
+    int id_length = 1;
+    int divisor = 10;
+    while (file_stat.st_size / divisor != 0)
+    {
+        ++id_length;
+        divisor *= 10;
+    }
+    int send_size = BUFFER_SIZE - 5 - id_length;
+    printf("one time size: %d\n", send_size);
+    if (file_stat.st_size % send_size == 0)
+    {
+        block_count = file_stat.st_size / send_size;
+    }
+    else
+    {
+        block_count = file_stat.st_size / send_size + 1;
+    }
+    // printf("block count: %d\n", block_count);
+
+    // gain the lock, insure transmit order
+    pthread_mutex_lock(&sendLock);
+
+    // send the file info, combine with ','
+    printf("[client] file name: %s\n", file_name);
+    sprintf(send_info, "%s,%d", file_name, block_count);
+
+    // send through the socket
+    n = MsgD.send(id1, send_info, BUFFER_SIZE);
+    if (n < 0) 
+        error("ERROR writing to socket");
+
+
+    FILE *fp = fopen(file_name, "r");  
+    if (fp == NULL)  
+    {  
+        // printf("File:\t%s Not Found!\n", file_name);  
+        printf("File:\t%s Not Found!\n", file_name);  
+    }  
+    else  
+    {  
+        bzero(bufferSend, BUFFER_SIZE);  
+        int file_block_length = 0;
+        // start transmitting the file
+        while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
+        {  
+            // send data to the client side  
+            if (MsgD.send(id1, bufferSend, BUFFER_SIZE) < 0)  
+            {  
+                printf("Send File: %s Failed!\n", file_name);  
+                break;  
+            }  
+
+            bzero(bufferSend, BUFFER_SIZE);  
+        }
+
+        fclose(fp);  
+        printf("[client] Transfer Finished!\n\n");  
+    }
 
     return 0;
 }

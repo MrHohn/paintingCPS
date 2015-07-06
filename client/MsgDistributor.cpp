@@ -115,7 +115,7 @@ int MsgDistributor::listen()
         connect_queue.push(created_id);
         sem_post(&connect_sem);
     }
-    else if (strcmp(new_message, "sockid") == 0)
+    else if (strcmp(new_message, "sock") == 0)
     {
         char *id_char = strtok(NULL, ",");
         // get the remain all part as content
@@ -288,7 +288,7 @@ int MsgDistributor::send(int sock, char* buffer, int size)
     pthread_mutex_lock(&send_lock);
     int ret = 0;
     char content[BUFFER_SIZE];
-    sprintf(content, "sockid,%d,%s", sock, buffer);
+    sprintf(content, "sock,%d,%s", sock, buffer);
     if (debug) printf("now send message in socket: %d\n", sock);
     ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
     if(ret < 0)

@@ -684,21 +684,74 @@ int main(int argc, char *argv[])
     printf("receive message: [%s]\n", message.c_str());
 
     // test incorrect id case
-    MsgD.recv(101);
+    // MsgD.recv(101);
 
-    message = MsgD.recv(id1);
-    printf("receive message: [%s]\n", message.c_str());
-    message = MsgD.recv(id1);
-    printf("receive message: [%s]\n", message.c_str());
-    message = MsgD.recv(id1);
-    printf("receive message: [%s]\n", message.c_str());
+    // message = MsgD.recv(id1);
+    // printf("receive message: [%s]\n", message.c_str());
+    // message = MsgD.recv(id1);
+    // printf("receive message: [%s]\n", message.c_str());
+    // message = MsgD.recv(id1);
+    // printf("receive message: [%s]\n", message.c_str());
 
-    message = MsgD.recv(id2);
-    printf("receive message: [%s]\n", message.c_str());
-    message = MsgD.recv(id2);
-    printf("receive message: [%s]\n", message.c_str());
-    message = MsgD.recv(id2);
-    printf("receive message: [%s]\n", message.c_str());
+    // message = MsgD.recv(id2);
+    // printf("receive message: [%s]\n", message.c_str());
+    // message = MsgD.recv(id2);
+    // printf("receive message: [%s]\n", message.c_str());
+    // message = MsgD.recv(id2);
+    // printf("receive message: [%s]\n", message.c_str());
 
-    return 0; /* we never get here */
+    string msg_recv;
+    char *block_count_char;
+    int block_count;
+    int count;
+
+    printf("\nstart receiving file\n");
+    // receive the file info
+    msg_recv = MsgD.recv(id1);
+    char *file_name;
+    char buffer[BUFFER_SIZE];
+    // store the file name and the block count
+    strcpy(buffer, msg_recv.c_str());
+    file_name = strtok(buffer, ",");
+    printf("\n[server] file name: %s\n", file_name);
+    block_count_char = strtok(NULL, ",");
+    block_count = strtol(block_count_char, NULL, 10);
+    // printf("block count: %d\n", block_count);
+
+    FILE *fp = fopen(file_name, "w");  
+    if (fp == NULL)  
+    {  
+        printf("File:\t%s Can Not Open To Write!\n", file_name);  
+    }  
+
+    // receive the data from server and store them into buffer
+    count = 0;
+    int write_length;
+    while(!global_stop)  
+    {
+        msg_recv = MsgD.recv(id1);
+        if (msg_recv.length() == 0)  
+        {  
+            printf("Recieve Data From Client Failed!\n");  
+            break;  
+        }
+        
+        write_length = fwrite(msg_recv.c_str(), sizeof(char), msg_recv.length(), fp);  
+        if (write_length < (int)msg_recv.length())  
+        {  
+            printf("File:\t Write Failed!\n");  
+            break;  
+        }  
+        ++count;
+        if (count >= block_count)
+        {
+            // printf("block count full\n");
+            break;
+        }
+    }
+    printf("[server] Recieve Finished!\n\n");  
+    // finished 
+    fclose(fp);
+
+    return 0;
 }
