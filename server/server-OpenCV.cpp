@@ -705,17 +705,23 @@ int main(int argc, char *argv[])
     // message = MsgD.recv(id2);
     // printf("receive message: [%s]\n", message.c_str());
 
-    // string msg_recv;
+
+    // get the id length
+    int id_length = 1;
+    int divisor = 10;
+    while (id1 / divisor > 0)
+    {
+        ++id_length;
+        divisor *= 10;
+    }
+    int recv_length = BUFFER_SIZE - 6 - id_length;
     char *file_size_char;
     int file_size;
     int received_size = 0;
+    int write_length;
 
     printf("\nstart receiving file\n");
-    // receive the file info
-    // msg_recv = MsgD.recv(id1);
-    // char buffer[BUFFER_SIZE];
-    // store the file name and the block count
-    // strcpy(buffer, msg_recv.c_str());
+
     bzero(buffer, buffer_length);
     MsgD.recv(id1, buffer, buffer_length);
     char *file_name;
@@ -732,18 +738,16 @@ int main(int argc, char *argv[])
     }  
 
     // receive the data from server and store them into buffer
-    int write_length;
-    int ret = BUFFER_SIZE - 7;
     while(!global_stop)  
     {
         bzero(buffer, buffer_length);
         MsgD.recv(id1, buffer, buffer_length);
         
-        if (file_size - received_size <= BUFFER_SIZE - 7)
+        if (file_size - received_size <= recv_length)
         {
             int remain = file_size - received_size;
             write_length = fwrite(buffer, sizeof(char), remain, fp);  
-            if (write_length < ret)  
+            if (write_length < remain)  
             {  
                 printf("File:\t Write Failed!\n");  
                 break;  
@@ -751,13 +755,13 @@ int main(int argc, char *argv[])
             break;
         }
 
-        write_length = fwrite(buffer, sizeof(char), ret, fp);  
-        if (write_length < ret)  
+        write_length = fwrite(buffer, sizeof(char), recv_length, fp);  
+        if (write_length < recv_length)  
         {  
             printf("File:\t Write Failed!\n");  
             break;  
         }  
-        received_size += BUFFER_SIZE - 7;
+        received_size += BUFFER_SIZE - 6 - id_length;
     }
     printf("[server] Recieve Finished!\n\n");  
     // finished 

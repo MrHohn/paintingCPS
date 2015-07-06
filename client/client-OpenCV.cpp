@@ -836,23 +836,13 @@ int main(int argc, char *argv[])
 
     printf("\nstart sending file\n");
 
+    struct stat file_stat; // stat of file, to get the size
     char file_name[100];
     sprintf(file_name, "pics/default-orbit.jpeg");
-
     int n;
     char bufferSend[BUFFER_SIZE];
 
-    // stat of file, to get the size
-    struct stat file_stat;
-    char send_info[BUFFER_SIZE];
-
-    // get the status of file
-    if (stat(file_name, &file_stat) == -1)
-    {
-        perror("stat");
-        exit(EXIT_FAILURE);
-    }
-    // get the id length
+    // get the id length and send length
     int id_length = 1;
     int divisor = 10;
     while (id1 / divisor > 0)
@@ -861,6 +851,13 @@ int main(int argc, char *argv[])
         divisor *= 10;
     }
     int send_size = BUFFER_SIZE - 6 - id_length;
+    
+    // get the status of file
+    if (stat(file_name, &file_stat) == -1)
+    {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
     printf("one time size: %d\n", send_size);
     printf("file size: %ld\n", file_stat.st_size);
 
@@ -869,13 +866,12 @@ int main(int argc, char *argv[])
 
     // send the file info, combine with ','
     printf("[client] file name: %s\n", file_name);
-    sprintf(send_info, "%s,%ld", file_name, file_stat.st_size);
+    sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
 
     // send through the socket
-    n = MsgD.send(id1, send_info, BUFFER_SIZE);
+    n = MsgD.send(id1, bufferSend, BUFFER_SIZE);
     if (n < 0) 
         error("ERROR writing to socket");
-
 
     FILE *fp = fopen(file_name, "r");  
     if (fp == NULL)  
