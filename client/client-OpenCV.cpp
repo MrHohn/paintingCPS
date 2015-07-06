@@ -231,40 +231,40 @@ void *transmit_child(void *arg)
     int sockfd = args->sock;
     char *file_name = args->file_name;
 
-    int n;
-    char bufferSend[BUFFER_SIZE];
-    char response[10];
-
-    // stat of file, to get the size
-    struct stat file_stat;
-    int block_count = 0;
-    char send_info[100];
-
-    // get the status of file
-    if (stat(file_name, &file_stat) == -1)
-    {
-        perror("stat");
-        exit(EXIT_FAILURE);
-    }
-    if (file_stat.st_size % BUFFER_SIZE == 0)
-    {
-        block_count = file_stat.st_size / 1024;
-    }
-    else
-    {
-        block_count = file_stat.st_size / 1024 + 1;
-    }
-    // printf("block count: %d\n", block_count);
-
-    // gain the lock, insure transmit order
-    pthread_mutex_lock(&sendLock);
-
-    // send the file info, combine with ','
-    printf("[client] file name: %s\n", file_name);
-    sprintf(send_info, "%s,%d", file_name, block_count);
-
-
     if (!orbit) {
+        int n;
+        char bufferSend[BUFFER_SIZE];
+        char response[10];
+
+        // stat of file, to get the size
+        struct stat file_stat;
+        int block_count = 0;
+        char send_info[100];
+
+        // get the status of file
+        if (stat(file_name, &file_stat) == -1)
+        {
+            perror("stat");
+            exit(EXIT_FAILURE);
+        }
+        if (file_stat.st_size % BUFFER_SIZE == 0)
+        {
+            block_count = file_stat.st_size / 1024;
+        }
+        else
+        {
+            block_count = file_stat.st_size / 1024 + 1;
+        }
+        // printf("block count: %d\n", block_count);
+
+        // gain the lock, insure transmit order
+        pthread_mutex_lock(&sendLock);
+
+        // send the file info, combine with ','
+        printf("[client] file name: %s\n", file_name);
+        sprintf(send_info, "%s,%d", file_name, block_count);
+
+
         // send and read through the tcp socket
         n = write(sockfd, send_info, sizeof(send_info));
         if (n < 0) 
@@ -302,8 +302,71 @@ void *transmit_child(void *arg)
             printf("[client] Transfer Finished!\n\n");  
         }
     }
-    else {
+    // below is orbit mode, using MFAPI
+    else
+    {
+        struct stat file_stat; // stat of file, to get the size
+        int n;
+        char bufferSend[BUFFER_SIZE];
 
+        // get the id length and send length
+        int id_length = 1;
+        int divisor = 10;
+        while (sockfd / divisor > 0)
+        {
+            ++id_length;
+            divisor *= 10;
+        }
+        int send_size = BUFFER_SIZE - 6 - id_length;
+        
+        // get the status of file
+        if (stat(file_name, &file_stat) == -1)
+        {
+            perror("stat");
+            exit(EXIT_FAILURE);
+        }
+        printf("one time size: %d\n", send_size);
+        printf("file size: %ld\n", file_stat.st_size);
+
+        // gain the lock, insure transmit order
+        pthread_mutex_lock(&sendLock);
+
+        // send the file info, combine with ','
+        printf("[client] file name: %s\n", file_name);
+        sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+
+        // send through the socket
+        n = MsgD.send(sockfd, bufferSend, BUFFER_SIZE);
+        if (n < 0) 
+            error("ERROR writing to socket");
+
+        FILE *fp = fopen(file_name, "r");  
+        if (fp == NULL)  
+        {  
+            // printf("File:\t%s Not Found!\n", file_name);  
+            printf("File:\t%s Not Found!\n", file_name);  
+        }  
+        else  
+        {  
+            bzero(bufferSend, BUFFER_SIZE);  
+            int file_block_length = 0;
+            // start transmitting the file
+            while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
+            {  
+                printf("send length: %d\n", file_block_length);
+                // send data to the client side  
+                if (MsgD.send(sockfd, bufferSend, BUFFER_SIZE) < 0)  
+                {  
+                    printf("Send File: %s Failed!\n", file_name);  
+                    break;  
+                }
+
+                bzero(bufferSend, BUFFER_SIZE);  
+            }
+
+            fclose(fp);  
+            printf("[client] Transfer Finished!\n\n");  
+        }
     }
 
     pthread_mutex_unlock(&sendLock);
@@ -479,40 +542,19 @@ void *orbit_thread(void *arg)
 
     int index = 1;
     int count = 0;
+    int sockfd;
+    int n;
     
     char file_name[100] = {0};
 
     /*-----------------network part--------------*/
 
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-    struct in_addr ipv4addr;
-    portno = PORT_NO;
-    char response[10];
-    char header[100];
+    char response[BUFFER_SIZE];
+    char header[BUFFER_SIZE];
     sprintf(header, "transmit,%s", userID);
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    char server_addr[] = "127.0.0.1";
-    inet_pton(AF_INET, server_addr, &ipv4addr);
-    server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-    // printf("\n[client] Host name: %s\n", server->h_name);
-    printf("\n[client] Server address: %s\n", server_addr);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
-    serv_addr.sin_port = htons(portno);
-
-    // finished initialize, try to connect
-
-    if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+    sockfd = MsgD.connect();
+    if ( sockfd< 0) 
     {
         printf("-------- The server is not available now. ---------\n\n");
         global_stop = 1;
@@ -526,15 +568,15 @@ void *orbit_thread(void *arg)
     }
 
     // send the header first
-    n = write(sockfd, header, sizeof(header));
+    n = MsgD.send(sockfd, header, sizeof(header));
     if (n < 0) 
          error("ERROR writing to socket");
 
     // get the response
-    n = read(sockfd, response, sizeof(response));
+    n = MsgD.recv(sockfd, response, sizeof(response));
     if (n < 0) 
          error("ERROR reading from socket");
-    if (n != 3)
+    if (strcmp(response, "failed") == 0)
     {
         errno = EACCES;
         error("ERROR log in failed");
@@ -809,6 +851,14 @@ int main(int argc, char *argv[])
 
     client_run();
 
+    if (!orbit)
+    {
+        pause();
+    }
+
+/*
+    // below is the testing stuffs
+
     int id1 = MsgD.connect();
     char message1[BUFFER_SIZE];
     sprintf(message1, "hello");
@@ -900,6 +950,6 @@ int main(int argc, char *argv[])
         fclose(fp);  
         printf("[client] Transfer Finished!\n\n");  
     }
-
+*/
     return 0;
 }
