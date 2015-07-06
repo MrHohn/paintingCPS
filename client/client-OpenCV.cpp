@@ -844,7 +844,6 @@ int main(int argc, char *argv[])
 
     // stat of file, to get the size
     struct stat file_stat;
-    int block_count = 0;
     char send_info[BUFFER_SIZE];
 
     // get the status of file
@@ -863,22 +862,14 @@ int main(int argc, char *argv[])
     }
     int send_size = BUFFER_SIZE - 6 - id_length;
     printf("one time size: %d\n", send_size);
-    if (file_stat.st_size % send_size == 0)
-    {
-        block_count = file_stat.st_size / send_size;
-    }
-    else
-    {
-        block_count = file_stat.st_size / send_size + 1;
-    }
-    // printf("block count: %d\n", block_count);
+    printf("file size: %ld\n", file_stat.st_size);
 
     // gain the lock, insure transmit order
     pthread_mutex_lock(&sendLock);
 
     // send the file info, combine with ','
     printf("[client] file name: %s\n", file_name);
-    sprintf(send_info, "%s,%d", file_name, block_count);
+    sprintf(send_info, "%s,%ld", file_name, file_stat.st_size);
 
     // send through the socket
     n = MsgD.send(id1, send_info, BUFFER_SIZE);
@@ -905,7 +896,7 @@ int main(int argc, char *argv[])
             {  
                 printf("Send File: %s Failed!\n", file_name);  
                 break;  
-            }  
+            }
 
             bzero(bufferSend, BUFFER_SIZE);  
         }

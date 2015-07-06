@@ -706,24 +706,24 @@ int main(int argc, char *argv[])
     // printf("receive message: [%s]\n", message.c_str());
 
     // string msg_recv;
-    char *block_count_char;
-    int block_count;
-    int count;
+    char *file_size_char;
+    int file_size;
+    int received_size = 0;
 
     printf("\nstart receiving file\n");
     // receive the file info
     // msg_recv = MsgD.recv(id1);
-    bzero(buffer, buffer_length);
-    MsgD.recv(id1, buffer, buffer_length);
     // char buffer[BUFFER_SIZE];
     // store the file name and the block count
     // strcpy(buffer, msg_recv.c_str());
+    bzero(buffer, buffer_length);
+    MsgD.recv(id1, buffer, buffer_length);
     char *file_name;
     file_name = strtok(buffer, ",");
     printf("\n[server] file name: %s\n", file_name);
-    block_count_char = strtok(NULL, ",");
-    block_count = strtol(block_count_char, NULL, 10);
-    printf("block count: %d\n", block_count);
+    file_size_char = strtok(NULL, ",");
+    file_size = strtol(file_size_char, NULL, 10);
+    printf("file size: %d\n", file_size);
 
     FILE *fp = fopen(file_name, "w");  
     if (fp == NULL)  
@@ -732,7 +732,6 @@ int main(int argc, char *argv[])
     }  
 
     // receive the data from server and store them into buffer
-    count = 0;
     int write_length;
     int ret = BUFFER_SIZE - 7;
     while(!global_stop)  
@@ -740,18 +739,25 @@ int main(int argc, char *argv[])
         bzero(buffer, buffer_length);
         MsgD.recv(id1, buffer, buffer_length);
         
+        if (file_size - received_size <= BUFFER_SIZE - 7)
+        {
+            int remain = file_size - received_size;
+            write_length = fwrite(buffer, sizeof(char), remain, fp);  
+            if (write_length < ret)  
+            {  
+                printf("File:\t Write Failed!\n");  
+                break;  
+            }
+            break;
+        }
+
         write_length = fwrite(buffer, sizeof(char), ret, fp);  
         if (write_length < ret)  
         {  
             printf("File:\t Write Failed!\n");  
             break;  
         }  
-        ++count;
-        if (count >= block_count)
-        {
-            // printf("block count full\n");
-            break;
-        }
+        received_size += BUFFER_SIZE - 7;
     }
     printf("[server] Recieve Finished!\n\n");  
     // finished 
