@@ -102,6 +102,7 @@ int MsgDistributor::listen()
         return -1;
     }
 
+    printf("ret: %d\n", ret);
     char *new_message = strtok(buffer, ",");
     printf("receive new message, header: %s\n", new_message);
     if (strcmp(new_message, "create") == 0)
@@ -309,7 +310,7 @@ int MsgDistributor::send(int sock, char* buffer, int size)
     sprintf(content, "sock,%d,", sock);
     char *subindex = (char*)(content + 6 + id_length);
     memcpy(subindex, buffer, content_length);
-    printf("content: %s\n", content);
+    // printf("content: %s\n", content);
     // sprintf(content, "sock,%d,%s", sock, buffer);
     // printf("content: %s\n", content);
     if (debug) printf("now send message in socket: %d\n", sock);

@@ -704,19 +704,22 @@ int main(int argc, char *argv[])
     // printf("receive message: [%s]\n", message.c_str());
     // message = MsgD.recv(id2);
     // printf("receive message: [%s]\n", message.c_str());
-/*
-    string msg_recv;
+
+    // string msg_recv;
     char *block_count_char;
     int block_count;
     int count;
+    int ret;
 
     printf("\nstart receiving file\n");
     // receive the file info
-    msg_recv = MsgD.recv(id1);
-    char *file_name;
-    char buffer[BUFFER_SIZE];
+    // msg_recv = MsgD.recv(id1);
+    bzero(buffer, buffer_length);
+    MsgD.recv(id1, buffer, buffer_length);
+    // char buffer[BUFFER_SIZE];
     // store the file name and the block count
-    strcpy(buffer, msg_recv.c_str());
+    // strcpy(buffer, msg_recv.c_str());
+    char *file_name;
     file_name = strtok(buffer, ",");
     printf("\n[server] file name: %s\n", file_name);
     block_count_char = strtok(NULL, ",");
@@ -734,16 +737,11 @@ int main(int argc, char *argv[])
     int write_length;
     while(!global_stop)  
     {
-        msg_recv = MsgD.recv(id1);
-        if (msg_recv.length() == 0)  
-        {  
-            printf("Recieve Data From Client Failed!\n");  
-            break;  
-        }
-        printf("string length: %d\n", msg_recv.length());
+        bzero(buffer, buffer_length);
+        ret = MsgD.recv(id1, buffer, buffer_length);
         
-        write_length = fwrite(msg_recv.c_str(), sizeof(char), msg_recv.length(), fp);  
-        if (write_length < (int)msg_recv.length())  
+        write_length = fwrite(buffer, sizeof(char), ret, fp);  
+        if (write_length < ret)  
         {  
             printf("File:\t Write Failed!\n");  
             break;  
@@ -758,6 +756,6 @@ int main(int argc, char *argv[])
     printf("[server] Recieve Finished!\n\n");  
     // finished 
     fclose(fp);
-*/
+
     return 0;
 }
