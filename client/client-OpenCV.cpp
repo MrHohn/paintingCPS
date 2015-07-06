@@ -861,7 +861,7 @@ int main(int argc, char *argv[])
         ++id_length;
         divisor *= 10;
     }
-    int send_size = BUFFER_SIZE - 5 - id_length;
+    int send_size = BUFFER_SIZE - 6 - id_length;
     printf("one time size: %d\n", send_size);
     if (file_stat.st_size % send_size == 0)
     {

@@ -102,6 +102,7 @@ int MsgDistributor::listen()
         return -1;
     }
 
+    printf("ret: %d\n", ret);
     char *new_message = strtok(buffer, ",");
     printf("receive new message, header: %s\n", new_message);
     if (strcmp(new_message, "create") == 0)
@@ -393,8 +394,7 @@ int MsgDistributor::close(int sock)
     pthread_mutex_lock(&send_lock);
     int ret = 0;
     char content[BUFFER_SIZE];
-    char command[6] = "close";
-    sprintf(content, "sockid,%d,%s", sock, command);
+    sprintf(content, "close,%d", sock);
     ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
     if(ret < 0)
     {

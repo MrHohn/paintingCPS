@@ -709,7 +709,6 @@ int main(int argc, char *argv[])
     char *block_count_char;
     int block_count;
     int count;
-    int ret;
 
     printf("\nstart receiving file\n");
     // receive the file info
@@ -735,10 +734,11 @@ int main(int argc, char *argv[])
     // receive the data from server and store them into buffer
     count = 0;
     int write_length;
+    int ret = BUFFER_SIZE - 7;
     while(!global_stop)  
     {
         bzero(buffer, buffer_length);
-        ret = MsgD.recv(id1, buffer, buffer_length);
+        MsgD.recv(id1, buffer, buffer_length);
         
         write_length = fwrite(buffer, sizeof(char), ret, fp);  
         if (write_length < ret)  
