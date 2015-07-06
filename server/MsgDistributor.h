@@ -30,7 +30,7 @@ public:
     int connect();
     int accept();
     int send(int sock, char* buffer, int size);
-    string recv(int sock);
+    int recv(int sock, char* buffer, int size);
     int close(int sock);
 
 private:
@@ -49,7 +49,7 @@ private:
     sem_t accept_sem;
     unordered_map<int, sem_t*> sem_map; // map from mf socket id to semaphore 
     pthread_mutex_t sem_map_lock;       // mutex lock for sem_map operation
-    unordered_map<int, queue<string>*> queue_map; // map from mf socket if to  message queue 
+    unordered_map<int, queue<char*>*> queue_map; // map from mf socket if to  message queue 
     pthread_mutex_t queue_map_lock;     // mutex lock for queue_map operation
 };
 

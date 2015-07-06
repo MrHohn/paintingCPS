@@ -674,14 +674,19 @@ int main(int argc, char *argv[])
 
     server_run();
 
-    string message;
+    // string message;
+    int buffer_length = BUFFER_SIZE - 6 - 1;
+    char buffer[buffer_length];
     int id1 = MsgD.accept();
-    message = MsgD.recv(id1);
-    printf("receive message: [%s]\n", message.c_str());
+    MsgD.recv(id1, buffer, buffer_length);
+    // printf("receive message: [%s]\n", message.c_str());
+    printf("receive message: [%s]\n", buffer);
 
+    bzero(buffer, buffer_length);
     int id2 = MsgD.accept();
-    message = MsgD.recv(id2);
-    printf("receive message: [%s]\n", message.c_str());
+    MsgD.recv(id2, buffer, buffer_length);
+    // printf("receive message: [%s]\n", message.c_str());
+    printf("receive message: [%s]\n", buffer);
 
     // test incorrect id case
     // MsgD.recv(101);
@@ -699,7 +704,7 @@ int main(int argc, char *argv[])
     // printf("receive message: [%s]\n", message.c_str());
     // message = MsgD.recv(id2);
     // printf("receive message: [%s]\n", message.c_str());
-
+/*
     string msg_recv;
     char *block_count_char;
     int block_count;
@@ -753,6 +758,6 @@ int main(int argc, char *argv[])
     printf("[server] Recieve Finished!\n\n");  
     // finished 
     fclose(fp);
-
+*/
     return 0;
 }

@@ -118,22 +118,33 @@ int MsgDistributor::listen()
     else if (strcmp(new_message, "sock") == 0)
     {
         char *id_char = strtok(NULL, ",");
-        // get the remain all part as content
-        string content = strtok(NULL, "    ");
         int id = strtol(id_char, NULL, 10);
+        // printf("id_char - new_message = %d\n", (int)(id_char - new_message));
+        // get the remain all part as content
+        int id_length = 1, divisor = 10;
+        while (id / divisor != 0)
+        {
+            divisor *= 10;
+            ++id_length;
+        }
+        int content_length = BUFFER_SIZE - id_length - 6;
+        char *content_char = (char*)(id_char + id_length + 1);
+        char *content = (char *)malloc(content_length);
+        memcpy(content, content_char, content_length);
+        // string content = content_char;
         if (sem_map.find(id) == sem_map.end())
         {
             printf("ERROR: Socket ID not exist\n");
             return -1;
         }
-        // check whether it is close command
-        if (content.compare("close") == 0)
-        {
-            this->close(id);
-        }
+        // // check whether it is close command
+        // if (content.compare("close") == 0)
+        // {
+        //     this->close(id);
+        // }
         else
         {
-            queue<string> *id_queue = queue_map[id];
+            queue<char*> *id_queue = queue_map[id];
             id_queue->push(content);
             sem_t *id_sem = sem_map[id];
             sem_post(id_sem);
@@ -195,7 +206,7 @@ int MsgDistributor::connect()
     {
         printf("semaphore init failed\n");
     }
-    queue<string> *new_connection_queue = new queue<string>(); // queue storing the message
+    queue<char*> *new_connection_queue = new queue<char*>(); // queue storing the message
     pthread_mutex_lock(&queue_map_lock);
     pthread_mutex_lock(&sem_map_lock);
     queue_map[newID] = new_connection_queue; // put the address of queue into map
@@ -257,7 +268,7 @@ int MsgDistributor::accept()
     {
         printf("semaphore init failed\n");
     }
-    queue<string> *new_connection_queue = new queue<string>(); // queue storing the message
+    queue<char*> *new_connection_queue = new queue<char*>(); // queue storing the message
     pthread_mutex_lock(&queue_map_lock);
     pthread_mutex_lock(&sem_map_lock);
     queue_map[newID] = new_connection_queue; // put the address of queue into map
@@ -288,7 +299,19 @@ int MsgDistributor::send(int sock, char* buffer, int size)
     pthread_mutex_lock(&send_lock);
     int ret = 0;
     char content[BUFFER_SIZE];
-    sprintf(content, "sock,%d,%s", sock, buffer);
+    int id_length = 1, divisor = 10;
+    while (sock / divisor != 0)
+    {
+        divisor *= 10;
+        ++id_length;
+    }
+    int content_length = BUFFER_SIZE - id_length - 6;
+    sprintf(content, "sock,%d,", sock);
+    char *subindex = (char*)(content + 6 + id_length);
+    memcpy(subindex, buffer, content_length);
+    printf("content: %s\n", content);
+    // sprintf(content, "sock,%d,%s", sock, buffer);
+    // printf("content: %s\n", content);
     if (debug) printf("now send message in socket: %d\n", sock);
     ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
     if(ret < 0)
@@ -305,17 +328,17 @@ int MsgDistributor::send(int sock, char* buffer, int size)
 }
 
 //  receive the message according to the socket id
-string MsgDistributor::recv(int sock)
+int MsgDistributor::recv(int sock, char *buffer, int size)
 {
     if (mfsockid == -1)
     {
         printf("ERROR: Init MsgDistributor first!\n");
-        return "";
+        return -1;
     }
     if (sem_map.find(sock) == sem_map.end())
     {
         printf("ERROR: Socket ID not exist\n");
-        return "";
+        return -1;
     }
 
     sem_t *recv_sem = sem_map[sock];
@@ -324,15 +347,25 @@ string MsgDistributor::recv(int sock)
     if (stop)
     {
         printf("recv stop\n");
-        return "";
+        return -1;
     }
 
     if (debug) printf("new message in socket: %d\n", sock);
-    queue<string> *recv_queue = queue_map[sock];
-    string recv_string = recv_queue->front();
+    queue<char*> *recv_queue = queue_map[sock];
+    char  *recv_char = recv_queue->front();
     recv_queue->pop();
 
-    return recv_string;
+    int id_length = 1, divisor = 10;
+    while (sock / divisor != 0)
+    {
+        divisor *= 10;
+        ++id_length;
+    }
+    int content_length = BUFFER_SIZE - id_length - 6;
+    memcpy(buffer, recv_char, content_length);
+    free(recv_char);
+
+    return 0;
 }
 
 // close the message channel
@@ -351,7 +384,7 @@ int MsgDistributor::close(int sock)
 
     if (debug) printf("now close the socket: %d\n", sock);
     sem_t *close_sem = sem_map[sock];
-    queue<string> *close_queue = queue_map[sock];
+    queue<char*> *close_queue = queue_map[sock];
     delete(close_sem);
     delete(close_queue);
     sem_map.erase(sock);
