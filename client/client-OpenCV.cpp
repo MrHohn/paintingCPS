@@ -160,7 +160,7 @@ void *result_thread(void *arg)
         n = read(sockfd, response, sizeof(response));
         if (n < 0) 
             error("ERROR reading from socket");
-        if (n != 3)
+        if (strcmp(response, "failed") == 0)
         {
             errno = EACCES;
             error("ERROR log in failed");
@@ -487,7 +487,7 @@ void *transmit_thread(void *arg)
     n = read(sockfd, response, sizeof(response));
     if (n < 0) 
          error("ERROR reading from socket");
-    if (n != 3)
+    if (strcmp(response, "failed") == 0)
     {
         errno = EACCES;
         error("ERROR log in failed");
