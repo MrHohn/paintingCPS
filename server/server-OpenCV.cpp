@@ -33,7 +33,6 @@
 
 static pthread_t mflistenThread;
 
-struct Handle global_handle; // for MFAPI
 // global flag for quit
 int global_stop = 0;       
 int orbit = 0;
@@ -800,7 +799,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID, &global_handle);
+            MsgD.init(src_GUID, dst_GUID);
         }
         else
         {

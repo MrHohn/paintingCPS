@@ -38,10 +38,9 @@ using namespace std;
 static pthread_t transmitThread;
 static pthread_t resultThread;
 static pthread_t orbitThread;
-static pthread_t mflistenThread;
+// static pthread_t mflistenThread;
 pthread_mutex_t sendLock; // mutex lock to make sure transmit order
 
-struct Handle global_handle; // for MFAPI
 int global_stop = 0;
 int orbit = 0;
 char *userID;
@@ -646,14 +645,13 @@ Description.: this is the mflisten thread
 Input Value.:
 Return Value:
 ******************************************************************************/
-void *mflisten_thread(void *arg)
+void mflisten_thread()
 {
     printf("\nin listen thread\n");
     while (!global_stop) {
         MsgD.listen();
     }
 
-    return NULL;
 }
 
 /******************************************************************************
@@ -673,7 +671,7 @@ int client_stop()
     {
         // cancel orbit thread
         pthread_cancel(orbitThread);
-        pthread_cancel(mflistenThread);
+        // pthread_cancel(mflistenThread);
     }
     pthread_cancel(resultThread);
     return 0;
@@ -688,6 +686,8 @@ int client_run()
 {
     // DBG("launching threads\n");
     printf("\nLaunching threads.\n");
+    // pthread_create(&resultThread, 0, result_thread, NULL);
+    // pthread_detach(resultThread);
     if (!orbit)
     {
         pthread_create(&transmitThread, 0, transmit_thread, NULL);
@@ -698,11 +698,13 @@ int client_run()
     {
         pthread_create(&orbitThread, 0, orbit_thread, NULL);
         pthread_detach(orbitThread);
-        pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
-        pthread_detach(mflistenThread);
+        // pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
+        // pthread_detach(mflistenThread);
+        mflisten_thread();
     }
-    // pthread_create(&resultThread, 0, result_thread, NULL);
-    // pthread_detach(resultThread);
+
+
+
     return 0;
 }
 
@@ -840,7 +842,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID, &global_handle);
+            MsgD.init(src_GUID, dst_GUID);
         }
         else
         {
