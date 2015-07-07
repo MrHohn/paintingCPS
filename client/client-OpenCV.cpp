@@ -104,17 +104,18 @@ Return Value:
 void *result_thread(void *arg)
 {
     // printf("In the receiver thread.\n");
-    char buffer[256];
-    char header[100];
-    char response[10];
+    char buffer[BUFFER_SIZE];
+    char header[BUFFER_SIZE];
+    char response[BUFFER_SIZE];
     sprintf(header, "result,%s", userID);
     char *resultTemp;
+    int sockfd, n;
 
     /*-----------------network part--------------*/
 
     if (!orbit)
     {
-        int sockfd, portno, n;
+        int portno;
         struct sockaddr_in serv_addr;
         struct hostent *server;
         struct in_addr ipv4addr;
@@ -164,48 +165,78 @@ void *result_thread(void *arg)
             errno = EACCES;
             error("ERROR log in failed");
         }
-        
-        while(!global_stop)
+    }
+    // below is the orbit mode using MFAPI
+    else
+    {
+        sockfd = MsgD.connect();
+        printf("[client] result thread get connection to server\n");
+        printf("[client] start receiving the result\n");
+        // send the header first
+        n = MsgD.send(sockfd, header, sizeof(header));
+        if (n < 0) 
+             error("ERROR writing to socket");
+
+        // get the response
+        n = MsgD.recv(sockfd, response, sizeof(response));
+        if (n < 0) 
+             error("ERROR reading from socket");
+        if (strcmp(response, "failed") == 0)
         {
-            bzero(buffer, sizeof(buffer));
-            n = recv(sockfd, buffer, sizeof(buffer), 0);
-            if (n < 0) 
+            errno = EACCES;
+            error("ERROR log in failed");
+        }
+
+    }
+    
+    while(!global_stop)
+    {
+        bzero(buffer, sizeof(buffer));
+        if (!orbit)
+        {
+            n = recv(sockfd, buffer, sizeof(buffer), 0);        
+        }
+        else
+        {
+            n = MsgD.recv(sockfd, buffer, BUFFER_SIZE);
+        }
+
+        if (n < 0) 
+        {
+            error("ERROR reading from socket");
+        }
+        else if (n > 0)
+        {
+            if (strcmp(buffer, "none") == 0)
             {
-                error("ERROR reading from socket");
-            }
-            else if (n > 0)
-            {
-                if (strcmp(buffer, "none") == 0)
-                {
-                    drawResult = 0;
-                }
-                else
-                {
-                    drawResult = 0;
-                    // printf("result: %s\n", buffer);
-                    resultShown = strtok(buffer, ",");
-                    resultShown = "matched index: " + resultShown;
-                    for (int i = 0; i < 8; ++i) {
-                        resultTemp = strtok(NULL, ",");
-                        coord[i] = atof(resultTemp);
-                        // printf("%f\n", coord[i]);
-                    }
-                    drawResult = 1;
-                }
+                drawResult = 0;
             }
             else
             {
-                printf("[client] server closed the connection\n");
-                global_stop = 1;
+                drawResult = 0;
+                // printf("result: %s\n", buffer);
+                resultShown = strtok(buffer, ",");
+                resultShown = "matched index: " + resultShown;
+                for (int i = 0; i < 8; ++i) {
+                    resultTemp = strtok(NULL, ",");
+                    coord[i] = atof(resultTemp);
+                    // printf("%f\n", coord[i]);
+                }
+                drawResult = 1;
             }
         }
-        close(sockfd); // disconnect server
-        printf("[client] connection closed --- result\n");
+        else
+        {
+            printf("[client] server closed the connection\n");
+            global_stop = 1;
+        }
     }
-    else
+    if (!orbit)
     {
-
+        close(sockfd); // disconnect server    
     }
+    printf("[client] connection closed --- result\n");
+
 
 
     /*---------------------------end--------------------------*/
@@ -325,7 +356,7 @@ void *transmit_child(void *arg)
             perror("stat");
             exit(EXIT_FAILURE);
         }
-        printf("one time size: %d\n", send_size);
+        if (debug) printf("one time size: %d\n", send_size);
         printf("file size: %ld\n", file_stat.st_size);
 
         // gain the lock, insure transmit order
@@ -348,12 +379,17 @@ void *transmit_child(void *arg)
         }  
         else  
         {  
-            bzero(bufferSend, BUFFER_SIZE);  
+            bzero(bufferSend, BUFFER_SIZE);
+
+            // get the response
+            MsgD.recv(sockfd, bufferSend, BUFFER_SIZE);
+            bzero(bufferSend, BUFFER_SIZE);
+
             int file_block_length = 0;
             // start transmitting the file
             while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
             {  
-                printf("send length: %d\n", file_block_length);
+                if (debug) printf("send length: %d\n", file_block_length);
                 // send data to the client side  
                 if (MsgD.send(sockfd, bufferSend, BUFFER_SIZE) < 0)  
                 {  
@@ -686,8 +722,8 @@ int client_run()
 {
     // DBG("launching threads\n");
     printf("\nLaunching threads.\n");
-    // pthread_create(&resultThread, 0, result_thread, NULL);
-    // pthread_detach(resultThread);
+    pthread_create(&resultThread, 0, result_thread, NULL);
+    pthread_detach(resultThread);
     if (!orbit)
     {
         pthread_create(&transmitThread, 0, transmit_thread, NULL);

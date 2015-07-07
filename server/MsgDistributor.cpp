@@ -102,9 +102,9 @@ int MsgDistributor::listen()
         return -1;
     }
 
-    printf("ret: %d\n", ret);
+    if (debug) printf("ret: %d\n", ret);
     char *new_message = strtok(buffer, ",");
-    printf("receive new message, header: %s\n", new_message);
+    if (debug) printf("receive new message, header: %s\n", new_message);
     if (strcmp(new_message, "create") == 0)
     {
         sem_post(&accept_sem);
@@ -344,7 +344,7 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
 
     sem_t *recv_sem = sem_map[sock];
     // wait for buffer filled
-    printf("now wait for new message\n");
+    if (debug) printf("now wait for new message\n");
     sem_wait(recv_sem);
     if (stop)
     {
@@ -367,7 +367,7 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
     memcpy(buffer, recv_char, content_length);
     free(recv_char);
 
-    return 0;
+    return 1;
 }
 
 // close the message channel

@@ -112,10 +112,10 @@ void server_result (int sock, string userID)
     // printf("result thread\n\n");
 
     int n;
-    char response[] = "ok";
-    char defMsg[] = "none";
+    char response[BUFFER_SIZE] = "ok";
+    char defMsg[BUFFER_SIZE] = "none";
     int matchedIndex;
-    char sendInfo[256];
+    char sendInfo[BUFFER_SIZE];
     vector<float> coord;
     sem_t *sem_match = new sem_t(); // create a new semaphore in heap
     queue<string> *imgQueue = 0;    // queue storing the file names 
@@ -131,10 +131,17 @@ void server_result (int sock, string userID)
     pthread_mutex_unlock(&sem_map_lock);
 
     // reponse to the client
-    n = write(sock, response, sizeof(response));
-    if (n < 0)
+    if (!orbit)
     {
-        error("ERROR writting to socket");
+        n = write(sock, response, sizeof(response));
+        if (n < 0)
+        {
+            error("ERROR writting to socket");
+        }
+    }
+    else
+    {
+        MsgD.send(sock, response, BUFFER_SIZE);
     }
 
     while(!global_stop) 
@@ -169,11 +176,19 @@ void server_result (int sock, string userID)
         if (matchedIndex == 0) 
         {   
             // write none to client
-            if (write(sock, defMsg, sizeof(defMsg)) < 0)
-            {
-               errorSocket("ERROR writting to socket", sock);
+            if (!orbit) {
+                if (write(sock, defMsg, sizeof(defMsg)) < 0)
+                {
+                   errorSocket("ERROR writting to socket", sock);
+                }
+
             }
-            // printf("not match\n");            
+            else
+            {
+                MsgD.send(sock, defMsg, BUFFER_SIZE);
+            }
+
+            if (debug) printf("not match\n");            
         }
         else
         {
@@ -182,18 +197,28 @@ void server_result (int sock, string userID)
             // sprintf(sendInfo, "%d,", matchedIndex);
             sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
             // printf("sendInfo: %s\n", sendInfo);
-            if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
+            if (!orbit)
             {
-                errorSocket("ERROR writting to socket", sock);
+                if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
+                {
+                    errorSocket("ERROR writting to socket", sock);
+                }
             }
-            // printf("matched image index: %d\n", matchedIndex);
+            else
+            {
+                MsgD.send(sock, sendInfo, BUFFER_SIZE);
+            }
+            if (debug) printf("matched image index: %d\n", matchedIndex);
 
         }
 
         // printf("------------- end matching -------------\n");
     }
 
-    close(sock); 
+    if (!orbit)
+    {
+        close(sock);    
+    }
     printf("[server] Connection closed. --- result\n\n");
     delete(sem_match);
     pthread_exit(NULL); //terminate calling thread!
@@ -350,9 +375,14 @@ void server_transmit (int sock, string userID)
 
         printf("\nstart receiving file\n");
 
+
+        // reponse to the client
+        MsgD.send(sock, response, BUFFER_SIZE);
+
         while (!global_stop)
         {
             bzero(buffer, BUFFER_SIZE);
+            // get the file info from client
             MsgD.recv(sock, buffer, BUFFER_SIZE);
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
@@ -361,11 +391,15 @@ void server_transmit (int sock, string userID)
             file_size = strtol(file_size_char, NULL, 10);
             printf("file size: %d\n", file_size);
 
+            // reponse to the client
+            MsgD.send(sock, response, BUFFER_SIZE);
+            
             FILE *fp = fopen(file_name, "w");  
             if (fp == NULL)  
             {  
                 printf("File:\t%s Can Not Open To Write!\n", file_name);  
             }  
+
 
             // receive the data from server and store them into buffer
             while(1)  
