@@ -55,7 +55,7 @@ float coord[8];
 
 struct arg_transmit {
     int sock;
-    char file_name[20];
+    char file_name[100];
 };
 
 /******************************************************************************
@@ -339,6 +339,7 @@ void *transmit_child(void *arg)
         struct stat file_stat; // stat of file, to get the size
         int n;
         char bufferSend[BUFFER_SIZE];
+        bzero(bufferSend, BUFFER_SIZE);
 
         // get the id length and send length
         int id_length = 1;
@@ -389,7 +390,7 @@ void *transmit_child(void *arg)
             // start transmitting the file
             while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
             {  
-                if (debug) printf("send length: %d\n", file_block_length);
+                // if (debug) printf("send length: %d\n", file_block_length);
                 // send data to the client side  
                 if (MsgD.send(sockfd, bufferSend, BUFFER_SIZE) < 0)  
                 {  
@@ -640,6 +641,7 @@ void *orbit_thread(void *arg)
             pthread_t thread_id;
             struct arg_transmit trans_info;
             trans_info.sock = sockfd;
+            bzero(&trans_info.file_name, BUFFER_SIZE);
             strcpy(trans_info.file_name, file_name);
             /* create thread and pass socket and file name to send file */
             if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
@@ -664,10 +666,9 @@ void *orbit_thread(void *arg)
             drawResult = 0;
         }
 
-        usleep(1000 * 40); // sleep a while to imitate video catching
+        usleep(1000 * 80); // sleep a while to imitate video catching
     }
     
-    close(sockfd); // disconnect server
     printf("[client] connection closed --- transmit\n");
     global_stop = 1;
     // exit(0);

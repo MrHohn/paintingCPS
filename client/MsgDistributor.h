@@ -34,7 +34,7 @@ public:
     int close(int sock);
 
 private:
-    int debug = 0;
+    bool debug = false;
     int stop = 0;
     int BUFFER_SIZE = 1024;
     int src_GUID;

@@ -381,6 +381,7 @@ void server_transmit (int sock, string userID)
 
         while (!global_stop)
         {
+            received_size = 0;
             bzero(buffer, BUFFER_SIZE);
             // get the file info from client
             MsgD.recv(sock, buffer, BUFFER_SIZE);
