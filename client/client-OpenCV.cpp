@@ -41,6 +41,7 @@ static pthread_t orbitThread;
 static pthread_t mflistenThread;
 pthread_mutex_t sendLock; // mutex lock to make sure transmit order
 
+struct Handle global_handle; // for MFAPI
 int global_stop = 0;
 int orbit = 0;
 char *userID;
@@ -554,7 +555,7 @@ void *orbit_thread(void *arg)
     sprintf(header, "transmit,%s", userID);
 
     sockfd = MsgD.connect();
-    if ( sockfd< 0) 
+    if (sockfd < 0) 
     {
         printf("-------- The server is not available now. ---------\n\n");
         global_stop = 1;
@@ -695,8 +696,8 @@ int client_run()
     // run in orbit mode
     else
     {
-        // pthread_create(&orbitThread, 0, orbit_thread, NULL);
-        // pthread_detach(orbitThread);
+        pthread_create(&orbitThread, 0, orbit_thread, NULL);
+        pthread_detach(orbitThread);
         pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
         pthread_detach(mflistenThread);
     }
@@ -821,11 +822,11 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    if(signal(SIGINT, signal_handler) == SIG_ERR)
-    {
-        printf("could not register signal handler\n");
-        exit(EXIT_FAILURE);
-    }
+    // if(signal(SIGINT, signal_handler) == SIG_ERR)
+    // {
+    //     printf("could not register signal handler\n");
+    //     exit(EXIT_FAILURE);
+    // }
 
     if (pthread_mutex_init(&sendLock, NULL) != 0)
     {
@@ -839,7 +840,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID);
+            MsgD.init(src_GUID, dst_GUID, global_handle);
         }
         else
         {

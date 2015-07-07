@@ -38,7 +38,7 @@ MsgDistributor::~MsgDistributor()
     }
 }
 
-int MsgDistributor::init(int src_GUID, int dst_GUID)
+int MsgDistributor::init(int src_GUID, int dst_GUID, struct Handle global_handle)
 {
     if (mfsockid != -1)
     {
@@ -49,6 +49,7 @@ int MsgDistributor::init(int src_GUID, int dst_GUID)
     mfsockid = 0;
     this->src_GUID = src_GUID;
     this->dst_GUID = dst_GUID;
+    handle = global_handle;
 
     /* init mfapi here, actually only for the receive part */
     int ret = 0;
@@ -153,7 +154,7 @@ int MsgDistributor::listen()
     }
     else
     {
-        printf("unable to classify this message, discard");
+        printf("unable to classify this message, discard\n");
         return -1;
     }
 
@@ -344,6 +345,7 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
 
     sem_t *recv_sem = sem_map[sock];
     // wait for buffer filled
+    printf("now wait for new message\n");
     sem_wait(recv_sem);
     if (stop)
     {

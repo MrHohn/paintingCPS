@@ -25,7 +25,7 @@ class MsgDistributor
 public:
     MsgDistributor();
     ~MsgDistributor();
-    int init(int src_GUID, int dst_GUID);
+    int init(int src_GUID, int dst_GUID, struct Handle);
     int listen();
     int connect();
     int accept();

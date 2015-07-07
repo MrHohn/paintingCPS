@@ -33,6 +33,7 @@
 
 static pthread_t mflistenThread;
 
+struct Handle global_handle; // for MFAPI
 // global flag for quit
 int global_stop = 0;       
 int orbit = 0;
@@ -766,11 +767,11 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    if(signal(SIGINT, signal_handler) == SIG_ERR)
-    {
-        printf("could not register signal handler\n");
-        exit(EXIT_FAILURE);
-    }
+    // if(signal(SIGINT, signal_handler) == SIG_ERR)
+    // {
+    //     printf("could not register signal handler\n");
+    //     exit(EXIT_FAILURE);
+    // }
 
     // init the mutex lock
     if (pthread_mutex_init(&user_map_lock, NULL) != 0)
@@ -799,7 +800,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID);
+            MsgD.init(src_GUID, dst_GUID, global_handle);
         }
         else
         {
