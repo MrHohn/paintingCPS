@@ -25,7 +25,7 @@ class MsgDistributor
 public:
     MsgDistributor();
     ~MsgDistributor();
-    int init(int src_GUID, int dst_GUID, struct Handle);
+    int init(int src_GUID, int dst_GUID, struct Handle*);
     int listen();
     int connect();
     int accept();
@@ -40,7 +40,7 @@ private:
     int src_GUID;
     int dst_GUID;
     int mfsockid;
-    struct Handle handle;
+    struct Handle *handle;
     pthread_mutex_t send_lock;          // lock for send
     pthread_mutex_t recv_lock;          // lock for receive
     pthread_mutex_t id_lock;            // lock for id operation
