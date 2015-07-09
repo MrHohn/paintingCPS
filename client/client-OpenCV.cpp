@@ -665,6 +665,7 @@ void *orbit_thread(void *arg)
         usleep(1000 * 60); // sleep a while to imitate video catching
     }
     
+    MsgD.close(sockfd, 0);
     printf("[client] connection closed --- transmit\n");
     global_stop = 1;
     // exit(0);
