@@ -238,8 +238,6 @@ void *result_thread(void *arg)
     }
     printf("[client] connection closed --- result\n");
 
-
-
     /*---------------------------end--------------------------*/
 
     // /* cleanup now */
@@ -701,7 +699,7 @@ int client_stop()
     n = pthread_cancel(resultThread);
     if (n)
     {
-        printf("failed to cancel thread\n");
+        printf("failed to cancel result thread\n");
     }
     if (!orbit)
     {
@@ -717,14 +715,14 @@ int client_stop()
         n = pthread_cancel(orbitThread);
         if (n)
         {
-            printf("failed to cancel thread\n");
+            printf("failed to cancel orbit thread\n");
         }
-        // send connection close request
-        printf("[client] now send the disconnection request.\n");
-        for (const auto &elem : id_set)
-        {
-            MsgD.close(elem, 0);
-        }
+        // // send connection close request
+        // printf("[client] now send the disconnection request.\n");
+        // for (const auto &elem : id_set)
+        // {
+        //     MsgD.close(elem, 0);
+        // }
     }
 
     return 0;

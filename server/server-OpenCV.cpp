@@ -168,7 +168,9 @@ void server_result (int sock, string userID)
             delete(sem_match);
             delete(imgQueue);
             sem_destroy(sem_match);
-            errorSocket("ERROR image queue empty", sock);
+            MsgD.close(sock, 0);
+            printf("[server] client disconnectted\n");
+            pthread_exit(NULL); //terminate calling thread!
         }
 
         if (debug) printf("\n----------- start matching -------------\n");
