@@ -24,8 +24,7 @@ MsgDistributor::MsgDistributor()
 
 MsgDistributor::~MsgDistributor()
 {
-    pthread_mutex_destroy(&queue_map_lock);
-    pthread_mutex_destroy(&sem_map_lock);
+    pthread_mutex_destroy(&map_lock);
     pthread_mutex_destroy(&id_lock);
     pthread_mutex_destroy(&send_lock);
     pthread_mutex_destroy(&recv_lock);
@@ -38,7 +37,7 @@ MsgDistributor::~MsgDistributor()
     }
 }
 
-int MsgDistributor::init(int src_GUID, int dst_GUID)
+int MsgDistributor::init(int src_GUID, int dst_GUID, int set_debug)
 {
     if (mfsockid != -1)
     {
@@ -49,6 +48,7 @@ int MsgDistributor::init(int src_GUID, int dst_GUID)
     mfsockid = 0;
     this->src_GUID = src_GUID;
     this->dst_GUID = dst_GUID;
+    debug = set_debug;
 
     /* init mfapi here, actually only for the receive part */
     int ret = 0;
@@ -63,8 +63,7 @@ int MsgDistributor::init(int src_GUID, int dst_GUID)
     /* finish init */
 
     if (pthread_mutex_init(&id_lock, NULL) != 0
-        || pthread_mutex_init(&sem_map_lock, NULL) != 0
-        || pthread_mutex_init(&queue_map_lock, NULL) != 0
+        || pthread_mutex_init(&map_lock, NULL) != 0
         || pthread_mutex_init(&send_lock, NULL) != 0
         || pthread_mutex_init(&recv_lock, NULL) != 0)
     {
@@ -120,7 +119,7 @@ int MsgDistributor::listen()
     {
         char *id_char = strtok(NULL, ",");
         int id = strtol(id_char, NULL, 10);
-        // printf("id_char - new_message = %d\n", (int)(id_char - new_message));
+        if (debug) printf("id_char - new_message = %d\n", (int)(id_char - new_message));
         // get the remain all part as content
         int id_length = 1, divisor = 10;
         while (id / divisor != 0)
@@ -138,11 +137,6 @@ int MsgDistributor::listen()
             printf("ERROR: Socket ID not exist\n");
             return -1;
         }
-        // // check whether it is close command
-        // if (content.compare("close") == 0)
-        // {
-        //     this->close(id);
-        // }
         else
         {
             queue<char*> *id_queue = queue_map[id];
@@ -150,6 +144,13 @@ int MsgDistributor::listen()
             sem_t *id_sem = sem_map[id];
             sem_post(id_sem);
         }
+    }
+    else if (strcmp(new_message, "close") == 0)
+    {
+        char *id_char = strtok(NULL, ",");
+        int id = strtol(id_char, NULL, 10);
+        printf("peer closed the connection\n");
+        this->close(id, 1);
     }
     else
     {
@@ -208,14 +209,13 @@ int MsgDistributor::connect()
         printf("semaphore init failed\n");
     }
     queue<char*> *new_connection_queue = new queue<char*>(); // queue storing the message
-    pthread_mutex_lock(&queue_map_lock);
-    pthread_mutex_lock(&sem_map_lock);
+    pthread_mutex_lock(&map_lock);
     queue_map[newID] = new_connection_queue; // put the address of queue into map
     sem_map[newID] = new_connection_sem; // put the address of semaphore into map
-    if (debug) printf("create and put addrs of new queue and semaphore into maps\n");
-    pthread_mutex_unlock(&queue_map_lock);
-    pthread_mutex_unlock(&sem_map_lock);
+    status_map[newID] = 1; // put the status of connection into map
+    if (debug) printf("create and put addrs of queue, semaphore and status into maps\n");
 
+    pthread_mutex_unlock(&map_lock);
     pthread_mutex_unlock(&id_lock);
 
     return newID;
@@ -261,8 +261,8 @@ int MsgDistributor::accept()
         exit(1);
     }
     pthread_mutex_unlock(&send_lock);
-    int newID = mfsockid;
 
+    int newID = mfsockid;
     // create new queue and semaphore for the new conncection
     sem_t *new_connection_sem = new sem_t(); // create a new semaphore in heap
     if (sem_init(new_connection_sem, 0, 0) != 0)
@@ -270,14 +270,13 @@ int MsgDistributor::accept()
         printf("semaphore init failed\n");
     }
     queue<char*> *new_connection_queue = new queue<char*>(); // queue storing the message
-    pthread_mutex_lock(&queue_map_lock);
-    pthread_mutex_lock(&sem_map_lock);
+    pthread_mutex_lock(&map_lock);
     queue_map[newID] = new_connection_queue; // put the address of queue into map
     sem_map[newID] = new_connection_sem; // put the address of semaphore into map
-    if (debug) printf("create and put addrs of new queue and semaphore into maps\n");  
-    pthread_mutex_unlock(&queue_map_lock);
-    pthread_mutex_unlock(&sem_map_lock);
+    status_map[newID] = 1; // put the status of connection into map
+    if (debug) printf("create and put addrs of queue, semaphore and status into maps\n");  
 
+    pthread_mutex_unlock(&map_lock);
     pthread_mutex_unlock(&id_lock);
 
     return newID;
@@ -310,9 +309,6 @@ int MsgDistributor::send(int sock, char* buffer, int size)
     sprintf(content, "sock,%d,", sock);
     char *subindex = (char*)(content + 6 + id_length);
     memcpy(subindex, buffer, content_length);
-    // printf("content: %s\n", content);
-    // sprintf(content, "sock,%d,%s", sock, buffer);
-    // printf("content: %s\n", content);
     if (debug) printf("now send message in socket: %d\n", sock);
     ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
     if(ret < 0)
@@ -336,6 +332,17 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
         printf("ERROR: Init MsgDistributor first!\n");
         return -1;
     }
+    // check if the connection is closed
+    if (status_map[sock] == 0)
+    {
+        printf("sockid[%d]: connection is closed\n", sock);
+        // remove the sock id from status map
+        pthread_mutex_lock(&map_lock);
+        status_map.erase(sock);
+        pthread_mutex_unlock(&map_lock);
+        return -1;
+    }
+    // check if the sock id is valid
     if (sem_map.find(sock) == sem_map.end())
     {
         printf("ERROR: Socket ID not exist\n");
@@ -371,7 +378,7 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
 }
 
 // close the message channel
-int MsgDistributor::close(int sock)
+int MsgDistributor::close(int sock, int passive)
 {
     if (mfsockid == -1)
     {
@@ -387,24 +394,34 @@ int MsgDistributor::close(int sock)
     if (debug) printf("now close the socket: %d\n", sock);
     sem_t *close_sem = sem_map[sock];
     queue<char*> *close_queue = queue_map[sock];
+    pthread_mutex_lock(&map_lock);
+    // change the status from 1 to 0, means closed
+    status_map[sock] = 0;
+    // signal the recv to end
+    sem_post(close_sem);
+    // free the memory
     delete(close_sem);
     delete(close_queue);
     sem_map.erase(sock);
     queue_map.erase(sock);
+    pthread_mutex_unlock(&map_lock);
 
-    pthread_mutex_lock(&send_lock);
-    int ret = 0;
-    char content[BUFFER_SIZE];
-    sprintf(content, "close,%d", sock);
-    ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
-    if(ret < 0)
+    if (passive == 0)
     {
-        printf ("mfsendmsg error\n");
-        pthread_mutex_unlock(&send_lock);
-        return -1;
-    }
+        pthread_mutex_lock(&send_lock);
+        int ret = 0;
+        char content[BUFFER_SIZE];
+        sprintf(content, "close,%d", sock);
+        ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
+        if(ret < 0)
+        {
+            printf ("mfsendmsg error\n");
+            pthread_mutex_unlock(&send_lock);
+            return -1;
+        }
 
-    pthread_mutex_unlock(&send_lock);
+        pthread_mutex_unlock(&send_lock);        
+    }
 
     return 0;
 }

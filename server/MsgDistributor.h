@@ -25,16 +25,16 @@ class MsgDistributor
 public:
     MsgDistributor();
     ~MsgDistributor();
-    int init(int src_GUID, int dst_GUID);
+    int init(int src_GUID, int dst_GUID, int debug);
     int listen();
     int connect();
     int accept();
     int send(int sock, char* buffer, int size);
     int recv(int sock, char* buffer, int size);
-    int close(int sock);
+    int close(int sock, int passive);
 
 private:
-    bool debug = false;
+    int debug = 0;
     int stop = 0;
     int BUFFER_SIZE = 1024;
     int src_GUID;
@@ -44,13 +44,13 @@ private:
     pthread_mutex_t send_lock;          // lock for send
     pthread_mutex_t recv_lock;          // lock for receive
     pthread_mutex_t id_lock;            // lock for id operation
+    pthread_mutex_t map_lock;           // mutex lock for map operation
     sem_t connect_sem;
     queue<int> connect_queue;
     sem_t accept_sem;
     unordered_map<int, sem_t*> sem_map; // map from mf socket id to semaphore 
-    pthread_mutex_t sem_map_lock;       // mutex lock for sem_map operation
-    unordered_map<int, queue<char*>*> queue_map; // map from mf socket if to  message queue 
-    pthread_mutex_t queue_map_lock;     // mutex lock for queue_map operation
+    unordered_map<int, queue<char*>*> queue_map; // map from mf socket if to  message queue
+    unordered_map<int, int> status_map; // map from mf socket id to status
 };
 
 #endif /* MSGDISTRIBUTOR_H */

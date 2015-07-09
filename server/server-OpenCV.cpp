@@ -34,25 +34,24 @@
 static pthread_t mflistenThread;
 
 // global flag for quit
-int global_stop = 0;       
+int global_stop = 0; 
 int orbit = 0;
 int debug = 0;
 MsgDistributor MsgD;
 // class for image process
-ImgMatch imgM;             
+ImgMatch imgM;
 // map for result thread to search the queue address
-unordered_map<string, queue<string>*> queue_map; 
+unordered_map<string, queue<string>*> queue_map;
 // mutex lock for queue_map operation
-pthread_mutex_t queue_map_lock; 
+pthread_mutex_t queue_map_lock;
 // map for transmit thread to search the semaphore address
-unordered_map<string, sem_t*> sem_map; 
+unordered_map<string, sem_t*> sem_map;
 // mutex lock for sem_map operation
-pthread_mutex_t sem_map_lock; 
+pthread_mutex_t sem_map_lock;
 // map to store logged in userID
-unordered_map<String, uint> user_map; 
-// pthread_t* thread_table;
+unordered_map<String, uint> user_map;
 // mutex lock for user_map operation
-pthread_mutex_t user_map_lock; 
+pthread_mutex_t user_map_lock;
 
 /******************************************************************************
 Description.: Display a help message
@@ -97,7 +96,14 @@ void errorSocket(const char *msg, int sock)
 {
     errno = EBADF;
     perror(msg);
-    close(sock); 
+    if (!orbit)
+    {
+        close(sock);     
+    }
+    else
+    {
+        MsgD.close(sock, 1);
+    }
     printf("[server] Connection closed. --- error\n\n");
     pthread_exit(NULL); //terminate calling thread!
 }
@@ -165,9 +171,9 @@ void server_result (int sock, string userID)
             errorSocket("ERROR image queue empty", sock);
         }
 
-        // printf("\n----------- start matching -------------\n");
+        if (debug) printf("\n----------- start matching -------------\n");
         string file_name = imgQueue->front(); 
-        // printf("file name: %s\n", file_name.c_str());
+        if (debug) printf("file name: %s\n", file_name.c_str());
         imgQueue->pop();
 
         // start matching the image
@@ -194,9 +200,8 @@ void server_result (int sock, string userID)
         {
             // write index to client
             coord = imgM.calLocation();
-            // sprintf(sendInfo, "%d,", matchedIndex);
             sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
-            // printf("sendInfo: %s\n", sendInfo);
+            if (debug) printf("sendInfo: %s\n", sendInfo);
             if (!orbit)
             {
                 if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
@@ -212,7 +217,7 @@ void server_result (int sock, string userID)
 
         }
 
-        // printf("------------- end matching -------------\n");
+        if (debug) printf("------------- end matching -------------\n");
     }
 
     if (!orbit)
@@ -384,7 +389,11 @@ void server_transmit (int sock, string userID)
             received_size = 0;
             bzero(buffer, BUFFER_SIZE);
             // get the file info from client
-            MsgD.recv(sock, buffer, BUFFER_SIZE);
+            n = MsgD.recv(sock, buffer, BUFFER_SIZE);
+            if (n < 0)
+            {
+                errorSocket("ERROR reading from socket", sock);
+            }
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
             printf("\n[server] file name: %s\n", file_name);
@@ -406,7 +415,11 @@ void server_transmit (int sock, string userID)
             while(1)  
             {
                 bzero(buffer, BUFFER_SIZE);
-                MsgD.recv(sock, buffer, BUFFER_SIZE);
+                n = MsgD.recv(sock, buffer, BUFFER_SIZE);
+                if (n < 0)
+                {
+                    errorSocket("ERROR reading from socket", sock);
+                }
                 
                 if (file_size - received_size <= recv_length)
                 {
@@ -559,11 +572,11 @@ Return Value: -
 ******************************************************************************/
 void server_main()
 {
-    // init part
     printf("\n[server] start initializing\n");
 
     if (!orbit)
     {
+        // init part
         int sockfd, newsockfd, portno;
         socklen_t clilen;
         struct sockaddr_in serv_addr, cli_addr;
@@ -622,7 +635,7 @@ void server_main()
         } /* end of while */
         close(sockfd);
     }
-    // below is orbit part
+    // below is orbit mode
     else
     {
         int newsockfd;   
@@ -713,7 +726,6 @@ void signal_handler(int sig)
 
     /* clean up threads */
     printf("Force cancellation of threads and cleanup resources.\n");
-    // client_stop();
 
     usleep(1000 * 1000);
 
@@ -834,7 +846,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID);
+            MsgD.init(src_GUID, dst_GUID, debug);
         }
         else
         {
@@ -848,106 +860,6 @@ int main(int argc, char *argv[])
     imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
     server_run();
-
-
-
-/*
-
-    // below is the testing stuffs
-
-    // string message;
-    int buffer_length = BUFFER_SIZE - 6 - 1;
-    char buffer[buffer_length];
-    int id1 = MsgD.accept();
-    MsgD.recv(id1, buffer, buffer_length);
-    // printf("receive message: [%s]\n", message.c_str());
-    printf("receive message: [%s]\n", buffer);
-
-    bzero(buffer, buffer_length);
-    int id2 = MsgD.accept();
-    MsgD.recv(id2, buffer, buffer_length);
-    // printf("receive message: [%s]\n", message.c_str());
-    printf("receive message: [%s]\n", buffer);
-
-    // test incorrect id case
-    // MsgD.recv(101);
-
-    // message = MsgD.recv(id1);
-    // printf("receive message: [%s]\n", message.c_str());
-    // message = MsgD.recv(id1);
-    // printf("receive message: [%s]\n", message.c_str());
-    // message = MsgD.recv(id1);
-    // printf("receive message: [%s]\n", message.c_str());
-
-    // message = MsgD.recv(id2);
-    // printf("receive message: [%s]\n", message.c_str());
-    // message = MsgD.recv(id2);
-    // printf("receive message: [%s]\n", message.c_str());
-    // message = MsgD.recv(id2);
-    // printf("receive message: [%s]\n", message.c_str());
-
-
-    // get the id length
-    int id_length = 1;
-    int divisor = 10;
-    while (id1 / divisor > 0)
-    {
-        ++id_length;
-        divisor *= 10;
-    }
-    int recv_length = BUFFER_SIZE - 6 - id_length;
-    char *file_size_char;
-    int file_size;
-    int received_size = 0;
-    int write_length;
-
-    printf("\nstart receiving file\n");
-
-    bzero(buffer, buffer_length);
-    MsgD.recv(id1, buffer, buffer_length);
-    char *file_name;
-    file_name = strtok(buffer, ",");
-    printf("\n[server] file name: %s\n", file_name);
-    file_size_char = strtok(NULL, ",");
-    file_size = strtol(file_size_char, NULL, 10);
-    printf("file size: %d\n", file_size);
-
-    FILE *fp = fopen(file_name, "w");  
-    if (fp == NULL)  
-    {  
-        printf("File:\t%s Can Not Open To Write!\n", file_name);  
-    }  
-
-    // receive the data from server and store them into buffer
-    while(!global_stop)  
-    {
-        bzero(buffer, buffer_length);
-        MsgD.recv(id1, buffer, buffer_length);
-        
-        if (file_size - received_size <= recv_length)
-        {
-            int remain = file_size - received_size;
-            write_length = fwrite(buffer, sizeof(char), remain, fp);  
-            if (write_length < remain)  
-            {  
-                printf("File:\t Write Failed!\n");  
-                break;  
-            }
-            break;
-        }
-
-        write_length = fwrite(buffer, sizeof(char), recv_length, fp);  
-        if (write_length < recv_length)  
-        {  
-            printf("File:\t Write Failed!\n");  
-            break;  
-        }  
-        received_size += BUFFER_SIZE - 6 - id_length;
-    }
-    printf("[server] Recieve Finished!\n\n");  
-    // finished 
-    fclose(fp);
-*/
 
     return 0;
 }

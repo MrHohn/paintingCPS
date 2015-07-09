@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <getopt.h>
 #include <errno.h>
+#include <unordered_set>
 #include "MsgDistributor.h"
 
 using namespace cv;
@@ -38,17 +39,15 @@ using namespace std;
 static pthread_t transmitThread;
 static pthread_t resultThread;
 static pthread_t orbitThread;
-// static pthread_t mflistenThread;
-pthread_mutex_t sendLock; // mutex lock to make sure transmit order
+
+pthread_mutex_t sendLock;  // mutex lock to make sure transmit order
+unordered_set<int> id_set; // set to store the sock id used  
 
 int global_stop = 0;
 int orbit = 0;
 char *userID;
 int debug = 0;
 MsgDistributor MsgD;
-// Point center = Point(255,255);
-// int r = 100;
-// int drawCircle = 0;
 int drawResult = 0;
 string resultShown = "";
 float coord[8];
@@ -103,7 +102,7 @@ Return Value:
 ******************************************************************************/
 void *result_thread(void *arg)
 {
-    // printf("In the receiver thread.\n");
+    if (debug) printf("In the receiver thread.\n");
     char buffer[BUFFER_SIZE];
     char header[BUFFER_SIZE];
     char response[BUFFER_SIZE];
@@ -126,7 +125,7 @@ void *result_thread(void *arg)
         char server_addr[] = "127.0.0.1";
         inet_pton(AF_INET, server_addr, &ipv4addr);
         server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-        // printf("\n[client] Host name: %s\n", server->h_name);
+        if (debug) printf("\n[client] Host name: %s\n", server->h_name);
         printf("\n[client] Server address: %s\n", server_addr);
         if (server == NULL) 
         {
@@ -170,6 +169,8 @@ void *result_thread(void *arg)
     else
     {
         sockfd = MsgD.connect();
+        // insert the new id into set
+        id_set.insert(sockfd);
         printf("[client] result thread get connection to server\n");
         printf("[client] start receiving the result\n");
         // send the header first
@@ -214,13 +215,13 @@ void *result_thread(void *arg)
             else
             {
                 drawResult = 0;
-                // printf("result: %s\n", buffer);
+                if (debug) printf("result: %s\n", buffer);
                 resultShown = strtok(buffer, ",");
                 resultShown = "matched index: " + resultShown;
                 for (int i = 0; i < 8; ++i) {
                     resultTemp = strtok(NULL, ",");
                     coord[i] = atof(resultTemp);
-                    // printf("%f\n", coord[i]);
+                    if (debug) printf("%f\n", coord[i]);
                 }
                 drawResult = 1;
             }
@@ -256,7 +257,7 @@ Return Value:
 ******************************************************************************/
 void *transmit_child(void *arg)
 {
-    // printf("here\n");
+    if (debug) printf("transmit child thread\n");
 
     struct arg_transmit *args = (struct arg_transmit *)arg;
     int sockfd = args->sock;
@@ -286,7 +287,7 @@ void *transmit_child(void *arg)
         {
             block_count = file_stat.st_size / 1024 + 1;
         }
-        // printf("block count: %d\n", block_count);
+        if (debug) printf("block count: %d\n", block_count);
 
         // gain the lock, insure transmit order
         pthread_mutex_lock(&sendLock);
@@ -309,8 +310,8 @@ void *transmit_child(void *arg)
         FILE *fp = fopen(file_name, "r");  
         if (fp == NULL)  
         {  
-            // printf("File:\t%s Not Found!\n", file_name);  
-            printf("File:\t%s Not Found!\n", file_name);  
+            printf("File:\t%s Not Found!\n", file_name);
+            exit(0);
         }  
         else  
         {  
@@ -375,15 +376,15 @@ void *transmit_child(void *arg)
         FILE *fp = fopen(file_name, "r");  
         if (fp == NULL)  
         {  
-            // printf("File:\t%s Not Found!\n", file_name);  
             printf("File:\t%s Not Found!\n", file_name);  
+            exit(0);
         }  
         else  
         {  
             bzero(bufferSend, BUFFER_SIZE);
 
             // get the response
-            MsgD.recv(sockfd, bufferSend, BUFFER_SIZE);
+            n = MsgD.recv(sockfd, bufferSend, BUFFER_SIZE);
             bzero(bufferSend, BUFFER_SIZE);
 
             int file_block_length = 0;
@@ -453,7 +454,7 @@ void *transmit_thread(void *arg)
     char server_addr[] = "127.0.0.1";
     inet_pton(AF_INET, server_addr, &ipv4addr);
     server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-    // printf("\n[client] Host name: %s\n", server->h_name);
+    if (debug) printf("\n[client] Host name: %s\n", server->h_name);
     printf("\n[client] Server address: %s\n", server_addr);
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
@@ -532,10 +533,6 @@ void *transmit_thread(void *arg)
             /*---------------------------end--------------------------*/
         }
         
-        // if (drawCircle)
-        // {
-        //     circle(frame, center, r, Scalar(0, 0, 255), 4);
-        // }
         if (drawResult)
         {
             putText(frame, resultShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
@@ -596,10 +593,11 @@ void *orbit_thread(void *arg)
         printf("-------- The server is not available now. ---------\n\n");
         global_stop = 1;
         exit(0);
-        // error("ERROR connecting");
     }
     else
     {
+        // insert the new id into set
+        id_set.insert(sockfd);
         printf("[client] transmit thread get connection to server\n");
         printf("[client] start transmitting current frame\n\n");
     }
@@ -706,9 +704,14 @@ int client_stop()
     }
     else
     {
+        // send connection close request
+        printf("[client] now send the disconnection request.\n");
+        for (const auto &elem : id_set)
+        {
+            MsgD.close(elem, 0);
+        }
         // cancel orbit thread
         pthread_cancel(orbitThread);
-        // pthread_cancel(mflistenThread);
     }
     pthread_cancel(resultThread);
     return 0;
@@ -735,8 +738,6 @@ int client_run()
     {
         pthread_create(&orbitThread, 0, orbit_thread, NULL);
         pthread_detach(orbitThread);
-        // pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
-        // pthread_detach(mflistenThread);
         mflisten_thread();
     }
 
@@ -879,7 +880,7 @@ int main(int argc, char *argv[])
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
             /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID);
+            MsgD.init(src_GUID, dst_GUID, debug);
         }
         else
         {
@@ -896,100 +897,5 @@ int main(int argc, char *argv[])
         pause();
     }
 
-/*
-    // below is the testing stuffs
-
-    int id1 = MsgD.connect();
-    char message1[BUFFER_SIZE];
-    sprintf(message1, "hello");
-    MsgD.send(id1, message1, BUFFER_SIZE);
-
-    int id2 = MsgD.connect();
-    char message2[BUFFER_SIZE];
-    sprintf(message2, "who,me");
-    MsgD.send(id2, message2, BUFFER_SIZE);
-    // pause();
-
-    // // test incorrect id case
-    // MsgD.send(101, message1, BUFFER_SIZE);
-
-    // MsgD.send(id1, message1, BUFFER_SIZE);
-    // MsgD.send(id1, message1, BUFFER_SIZE);
-    // MsgD.send(id1, message1, BUFFER_SIZE);
-
-    // MsgD.send(id2, message2, BUFFER_SIZE);
-    // MsgD.send(id2, message2, BUFFER_SIZE);
-    // MsgD.send(id2, message2, BUFFER_SIZE);
-
-
-
-
-    printf("\nstart sending file\n");
-
-    struct stat file_stat; // stat of file, to get the size
-    char file_name[100];
-    sprintf(file_name, "pics/default-orbit.jpeg");
-    int n;
-    char bufferSend[BUFFER_SIZE];
-
-    // get the id length and send length
-    int id_length = 1;
-    int divisor = 10;
-    while (id1 / divisor > 0)
-    {
-        ++id_length;
-        divisor *= 10;
-    }
-    int send_size = BUFFER_SIZE - 6 - id_length;
-    
-    // get the status of file
-    if (stat(file_name, &file_stat) == -1)
-    {
-        perror("stat");
-        exit(EXIT_FAILURE);
-    }
-    printf("one time size: %d\n", send_size);
-    printf("file size: %ld\n", file_stat.st_size);
-
-    // gain the lock, insure transmit order
-    pthread_mutex_lock(&sendLock);
-
-    // send the file info, combine with ','
-    printf("[client] file name: %s\n", file_name);
-    sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
-
-    // send through the socket
-    n = MsgD.send(id1, bufferSend, BUFFER_SIZE);
-    if (n < 0) 
-        error("ERROR writing to socket");
-
-    FILE *fp = fopen(file_name, "r");  
-    if (fp == NULL)  
-    {  
-        // printf("File:\t%s Not Found!\n", file_name);  
-        printf("File:\t%s Not Found!\n", file_name);  
-    }  
-    else  
-    {  
-        bzero(bufferSend, BUFFER_SIZE);  
-        int file_block_length = 0;
-        // start transmitting the file
-        while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
-        {  
-            printf("send length: %d\n", file_block_length);
-            // send data to the client side  
-            if (MsgD.send(id1, bufferSend, BUFFER_SIZE) < 0)  
-            {  
-                printf("Send File: %s Failed!\n", file_name);  
-                break;  
-            }
-
-            bzero(bufferSend, BUFFER_SIZE);  
-        }
-
-        fclose(fp);  
-        printf("[client] Transfer Finished!\n\n");  
-    }
-*/
     return 0;
 }
