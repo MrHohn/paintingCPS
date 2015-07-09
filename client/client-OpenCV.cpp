@@ -664,7 +664,7 @@ void *orbit_thread(void *arg)
             drawResult = 0;
         }
 
-        usleep(1000 * 80); // sleep a while to imitate video catching
+        usleep(1000 * 60); // sleep a while to imitate video catching
     }
     
     printf("[client] connection closed --- transmit\n");
@@ -682,7 +682,7 @@ Return Value:
 ******************************************************************************/
 void mflisten_thread()
 {
-    printf("\nin listen thread\n");
+    if (debug) printf("\nin listen thread\n");
     while (!global_stop) {
         MsgD.listen();
     }
@@ -696,24 +696,37 @@ Return Value: always 0
 ******************************************************************************/
 int client_stop()
 {
-    // DBG("will cancel threads\n");
+    int n;
     printf("Canceling threads.\n");
+    n = pthread_cancel(resultThread);
+    if (n)
+    {
+        printf("failed to cancel thread\n");
+    }
     if (!orbit)
     {
-        pthread_cancel(transmitThread);
+        n = pthread_cancel(transmitThread);
+        if (n)
+        {
+            printf("failed to cancel thread\n");
+        }
     }
     else
     {
+        // cancel orbit thread
+        n = pthread_cancel(orbitThread);
+        if (n)
+        {
+            printf("failed to cancel thread\n");
+        }
         // send connection close request
         printf("[client] now send the disconnection request.\n");
         for (const auto &elem : id_set)
         {
             MsgD.close(elem, 0);
         }
-        // cancel orbit thread
-        pthread_cancel(orbitThread);
     }
-    pthread_cancel(resultThread);
+
     return 0;
 }
 

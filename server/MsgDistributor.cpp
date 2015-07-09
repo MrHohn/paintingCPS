@@ -412,6 +412,7 @@ int MsgDistributor::close(int sock, int passive)
         int ret = 0;
         char content[BUFFER_SIZE];
         sprintf(content, "close,%d", sock);
+        if (debug) printf("send close command\n");
         ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
         if(ret < 0)
         {
@@ -419,7 +420,7 @@ int MsgDistributor::close(int sock, int passive)
             pthread_mutex_unlock(&send_lock);
             return -1;
         }
-
+        if (debug) printf("after send close command\n");
         pthread_mutex_unlock(&send_lock);        
     }
 

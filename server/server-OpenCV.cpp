@@ -378,7 +378,7 @@ void server_transmit (int sock, string userID)
         int file_size;
         int received_size = 0;
 
-        printf("\nstart receiving file\n");
+        if (debug) printf("\nstart receiving file\n");
 
 
         // reponse to the client
@@ -572,7 +572,7 @@ Return Value: -
 ******************************************************************************/
 void server_main()
 {
-    printf("\n[server] start initializing\n");
+    printf("\n[server] start supporting service");
 
     if (!orbit)
     {
@@ -675,7 +675,7 @@ Return Value:
 ******************************************************************************/
 void *mflisten_thread(void *arg)
 {
-    printf("\nin listen thread\n");
+    if (debug) printf("\nin listen thread\n");
     while (!global_stop) {
         MsgD.listen();
     }
@@ -820,21 +820,9 @@ int main(int argc, char *argv[])
     // }
 
     // init the mutex lock
-    if (pthread_mutex_init(&user_map_lock, NULL) != 0)
-    {
-        printf("\n mutex init failed\n");
-        return 1;
-    }
-
-    // init the mutex lock
-    if (pthread_mutex_init(&queue_map_lock, NULL) != 0)
-    {
-        printf("\n mutex init failed\n");
-        return 1;
-    }
-
-    // init the mutex lock
-    if (pthread_mutex_init(&sem_map_lock, NULL) != 0)
+    if (pthread_mutex_init(&user_map_lock, NULL) != 0
+        || pthread_mutex_init(&queue_map_lock, NULL) != 0
+        || pthread_mutex_init(&sem_map_lock, NULL) != 0)
     {
         printf("\n mutex init failed\n");
         return 1;
