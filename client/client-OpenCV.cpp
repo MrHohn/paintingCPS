@@ -199,6 +199,7 @@ void *result_thread(void *arg)
         }
         else
         {
+            if (debug) printf("Still waiting here for the new result\n");
             n = MsgD.recv(sockfd, buffer, BUFFER_SIZE);
         }
 
@@ -665,7 +666,7 @@ void *orbit_thread(void *arg)
         usleep(1000 * 60); // sleep a while to imitate video catching
     }
     
-    MsgD.close(sockfd, 0);
+    // MsgD.close(sockfd, 0);
     printf("[client] connection closed --- transmit\n");
     global_stop = 1;
     // exit(0);
@@ -718,12 +719,12 @@ int client_stop()
         {
             printf("failed to cancel orbit thread\n");
         }
-        // // send connection close request
-        // printf("[client] now send the disconnection request.\n");
-        // for (const auto &elem : id_set)
-        // {
-        //     MsgD.close(elem, 0);
-        // }
+        // send connection close request
+        printf("[client] now send the disconnection request.\n");
+        for (const auto &elem : id_set)
+        {
+            MsgD.close(elem, 0);
+        }
     }
 
     return 0;
@@ -874,11 +875,11 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    // if(signal(SIGINT, signal_handler) == SIG_ERR)
-    // {
-    //     printf("could not register signal handler\n");
-    //     exit(EXIT_FAILURE);
-    // }
+    if(signal(SIGINT, signal_handler) == SIG_ERR)
+    {
+        printf("could not register signal handler\n");
+        exit(EXIT_FAILURE);
+    }
 
     if (pthread_mutex_init(&sendLock, NULL) != 0)
     {

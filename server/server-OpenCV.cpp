@@ -168,7 +168,10 @@ void server_result (int sock, string userID)
             delete(sem_match);
             delete(imgQueue);
             sem_destroy(sem_match);
-            MsgD.close(sock, 0);
+            // if (orbit)
+            // {
+            //     MsgD.close(sock, 0);                
+            // }
             printf("[server] client disconnectted\n");
             pthread_exit(NULL); //terminate calling thread!
         }
@@ -814,12 +817,15 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* register signal handler for <CTRL>+C in order to clean up */
-    // if(signal(SIGINT, signal_handler) == SIG_ERR)
-    // {
-    //     printf("could not register signal handler\n");
-    //     exit(EXIT_FAILURE);
-    // }
+    if (!orbit)
+    {
+        /* register signal handler for <CTRL>+C in order to clean up */
+        if(signal(SIGINT, signal_handler) == SIG_ERR)
+        {
+            printf("could not register signal handler\n");
+            exit(EXIT_FAILURE);
+        }
+    }
 
     // init the mutex lock
     if (pthread_mutex_init(&user_map_lock, NULL) != 0
