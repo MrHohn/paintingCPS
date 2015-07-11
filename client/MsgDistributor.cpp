@@ -24,6 +24,7 @@ MsgDistributor::MsgDistributor()
 
 MsgDistributor::~MsgDistributor()
 {
+    if (debug) printf("now delete the MsgDistributor class\n");
     pthread_mutex_destroy(&map_lock);
     pthread_mutex_destroy(&id_lock);
     pthread_mutex_destroy(&send_lock);
@@ -32,6 +33,7 @@ MsgDistributor::~MsgDistributor()
     sem_destroy(&accept_sem);
     if (mfsockid != -1)
     {
+        if (debug) printf("now close the mf\n");
         // close mf here
         mfclose(&handle);
     }

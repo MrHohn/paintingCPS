@@ -789,6 +789,7 @@ void signal_handler(int sig)
 
     usleep(1000 * 1000);
 
+    delete(&MsgD);
     printf("Done.\n");
 
     exit(0);
