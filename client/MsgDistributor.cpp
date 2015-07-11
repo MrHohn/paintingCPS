@@ -151,7 +151,7 @@ int MsgDistributor::listen()
     {
         char *id_char = strtok(NULL, ",");
         int id = strtol(id_char, NULL, 10);
-        printf("peer closed the connection\n");
+        if (debug) printf("peer closed the connection\n");
         this->close(id, 1);
     }
     else
@@ -349,7 +349,7 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
     // check if the connection is closed
     if (status_map[sock] == 0)
     {
-        printf("sockid[%d]: connection is closed\n", sock);
+        if (debug) printf("sockid[%d]: connection is closed\n", sock);
         // remove the sock id from status map
         pthread_mutex_lock(&map_lock);
         status_map.erase(sock);
@@ -358,7 +358,7 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
     }
     if (stop)
     {
-        printf("recv stop\n");
+        if (debug) printf("recv stop\n");
         return -1;
     }
 
@@ -403,7 +403,7 @@ int MsgDistributor::close(int sock, int passive)
     // signal the recv to end
     sem_post(close_sem);
     // free the memory
-    delete(close_sem);
+    // delete(close_sem);
     delete(close_queue);
     sem_map.erase(sock);
     queue_map.erase(sock);
