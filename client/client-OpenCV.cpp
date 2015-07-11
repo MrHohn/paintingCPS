@@ -42,6 +42,7 @@ static pthread_t orbitThread;
 
 pthread_mutex_t sendLock;  // mutex lock to make sure transmit order
 unordered_set<int> id_set; // set to store the sock id used  
+int global_dst_GUID; // used for close command
 
 int global_stop = 0;
 int orbit = 0;
@@ -721,9 +722,16 @@ int client_stop()
         }
         // send connection close request
         printf("[client] now send the disconnection request.\n");
+        // printf("src GUID: %d, dst GUID: %d\n", MsgD.src_GUID, MsgD.dst_GUID);
+        struct Handle handle;
+        mfopen(&handle, "basic\0", 0, global_dst_GUID);
+        char content[BUFFER_SIZE];
         for (const auto &elem : id_set)
         {
-            MsgD.close(elem, 0);
+            bzero(content, BUFFER_SIZE);
+            sprintf(content, "close,%d", elem);
+            mfsend(&handle, content, sizeof(content), global_dst_GUID, 0);
+            // MsgD.close(elem, 0);
         }
     }
 
@@ -866,6 +874,7 @@ int main(int argc, char *argv[])
             /* other's GUID */
         case 8:
             dst_GUID = strtol(optarg, NULL, 10);
+            global_dst_GUID = dst_GUID;
             break;
 
         default:

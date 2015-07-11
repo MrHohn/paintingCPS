@@ -332,16 +332,6 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
         printf("ERROR: Init MsgDistributor first!\n");
         return -1;
     }
-    // check if the connection is closed
-    if (status_map[sock] == 0)
-    {
-        printf("sockid[%d]: connection is closed\n", sock);
-        // remove the sock id from status map
-        pthread_mutex_lock(&map_lock);
-        status_map.erase(sock);
-        pthread_mutex_unlock(&map_lock);
-        return -1;
-    }
     // check if the sock id is valid
     if (sem_map.find(sock) == sem_map.end())
     {
@@ -353,6 +343,18 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
     // wait for buffer filled
     if (debug) printf("now wait for new message\n");
     sem_wait(recv_sem);
+    if (debug) printf("sock:%d new message arrive\n", sock);
+    // check if the connection is closed
+    if (status_map[sock] == 0)
+    {
+        printf("sockid[%d]: connection is closed\n", sock);
+        // remove the sock id from status map
+        pthread_mutex_lock(&map_lock);
+        status_map.erase(sock);
+        delete(recv_sem);
+        pthread_mutex_unlock(&map_lock);
+        return -1;
+    }
     if (stop)
     {
         printf("recv stop\n");
@@ -398,9 +400,10 @@ int MsgDistributor::close(int sock, int passive)
     // change the status from 1 to 0, means closed
     status_map[sock] = 0;
     // signal the recv to end
+    if (debug) printf("now signal the recv to closed\n");
     sem_post(close_sem);
     // free the memory
-    delete(close_sem);
+    // delete(close_sem);
     delete(close_queue);
     sem_map.erase(sock);
     queue_map.erase(sock);

@@ -34,11 +34,11 @@ public:
     int close(int sock, int passive);
 
 private:
+    int src_GUID;
+    int dst_GUID;
     int debug = 0;
     int stop = 0;
     int BUFFER_SIZE = 1024;
-    int src_GUID;
-    int dst_GUID;
     int mfsockid;
     struct Handle handle;
     pthread_mutex_t send_lock;          // lock for send

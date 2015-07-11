@@ -102,7 +102,7 @@ void errorSocket(const char *msg, int sock)
     }
     else
     {
-        MsgD.close(sock, 1);
+        // MsgD.close(sock, 1);
     }
     printf("[server] Connection closed. --- error\n\n");
     pthread_exit(NULL); //terminate calling thread!
@@ -395,10 +395,13 @@ void server_transmit (int sock, string userID)
             bzero(buffer, BUFFER_SIZE);
             // get the file info from client
             n = MsgD.recv(sock, buffer, BUFFER_SIZE);
-            if (n < 0)
+            if (n <= 0)
             {
+                pthread_mutex_destroy(&queueLock);
+                // signal the result thread to terminate
+                sem_post(sem_match);
                 errorSocket("ERROR reading from socket", sock);
-            }
+            } 
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
             printf("\n[server] file name: %s\n", file_name);
@@ -421,10 +424,13 @@ void server_transmit (int sock, string userID)
             {
                 bzero(buffer, BUFFER_SIZE);
                 n = MsgD.recv(sock, buffer, BUFFER_SIZE);
-                if (n < 0)
+                if (n <= 0)
                 {
+                    pthread_mutex_destroy(&queueLock);
+                    // signal the result thread to terminate
+                    sem_post(sem_match);
                     errorSocket("ERROR reading from socket", sock);
-                }
+                } 
                 
                 if (file_size - received_size <= recv_length)
                 {
