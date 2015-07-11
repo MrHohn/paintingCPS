@@ -789,7 +789,10 @@ void signal_handler(int sig)
 
     usleep(1000 * 1000);
 
-    delete(&MsgD);
+    if (orbit)
+    {
+        delete(&MsgD);    
+    }
     printf("Done.\n");
 
     exit(0);

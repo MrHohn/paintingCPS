@@ -53,6 +53,11 @@ unordered_map<String, uint> user_map;
 // mutex lock for user_map operation
 pthread_mutex_t user_map_lock;
 
+struct arg_result {
+    int sock;
+    char file_name[100];
+};
+
 /******************************************************************************
 Description.: Display a help message
 Input Value.: -
@@ -108,6 +113,72 @@ void errorSocket(const char *msg, int sock)
     pthread_exit(NULL); //terminate calling thread!
 }
 
+
+/******************************************************************************
+Description.: this is the transmit child thread
+              it is responsible to send out one frame
+Input Value.:
+Return Value:
+******************************************************************************/
+void *result_child(void *arg)
+{
+    if (debug) printf("result child thread\n");
+
+    struct arg_result *args = (struct arg_result *)arg;
+    int sock = args->sock;
+    char *file_name = args->file_name;
+    int matchedIndex;
+    char defMsg[BUFFER_SIZE] = "none";
+    char sendInfo[BUFFER_SIZE];
+    vector<float> coord;
+
+    // start matching the image
+    imgM.matchImg(file_name);
+    matchedIndex = imgM.getMatchedImgIndex();
+    if (matchedIndex == 0) 
+    {   
+        // write none to client
+        if (!orbit) {
+            if (write(sock, defMsg, sizeof(defMsg)) < 0)
+            {
+               errorSocket("ERROR writting to socket", sock);
+            }
+
+        }
+        else
+        {
+            MsgD.send(sock, defMsg, BUFFER_SIZE);
+        }
+
+        if (debug) printf("not match\n");            
+    }
+    else
+    {
+        // write index to client
+        coord = imgM.calLocation();
+        sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+        if (debug) printf("sendInfo: %s\n", sendInfo);
+        if (!orbit)
+        {
+            if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
+            {
+                errorSocket("ERROR writting to socket", sock);
+            }
+        }
+        else
+        {
+            MsgD.send(sock, sendInfo, BUFFER_SIZE);
+        }
+        if (debug) printf("matched image index: %d\n", matchedIndex);
+
+    }
+
+    if (debug) printf("------------- end matching -------------\n");
+
+    return NULL;
+
+}
+
 /******************************************************************************
 Description: function for sending back the result
 Input Value.:
@@ -119,10 +190,6 @@ void server_result (int sock, string userID)
 
     int n;
     char response[BUFFER_SIZE] = "ok";
-    char defMsg[BUFFER_SIZE] = "none";
-    int matchedIndex;
-    char sendInfo[BUFFER_SIZE];
-    vector<float> coord;
     sem_t *sem_match = new sem_t(); // create a new semaphore in heap
     queue<string> *imgQueue = 0;    // queue storing the file names 
 
@@ -181,48 +248,21 @@ void server_result (int sock, string userID)
         if (debug) printf("file name: %s\n", file_name.c_str());
         imgQueue->pop();
 
-        // start matching the image
-        imgM.matchImg(file_name);
-        matchedIndex = imgM.getMatchedImgIndex();
-        if (matchedIndex == 0) 
-        {   
-            // write none to client
-            if (!orbit) {
-                if (write(sock, defMsg, sizeof(defMsg)) < 0)
-                {
-                   errorSocket("ERROR writting to socket", sock);
-                }
+        // create a new thread to do the image processing
 
-            }
-            else
-            {
-                MsgD.send(sock, defMsg, BUFFER_SIZE);
-            }
-
-            if (debug) printf("not match\n");            
-        }
-        else
+        pthread_t thread_id;
+        struct arg_result trans_info;
+        trans_info.sock = sock;
+        strcpy(trans_info.file_name, file_name.c_str());
+        /* create thread and pass socket and file name to send file */
+        if (pthread_create(&thread_id, 0, result_child, (void *)&(trans_info)) == -1)
         {
-            // write index to client
-            coord = imgM.calLocation();
-            sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
-            if (debug) printf("sendInfo: %s\n", sendInfo);
-            if (!orbit)
-            {
-                if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
-                {
-                    errorSocket("ERROR writting to socket", sock);
-                }
-            }
-            else
-            {
-                MsgD.send(sock, sendInfo, BUFFER_SIZE);
-            }
-            if (debug) printf("matched image index: %d\n", matchedIndex);
-
+            fprintf(stderr,"pthread_create error!\n");
+            break; //break while loop
         }
+        pthread_detach(thread_id);
 
-        if (debug) printf("------------- end matching -------------\n");
+        // end
     }
 
     if (!orbit)
@@ -296,7 +336,7 @@ void server_transmit (int sock, string userID)
             // store the file name and the block count
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
-            printf("\n[server] file name: %s\n", file_name);
+            if (debug) printf("\n[server] file name: %s\n", file_name);
             block_count_char = strtok(NULL, ",");
             block_count = strtol(block_count_char, NULL, 10);
             // printf("block count: %d\n", block_count);
@@ -343,7 +383,7 @@ void server_transmit (int sock, string userID)
                     break;
                 }
             }
-            printf("[server] Recieve Finished!\n\n");  
+            if (debug) printf("[server] Recieve Finished!\n\n");  
             // finished 
             fclose(fp);
 

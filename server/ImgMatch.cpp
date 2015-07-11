@@ -160,22 +160,22 @@ void ImgMatch::matchImg(string srcImgAdd){
             maxFreq = t.Freq;
     }
 
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    // printf("used time:%fus\n",timeuse);
+    printf("used time:%fms\n",timeuse / 1000);
+
     /*
     \if max matched times is smaller than 3, it fails to find a matched object
     */
     if (maxFreq < 3){
-        cout << "Do not find matched ojbect" << endl;
+        // cout << "Do not find matched ojbect" << endl;
         return;
     }
     for (auto &t : imgFreq){ 
         if (t.Freq == maxFreq)
             matchedImgIndex = t.ImgIndex;
     }
-
-    gettimeofday(&tpend,NULL);
-    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-    // printf("used time:%fus\n",timeuse);
-    printf("used time:%fms\n",timeuse / 1000);
 }
  
 void ImgMatch::set_minHessian(int m){
