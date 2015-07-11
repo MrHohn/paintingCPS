@@ -172,7 +172,7 @@ void server_result (int sock, string userID)
             // {
             //     MsgD.close(sock, 0);                
             // }
-            printf("[server] client disconnectted\n");
+            printf("[server] client disconnected --- result\n");
             pthread_exit(NULL); //terminate calling thread!
         }
 
