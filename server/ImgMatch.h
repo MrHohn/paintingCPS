@@ -3,7 +3,7 @@
     June 17.2015
  
 */
-    
+
 // #pragma onc
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
@@ -39,6 +39,7 @@ public:
     vector<float> matchedLocation;
     void clearLocation();
     void getMatchedImgInfo();
+    string getInfo();
     void locateDrawRect(vector<float> location);
     void locateDrawCirle(vector<float> location);
 private:
@@ -51,7 +52,7 @@ private:
     Mat srcImg;
     static Mat dbImg;
     static vector<KeyPoint> dbKeyPoints;
-    static vector<KeyPoint> keyPoints1;
+    vector<KeyPoint> keyPoints1;
     vector<KeyPoint> keyPoints2;
     // undefinded 
     static vector<int>index_IMG;

@@ -15,7 +15,6 @@ string ImgMatch::indexImgAdd; // index-img hash table address
 Mat ImgMatch::despDB; // descriptors of src and db img
 Mat ImgMatch::dbImg;
 Mat ImgMatch::featureCluster;
-vector<KeyPoint> ImgMatch::keyPoints1;
 vector<KeyPoint> ImgMatch::dbKeyPoints;
 string ImgMatch::featureClusterAdd;
 string ImgMatch::imgInfoAdd;
@@ -377,3 +376,24 @@ void ImgMatch::getMatchedImgInfo(){
     }
  
 }
+
+string ImgMatch::getInfo() {
+    string line;
+    string info;
+    int index = 1;
+    char file_name[100];
+    sprintf(file_name, "infoDB/%d.txt", index);
+
+    ifstream info_file(file_name);
+    if (info_file)
+    {
+        while (getline(info_file, line)) {
+            info = line;
+            // cout << line << endl;
+        }
+    }
+    info_file.close();
+
+    return info;
+}
+
