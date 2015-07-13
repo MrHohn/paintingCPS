@@ -3,11 +3,24 @@
     June 17.2015
  
 */
+
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
 #include <sys/time.h>
 #include "ImgMatch.h"
  
+string ImgMatch::add_DB;  //database address
+int ImgMatch::size_DB;    //database size, number of img
+string ImgMatch::indexImgAdd; // index-img hash table address
+Mat ImgMatch::despDB; // descriptors of src and db img
+Mat ImgMatch::dbImg;
+Mat ImgMatch::featureCluster;
+vector<KeyPoint> ImgMatch::keyPoints1;
+vector<KeyPoint> ImgMatch::dbKeyPoints;
+string ImgMatch::featureClusterAdd;
+string ImgMatch::imgInfoAdd;
+vector<int> ImgMatch::index_IMG;
+int ImgMatch::minHessian = 1000;
 ImgMatch::ImgMatch()
 {
     minHessian = 1000;
@@ -20,8 +33,12 @@ ImgMatch::~ImgMatch()
 //get all descriptor of images in database, save index_img to file;
 void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string featureClusterAdd){
     printf("\nStart calculating the descriptors\n");
-    this->set_dbSize(size_DB);
+    set_dbSize(size_DB);
+    SurfFeatureDetector extractor;
     SurfFeatureDetector detector(3000);
+    /*
+        \loop calculate descriptors of iamges in database
+    */
     for (int i = 1; i <= size_DB; i++){
         char  imgName[100]; 
          
@@ -30,14 +47,23 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
         string fileAdd = add_DB;
         fileName = fileAdd.append( string(imgName));
         dbImg = imread(fileName);
+
         if (!dbImg.data){
             cout << "Can NOT find img in database!" << endl;
             return;
         }
-        detector.detect(dbImg, keyPoints2);
-        extractor.compute(dbImg, keyPoints2, despDB);
+
+        detector.detect(dbImg, dbKeyPoints);
+        extractor.compute(dbImg, dbKeyPoints, despDB);
+    /*
+        \put all descripotrs into featureCLuster 
+    */
+
         featureCluster.push_back(despDB);
  
+    /*
+        \ descriptor index -> image index 
+    */
         for (int j = 0; j < despDB.rows; j++){
             index_IMG.push_back(i);
         }
@@ -82,7 +108,7 @@ void init_infoDB(string add_DB){
 }
  
 /*
-    \read all descriptors of database img, and index-img map hashtable
+    \read all descriptors of database img, and descripotr index-img index map hashtable
 */
 void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,string imgInfoAdd){
     ifstream inFile(indexImgAdd);
@@ -94,7 +120,7 @@ void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,strin
     FileStorage storage(featureClusterAdd, FileStorage::READ);
     storage["index"] >> featureCluster;
     storage.release();
-    this->imgInfoAdd = imgInfoAdd;
+    imgInfoAdd = imgInfoAdd;
     printf("Finished\n"); 
 }
  
@@ -109,7 +135,11 @@ void ImgMatch::matchImg(string srcImgAdd){
         matchedImgIndex = 0;
         return;
     }
+     /*
+        \calculate input image's descriptor
+    */
     SurfFeatureDetector detector(minHessian);
+    SurfDescriptorExtractor extractor;
     detector.detect(srcImg, keyPoints1);
     extractor.compute(srcImg, keyPoints1, despSRC);
     // const int despImgRows = index_IMG.size();
@@ -164,7 +194,7 @@ void ImgMatch::matchImg(string srcImgAdd){
     timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
     // printf("used time:%fus\n",timeuse);
     printf("used time:%fms\n",timeuse / 1000);
-
+    
     /*
     \if max matched times is smaller than 3, it fails to find a matched object
     */
@@ -176,6 +206,7 @@ void ImgMatch::matchImg(string srcImgAdd){
         if (t.Freq == maxFreq)
             matchedImgIndex = t.ImgIndex;
     }
+
 }
  
 void ImgMatch::set_minHessian(int m){
@@ -187,7 +218,7 @@ void ImgMatch::set_minHessian(int m){
  
 void ImgMatch::set_dbSize(int s){
     if (s > 0){
-        this->size_DB = s;
+        size_DB = s;
     }else
         cout << "error: Database Size should bigger than 0!" << endl;
 }
@@ -202,6 +233,7 @@ vector<float> ImgMatch::calLocation(){
     Mat matchImg = imread(filename);
  
     SurfFeatureDetector detector(minHessian);
+    SurfDescriptorExtractor extractor;
     detector.detect(matchImg, keyPoints2);
     extractor.compute(matchImg, keyPoints2, despDB);
     FlannBasedMatcher matcher;

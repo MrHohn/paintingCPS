@@ -52,6 +52,12 @@ int debug = 0;
 MsgDistributor MsgD;
 int drawResult = 0;
 string resultShown = "";
+string result_title = "";
+string result_artist = "";
+string result_date = "";
+// string result_title = "Title: George Washington";
+// string result_artist = "Artist: Charles Willson Peale";
+// string result_date = "Date: ca. 1779-81";
 float coord[8];
 
 struct arg_transmit {
@@ -217,16 +223,46 @@ void *result_thread(void *arg)
             }
             else
             {
-                drawResult = 0;
-                if (debug) printf("result: %s\n", buffer);
-                resultShown = strtok(buffer, ",");
-                resultShown = "matched index: " + resultShown;
-                for (int i = 0; i < 8; ++i) {
-                    resultTemp = strtok(NULL, ",");
-                    coord[i] = atof(resultTemp);
-                    if (debug) printf("%f\n", coord[i]);
+                // orbit mode remain the old version
+                if (orbit)
+                {
+                    drawResult = 0;
+                    if (debug) printf("result: %s\n", buffer);
+                    resultShown = strtok(buffer, ",");
+                    resultShown = "matched index: " + resultShown;
+                    for (int i = 0; i < 8; ++i) {
+                        resultTemp = strtok(NULL, ",");
+                        coord[i] = atof(resultTemp);
+                        if (debug) printf("%f\n", coord[i]);
+                    }
+                    drawResult = 1;
                 }
-                drawResult = 1;
+                // tcp version now display more info
+                else
+                {
+                    drawResult = 0;
+                    // if (debug) printf("result: %s\n", buffer);
+                    // result_title = strtok(buffer, ",");
+                    // result_title = "Title: " + result_title;
+                    // result_artist = strtok(buffer, ",");
+                    // result_artist = "Artist: " + result_artist;
+                    // result_date = strtok(buffer, ",");
+                    // result_date = "Date: " + result_date;
+                    // for (int i = 0; i < 8; ++i) {
+                    //     resultTemp = strtok(NULL, ",");
+                    //     coord[i] = atof(resultTemp);
+                    //     if (debug) printf("%f\n", coord[i]);
+                    // }
+                    if (debug) printf("result: %s\n", buffer);
+                    resultShown = strtok(buffer, ",");
+                    resultShown = "matched index: " + resultShown;
+                    for (int i = 0; i < 8; ++i) {
+                        resultTemp = strtok(NULL, ",");
+                        coord[i] = atof(resultTemp);
+                        if (debug) printf("%f\n", coord[i]);
+                    }
+                    drawResult = 1;
+                }
             }
         }
         else
@@ -415,13 +451,13 @@ void *transmit_child(void *arg)
 }
 
 /******************************************************************************
-Description.: this is the transmit thread
+Description.: this is the display thread
               it loops forever, grabs a fresh frame and stores it to file,
               also send it out to the server
 Input Value.:
 Return Value:
 ******************************************************************************/
-void *transmit_thread(void *arg)
+void *display_thread(void *arg)
 {
     int index = 1;
     int count = 0;
@@ -508,7 +544,7 @@ void *transmit_thread(void *arg)
         // capture >> frame;
         // writer << frame;
     
-        if (count >= 30 && !frame.empty()) {
+        if (count >= 25 && !frame.empty()) {
             count = 0;
 
 
@@ -536,6 +572,9 @@ void *transmit_thread(void *arg)
         
         if (drawResult)
         {
+            // putText(frame, result_title, Point(10, 30), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(100, 0, 0), 2);
+            // putText(frame, result_artist, Point(10, 60), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(100, 0, 0), 2);
+            // putText(frame, result_date, Point(10, 90), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(100, 0, 0), 2);
             putText(frame, resultShown, Point( frame.rows / 8,frame.cols / 8), CV_FONT_HERSHEY_COMPLEX, 1, Scalar(0, 0, 255), 4);
             line(frame, cvPoint(coord[0], coord[1]), cvPoint(coord[2], coord[3]), Scalar(0, 0, 255), 2);
             line(frame, cvPoint(coord[2], coord[3]), cvPoint(coord[4], coord[5]), Scalar(0, 0, 255), 2);
@@ -761,7 +800,7 @@ int client_run()
     pthread_detach(resultThread);
     if (!orbit)
     {
-        pthread_create(&transmitThread, 0, transmit_thread, NULL);
+        pthread_create(&transmitThread, 0, display_thread, NULL);
         pthread_detach(transmitThread);
     }
     // run in orbit mode

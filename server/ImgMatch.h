@@ -3,6 +3,7 @@
     June 17.2015
  
 */
+    
 // #pragma onc
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
@@ -26,12 +27,12 @@ class ImgMatch
 public:
     ImgMatch();
     ~ImgMatch();
-    void init_DB(int size_DB, string add_DB, string indexImgAdd, string featureClusterAdd); // minHessian, db add, db size
-    void init_infoDB( string add_DB);
+    static void init_DB(int size_DB, string add_DB, string indexImgAdd, string featureClusterAdd); // minHessian, db add, db size
+    static void init_infoDB( string add_DB);
     void matchImg(string srcImgAdd);
-    void init_matchImg(string indexImgAdd,string featureClusterAdd,string imgInfoAdd);
+    static void init_matchImg(string indexImgAdd,string featureClusterAdd,string imgInfoAdd);
     void set_minHessian(int minHessian);
-    void set_dbSize(int size_DB);
+    static void set_dbSize(int size_DB);
     void set_indexImgAdd(string indexImgAdd);
     int getMatchedImgIndex();
     vector<float> calLocation();
@@ -41,18 +42,22 @@ public:
     void locateDrawRect(vector<float> location);
     void locateDrawCirle(vector<float> location);
 private:
-    int minHessian;
-    string add_DB;  //database address
-    int size_DB;    //database size, number of img
-    string indexImgAdd; // index-img hash table address
-    Mat despSRC, despDB; // descriptors of src and db img
-    Mat dbImg,srcImg;
-    vector<KeyPoint> keyPoints1, keyPoints2;
-    vector<int>index_IMG;
-    SurfDescriptorExtractor extractor;
-    Mat featureCluster;
-    string featureClusterAdd;
-    string imgInfoAdd;
+    static int minHessian;
+    static string add_DB;  //database address
+    static int size_DB;    //database size, number of img
+    static string indexImgAdd; // index-img hash table address
+    Mat despSRC;
+    static Mat despDB; // descriptors of src and db img
+    Mat srcImg;
+    static Mat dbImg;
+    static vector<KeyPoint> dbKeyPoints;
+    static vector<KeyPoint> keyPoints1;
+    vector<KeyPoint> keyPoints2;
+    // undefinded 
+    static vector<int>index_IMG;
+    static Mat featureCluster;
+    static string featureClusterAdd; //file address saving feature descriptors of all images
+    static string imgInfoAdd;
     Mat indices, dists;
     struct ImgFreq{
         int ImgIndex;

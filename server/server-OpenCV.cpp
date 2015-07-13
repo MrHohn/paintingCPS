@@ -38,8 +38,6 @@ int global_stop = 0;
 int orbit = 0;
 int debug = 0;
 MsgDistributor MsgD;
-// class for image process
-ImgMatch imgM;
 // map for result thread to search the queue address
 unordered_map<string, queue<string>*> queue_map;
 // mutex lock for queue_map operation
@@ -131,6 +129,7 @@ void *result_child(void *arg)
     char defMsg[BUFFER_SIZE] = "none";
     char sendInfo[BUFFER_SIZE];
     vector<float> coord;
+    ImgMatch imgM;
 
     // start matching the image
     imgM.matchImg(file_name);
@@ -154,9 +153,16 @@ void *result_child(void *arg)
     }
     else
     {
-        // write index to client
+        // send result to client
         coord = imgM.calLocation();
-        sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+        if (orbit)
+        {
+            sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+        }
+        else
+        {
+            sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));            
+        }
         if (debug) printf("sendInfo: %s\n", sendInfo);
         if (!orbit)
         {
@@ -623,7 +629,7 @@ Return Value: -
 ******************************************************************************/
 void server_main()
 {
-    printf("\n[server] start supporting service");
+    printf("\n[server] start supporting service\n");
 
     if (!orbit)
     {
@@ -898,8 +904,8 @@ int main(int argc, char *argv[])
 
     }
 
-    // imgM.init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
-    imgM.init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
+    // ImgMatch::init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
+    ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
     server_run();
 
