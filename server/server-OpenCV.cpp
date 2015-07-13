@@ -447,7 +447,7 @@ void server_transmit (int sock, string userID)
             printf("\n[server] file name: %s\n", file_name);
             file_size_char = strtok(NULL, ",");
             file_size = strtol(file_size_char, NULL, 10);
-            printf("file size: %d\n", file_size);
+            printf("[server] file size: %d\n", file_size);
 
             // reponse to the client
             MsgD.send(sock, response, BUFFER_SIZE);

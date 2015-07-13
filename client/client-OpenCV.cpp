@@ -39,6 +39,7 @@ using namespace std;
 static pthread_t transmitThread;
 static pthread_t resultThread;
 static pthread_t orbitThread;
+static pthread_t mflistenThread;
 
 pthread_mutex_t sendLock;  // mutex lock to make sure transmit order
 unordered_set<int> id_set; // set to store the sock id used  
@@ -670,6 +671,7 @@ void *orbit_thread(void *arg)
     // MsgD.close(sockfd, 0);
     printf("[client] connection closed --- transmit\n");
     global_stop = 1;
+    pause();
     // exit(0);
 
     return NULL;
@@ -681,13 +683,14 @@ Description.: this is the mflisten thread
 Input Value.:
 Return Value:
 ******************************************************************************/
-void mflisten_thread()
+void *mflisten_thread(void *arg)
 {
     if (debug) printf("\nin listen thread\n");
     while (!global_stop) {
         MsgD.listen();
     }
 
+    return NULL;
 }
 
 /******************************************************************************
@@ -720,6 +723,12 @@ int client_stop()
         {
             printf("failed to cancel orbit thread\n");
         }
+        // cancel listen thread
+        n = pthread_cancel(mflistenThread);
+        if (n)
+        {
+            printf("failed to cancel listen thread\n");
+        }
         // send connection close request
         printf("[client] now send the disconnection request.\n");
         // printf("src GUID: %d, dst GUID: %d\n", MsgD.src_GUID, MsgD.dst_GUID);
@@ -733,6 +742,7 @@ int client_stop()
             mfsend(&handle, content, sizeof(content), global_dst_GUID, 0);
             // MsgD.close(elem, 0);
         }
+        mfclose(&handle);
     }
 
     return 0;
@@ -759,7 +769,9 @@ int client_run()
     {
         pthread_create(&orbitThread, 0, orbit_thread, NULL);
         pthread_detach(orbitThread);
-        mflisten_thread();
+        // mflisten_thread();
+        pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
+        pthread_detach(mflistenThread);
     }
 
 
@@ -789,10 +801,10 @@ void signal_handler(int sig)
 
     usleep(1000 * 1000);
 
-    if (orbit)
-    {
-        delete(&MsgD);    
-    }
+    // if (orbit)
+    // {
+    //     delete(&MsgD);    
+    // }
     printf("Done.\n");
 
     exit(0);
@@ -918,10 +930,7 @@ int main(int argc, char *argv[])
 
     client_run();
 
-    if (!orbit)
-    {
-        pause();
-    }
+    pause();
 
     return 0;
 }
