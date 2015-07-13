@@ -15,6 +15,7 @@ server/server-OpenCV
 
 # image files
 *.jpeg
+*.jpg
 
 # cmake files
 client/CMakeCache.txt
@@ -28,3 +29,4 @@ server/imgDB/*
 server/infoDB/*
 *.yml
 server/indexImgTable
+*.txt

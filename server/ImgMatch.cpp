@@ -41,7 +41,7 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     for (int i = 1; i <= size_DB; i++){
         char  imgName[100]; 
          
-        sprintf(imgName, "IMG_%d.jpg", i);
+        sprintf(imgName, "%d.jpg", i);
         string fileName;
         string fileAdd = add_DB;
         fileName = fileAdd.append( string(imgName));
@@ -228,7 +228,8 @@ int ImgMatch::getMatchedImgIndex(){
 
 vector<float> ImgMatch::calLocation(){
     char filename[100];
-    sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
+    // sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
+    sprintf(filename, "./MET_IMG/%d.jpg", matchedImgIndex);
     Mat matchImg = imread(filename);
  
     SurfFeatureDetector detector(minHessian);
@@ -380,9 +381,8 @@ void ImgMatch::getMatchedImgInfo(){
 string ImgMatch::getInfo() {
     string line;
     string info;
-    int index = 1;
     char file_name[100];
-    sprintf(file_name, "infoDB/%d.txt", index);
+    sprintf(file_name, "MET_INFO/%d.txt", matchedImgIndex);
 
     ifstream info_file(file_name);
     if (info_file)

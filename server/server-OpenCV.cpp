@@ -161,7 +161,8 @@ void *result_child(void *arg)
         }
         else
         {
-            sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));            
+            string info = imgM.getInfo();
+            sprintf(sendInfo, "%s,%f,%f,%f,%f,%f,%f,%f,%f", info.c_str(), coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
         }
         if (debug) printf("sendInfo: %s\n", sendInfo);
         if (!orbit)
@@ -904,7 +905,7 @@ int main(int argc, char *argv[])
 
     }
 
-    // ImgMatch::init_DB(100,"./imgDB/","./indexImgTable","ImgIndex.yml");
+    // ImgMatch::init_DB(10,"./MET_IMG/","./indexImgTable","ImgIndex.yml");
     ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
     server_run();
