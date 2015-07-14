@@ -298,9 +298,6 @@ void server_transmit (int sock, string userID)
     char *file_name;
     int write_length = 0;
     int length = 0;
-    char *block_count_char;
-    int block_count;
-    int count = 0;
     queue<string> *imgQueue = new queue<string>();    // queue storing the file names 
 
     // grap the lock
@@ -319,6 +316,10 @@ void server_transmit (int sock, string userID)
 
     if (!orbit)
     {
+        char *file_size_char;
+        int file_size;
+        int received_size = 0;
+
         // reponse to the client
         n = write(sock, response, sizeof(response));
         if (n < 0)
@@ -329,6 +330,7 @@ void server_transmit (int sock, string userID)
 
         while (!global_stop)
         {
+            received_size = 0;
             // receive the file info
             bzero(buffer,BUFFER_SIZE);
             n = read(sock,buffer, sizeof(buffer));
@@ -344,9 +346,9 @@ void server_transmit (int sock, string userID)
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
             if (debug) printf("\n[server] file name: %s\n", file_name);
-            block_count_char = strtok(NULL, ",");
-            block_count = strtol(block_count_char, NULL, 10);
-            // printf("block count: %d\n", block_count);
+            file_size_char = strtok(NULL, ",");
+            file_size = strtol(file_size_char, NULL, 10);
+            if (debug) printf("file size: %d\n", file_size);
 
             // reponse to the client
             n = write(sock, response, sizeof(response));
@@ -367,7 +369,6 @@ void server_transmit (int sock, string userID)
 
             // receive the data from server and store them into buffer
             bzero(buffer, sizeof(buffer));
-            count = 0;
             while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
             {
                 if (length < 0)  
@@ -377,16 +378,16 @@ void server_transmit (int sock, string userID)
                 }
           
                 write_length = fwrite(buffer, sizeof(char), length, fp);  
-                if (write_length < length)  
+                if (write_length < length)
                 {  
                     printf("File:\t Write Failed!\n");  
                     break;  
                 }  
                 bzero(buffer, BUFFER_SIZE);
-                ++count;
-                if (count >= block_count)
+                received_size += length;
+                if (received_size >= file_size)
                 {
-                    // printf("block count full\n");
+                    if (debug) printf("file size full\n");
                     break;
                 }
             }

@@ -296,8 +296,6 @@ void *transmit_child(void *arg)
 
         // stat of file, to get the size
         struct stat file_stat;
-        int block_count = 0;
-        char send_info[100];
 
         // get the status of file
         if (stat(file_name, &file_stat) == -1)
@@ -305,26 +303,19 @@ void *transmit_child(void *arg)
             perror("stat");
             exit(EXIT_FAILURE);
         }
-        if (file_stat.st_size % BUFFER_SIZE == 0)
-        {
-            block_count = file_stat.st_size / 1024;
-        }
-        else
-        {
-            block_count = file_stat.st_size / 1024 + 1;
-        }
-        if (debug) printf("block count: %d\n", block_count);
+        
+        if (debug) printf("file size: %ld\n", file_stat.st_size);
 
         // gain the lock, insure transmit order
         pthread_mutex_lock(&sendLock);
 
         // send the file info, combine with ','
         printf("[client] file name: %s\n", file_name);
-        sprintf(send_info, "%s,%d", file_name, block_count);
-
+        bzero(bufferSend, BUFFER_SIZE); 
+        sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
 
         // send and read through the tcp socket
-        n = write(sockfd, send_info, sizeof(send_info));
+        n = write(sockfd, bufferSend, sizeof(bufferSend));
         if (n < 0) 
             error("ERROR writing to socket");
 
@@ -533,7 +524,7 @@ void *display_thread(void *arg)
         // capture >> frame;
         // writer << frame;
     
-        if (count >= 25 && !frame.empty()) {
+        if (count >= 30 && !frame.empty()) {
             count = 0;
 
 
