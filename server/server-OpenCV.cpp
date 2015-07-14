@@ -252,7 +252,7 @@ void server_result (int sock, string userID)
 
         if (debug) printf("\n----------- start matching -------------\n");
         string file_name = imgQueue->front(); 
-        if (debug) printf("file name: %s\n", file_name.c_str());
+        if (debug) printf("file name: [%s]\n", file_name.c_str());
         imgQueue->pop();
 
         // create a new thread to do the image processing
@@ -345,7 +345,7 @@ void server_transmit (int sock, string userID)
             // store the file name and the block count
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
-            if (debug) printf("\n[server] file name: %s\n", file_name);
+            if (debug) printf("\n[server] file name: [%s]\n", file_name);
             file_size_char = strtok(NULL, ",");
             file_size = strtol(file_size_char, NULL, 10);
             if (debug) printf("file size: %d\n", file_size);
@@ -453,7 +453,7 @@ void server_transmit (int sock, string userID)
             } 
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
-            printf("\n[server] file name: %s\n", file_name);
+            printf("\n[server] file name: [%s]\n", file_name);
             file_size_char = strtok(NULL, ",");
             file_size = strtol(file_size_char, NULL, 10);
             printf("[server] file size: %d\n", file_size);
@@ -464,7 +464,7 @@ void server_transmit (int sock, string userID)
             FILE *fp = fopen(file_name, "w");  
             if (fp == NULL)  
             {  
-                printf("File:\t%s Can Not Open To Write!\n", file_name);  
+                printf("File:\t[%s] Can Not Open To Write!\n", file_name);  
             }  
 
 
@@ -907,7 +907,7 @@ int main(int argc, char *argv[])
 
     }
 
-    // ImgMatch::init_DB(10,"./MET_IMG/","./indexImgTable","ImgIndex.yml");
+    // ImgMatch::init_DB(20,"./MET_IMG/","./indexImgTable","ImgIndex.yml");
     ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
     server_run();
