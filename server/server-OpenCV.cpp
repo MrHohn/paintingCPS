@@ -411,6 +411,7 @@ void server_transmit (int sock, string userID)
             }
             // signal the result thread to do image processing
             sem_post(sem_match);
+            // pause();
         }
 
         close(sock);

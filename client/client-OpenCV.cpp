@@ -529,7 +529,7 @@ void *display_thread(void *arg)
 
 
             // set up the file name and encode the frame to jpeg
-            sprintf(file_name, "pics/%s-%d.jpeg", userID, index);
+            sprintf(file_name, "pics/%s-%d.jpg", userID, index);
             imwrite(file_name, frame, compression_params);
             ++index;
 
@@ -649,7 +649,7 @@ void *orbit_thread(void *arg)
             printf("[orbit mode] send an image\n");
 
             // set up the file name and encode the frame to jpeg
-            sprintf(file_name, "pics/default-orbit.jpeg");
+            sprintf(file_name, "pics/default-orbit.jpg");
             ++index;
 
 
