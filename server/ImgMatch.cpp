@@ -8,7 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <sys/time.h>
 #include "ImgMatch.h"
- 
+int deb = 0;
 string ImgMatch::add_DB;  //database address
 int ImgMatch::size_DB;    //database size, number of img
 string ImgMatch::indexImgAdd; // index-img hash table address
@@ -34,7 +34,7 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     printf("\nStart calculating the descriptors\n");
     set_dbSize(size_DB);
     SurfFeatureDetector extractor;
-    SurfFeatureDetector detector(3000);
+    SurfFeatureDetector detector(minHessian);
     /*
         \loop calculate descriptors of iamges in database
     */
@@ -134,19 +134,36 @@ void ImgMatch::matchImg(string srcImgAdd){
         matchedImgIndex = 0;
         return;
     }
+    // -- default matched index is 0, means no matching image is found
+     matchedImgIndex = 0;
+
      /*
         \calculate input image's descriptor
     */
+    if(deb)
+      printf("read source image success! start calculate descriptor of source image\n");
     SurfFeatureDetector detector(minHessian);
     SurfDescriptorExtractor extractor;
     detector.detect(srcImg, keyPoints1);
     extractor.compute(srcImg, keyPoints1, despSRC);
     // const int despImgRows = index_IMG.size();
- 
+    if(deb)
+      printf("start match source image\n");
+    if(deb){
+      printf("featureCluster size is%d",featureCluster.rows);
+      printf("source image descriptor size is %d",despSRC.rows);
+      
+    }
+    if(despSRC.empty()){
+      printf("source iamge is empty, quit");
+      return;    
+    }
+
     flann::Index flannIndex(featureCluster, flann::KDTreeIndexParams(), cvflann::FLANN_DIST_EUCLIDEAN);
     const int knn = 2;
     flannIndex.knnSearch(despSRC, indices, dists, knn, flann::SearchParams());
- 
+    if(deb)
+      printf("total number of found descriptors is %d\n",despSRC.rows);
     /*
         \find best match img
     */
@@ -183,7 +200,6 @@ void ImgMatch::matchImg(string srcImgAdd){
      
  
     int maxFreq = 1;
-    matchedImgIndex = 0;
     for (auto &t : imgFreq){
         if (t.Freq > maxFreq)
             maxFreq = t.Freq;
@@ -197,6 +213,9 @@ void ImgMatch::matchImg(string srcImgAdd){
     /*
     \if max matched times is smaller than 3, it fails to find a matched object
     */
+    if(deb){
+      printf("max matched time is%d\n",maxFreq);
+    }
     if (maxFreq < 3){
         // cout << "Do not find matched ojbect" << endl;
         return;
@@ -227,6 +246,10 @@ int ImgMatch::getMatchedImgIndex(){
 }
 
 vector<float> ImgMatch::calLocation(){
+  
+  if( matchedImgIndex == 0)
+    return matchedLocation;
+
     char filename[100];
     // sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
     sprintf(filename, "./MET_IMG/%d.jpg", matchedImgIndex);
@@ -236,8 +259,10 @@ vector<float> ImgMatch::calLocation(){
     SurfDescriptorExtractor extractor;
     detector.detect(matchImg, keyPoints2);
     extractor.compute(matchImg, keyPoints2, despDB);
+
     FlannBasedMatcher matcher;
     vector<DMatch>matches;
+    // -- Rematch matched image in database with source image to check their matched descriptor
     matcher.match(despDB, despSRC, matches);
  
  
@@ -264,6 +289,8 @@ vector<float> ImgMatch::calLocation(){
     /*
         \test size of good_matches, if it is smaller than 4, then it fails to draw an outline of a mathed object
     */
+    if(deb)
+      printf("number of good match is%zu\n",good_matches.size());
     if (good_matches.size() < 4){
         // cout << "not find matched object" << endl;
         return matchedLocation;
@@ -338,6 +365,8 @@ void ImgMatch::locateDrawRect(vector<float> matchedLocation){
     /*
     \when matchedImgIndex equals to 0, it fails to find a object
     */
+    if (deb)
+        printf("size of Locating Information%zu",matchedLocation.size());
     if (matchedImgIndex == 0){
         return;
     }
