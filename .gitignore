@@ -5,6 +5,9 @@
 client/client-OpenCV
 server/server-OpenCV
 
+# Compiled Java CLass
+*.class
+
 # Compiled Dynamic libraries
 *.so
 
