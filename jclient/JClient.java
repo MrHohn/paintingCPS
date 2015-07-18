@@ -12,24 +12,27 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.Semaphore;
+import java.util.HashSet;
 
 public class JClient {
     private
         boolean debug = true;
         boolean globalStop = false;
-        Lock lock;
-        Semaphore sem;
+        Lock sendLock;
         MsgDistributor msgD;
+        // HashSet<Integer> idSet;
 
     public JClient () {
-        lock = new ReentrantLock();
-        sem = new Semaphore(0);
+        sendLock = new ReentrantLock();
         msgD = new MsgDistributor();
+        // idSet = new HashSet<Integer>();
     }
 
     private static void usage(){
         System.out.println("Usage:");
         System.out.println("JCLient <dst_GUID> <src_GUID>");
+        System.out.println("compile: javac *.java -cp jmfapi-1.0-SNAPSHOT.jar");
+        System.out.println("run: java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102");
     }
  
     class ResultThread implements Runnable {
@@ -50,6 +53,8 @@ public class JClient {
 
         public void run() {
             System.out.println("send one image");
+            sendLock.lock();
+            sendLock.unlock();
         }
     }
 
@@ -64,7 +69,7 @@ public class JClient {
 
                 // send one image per second
                 try {
-                        Thread.sleep(1000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -108,6 +113,26 @@ public class JClient {
             return;
         }
         JClient newTest = new JClient();
-        newTest.startClient();
+        // newTest.startClient();
+
+        // byte[] buf = new byte[1024];
+        // for (int i = 0; i < 4; ++i) {
+        //     buf[i] = (byte)0x21;
+        // }
+        // // buf[4] = (byte)0x00;
+        // String bufString = new String(buf);
+        // bufString = bufString.trim();
+        // System.out.println(bufString);
+        // if (bufString.equals("!!!!")) {
+        //     System.out.println("equals");
+        // }
+
+        // String command = "accept,1,hello";
+        // String delims = "[,]";
+        // String[] tokens = command.split(delims);
+        // for (String ele : tokens) {
+        //     System.out.println(ele);
+        // }
+        // System.out.println(command);
     }
 }
