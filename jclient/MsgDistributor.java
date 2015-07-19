@@ -96,6 +96,10 @@ public class MsgDistributor {
 			}
 			else if (tokens[0].equals("sock")) {
 				int sockID = Integer.parseInt(tokens[1]);
+		        if (!semMap.containsKey(sockID)) {
+    	            System.out.printf("ERROR: Socket ID not exist\n");
+		        	return -1;
+		        }
 				int idLen = 1, divisor = 10;
 				while (sockID / divisor != 0)
 		        {
@@ -104,6 +108,13 @@ public class MsgDistributor {
 		        }
 
 		        int contentLen = BUFFER_SIZE - idLen - 6;
+
+		        String content = "";
+
+		        Queue<String> idQueue = queueMap.get(sockID);
+		        idQueue.offer(content);
+		        Semaphore idSem = semMap.get(sockID);
+		        idSem.release();
 			}
 			else if (tokens[0].equals("close")) {
 				int sockID = Integer.parseInt(tokens[1]);
@@ -111,7 +122,8 @@ public class MsgDistributor {
 				this.close(sockID, 1);
 			}
 			else {
-
+		        System.out.printf("unable to classify this message, discard\n");
+		        return -1;
 			}
 		}
 		catch (JMFException e) {
