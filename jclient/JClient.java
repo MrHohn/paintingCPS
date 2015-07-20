@@ -134,5 +134,18 @@ public class JClient {
         //     System.out.println(ele);
         // }
         // System.out.println(command);
+
+        byte[] command = {'a', 'b', 'c', 'd'};
+        for (byte c : command) {
+            // System.out.printf("%s\n", c);
+            System.out.printf("%x\n", c);
+        }
+
+        String commandString = new String(command);
+        commandString = commandString.trim();
+        System.out.println(commandString);
+        if (commandString.equals("abcd")) {
+            System.out.println("equals");
+        }
     }
 }

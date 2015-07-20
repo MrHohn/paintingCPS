@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.Semaphore;
 import java.util.Queue;
 import java.util.HashMap; 
+import java.util.LinkedList;
 import edu.rutgers.winlab.jmfapi.*;
 
 public class MsgDistributor {
@@ -28,7 +29,7 @@ public class MsgDistributor {
 		Semaphore acceptSem;
 		Queue<Integer> connectQueue;
 		HashMap<Integer, Semaphore> semMap;
-		HashMap<Integer, Queue<String>> queueMap;
+		HashMap<Integer, Queue<byte[]>> queueMap;
 		HashMap<Integer, Integer> statusMap;
 		GUID srcGUID;
 		GUID dstGUID;
@@ -54,6 +55,10 @@ public class MsgDistributor {
     	mapLock = new ReentrantLock();
     	connectSem = new Semaphore(0);
     	acceptSem = new Semaphore(0);
+    	connectQueue = new LinkedList<Integer>();
+    	semMap = new HashMap<Integer, Semaphore>();
+    	queueMap = new HashMap<Integer, Queue<byte[]>>();
+    	statusMap = new HashMap<Integer, Integer>();
 
     	// init the mfapi
     	System.out.println("Start to initialize the mf.");
@@ -72,6 +77,11 @@ public class MsgDistributor {
     }
 
     public int listen() {
+    	if (mfsockid == -1) {
+    		System.out.println("ERROR: Init MsgDistributor first!");
+    		return -1;
+    	}
+
     	byte[] buf = new byte[BUFFER_SIZE];
 		int ret;
 
@@ -109,9 +119,9 @@ public class MsgDistributor {
 
 		        int contentLen = BUFFER_SIZE - idLen - 6;
 
-		        String content = "";
+		        byte[] content = {0x00};
 
-		        Queue<String> idQueue = queueMap.get(sockID);
+		        Queue<byte[]> idQueue = queueMap.get(sockID);
 		        idQueue.offer(content);
 		        Semaphore idSem = semMap.get(sockID);
 		        idSem.release();
@@ -134,12 +144,35 @@ public class MsgDistributor {
     }
 
     public int connect() {
+    	if (mfsockid == -1) {
+    		System.out.println("ERROR: Init MsgDistributor first!");
+    		return -1;
+    	}
+
     	return 0;
     }
 
     public int accept() {
+    	if (mfsockid == -1) {
+    		System.out.println("ERROR: Init MsgDistributor first!");
+    		return -1;
+    	}
+
     	try {
 	    	acceptSem.acquire();
+	    	if (debug) System.out.println("new connection needed to accept");
+	    	idLock.lock();
+    	    // got a new connection, need to accpet, create a new id for it
+    	    ++mfsockid;
+		    while (semMap.containsKey(mfsockid))
+		    {
+		        ++mfsockid;
+		    }
+	    	if (debug) System.out.println("create new id: " + mfsockid);
+	    	int ret = 0;
+	    	byte[] header = new byte[BUFFER_SIZE];
+
+	    	idLock.unlock();
     	} catch (InterruptedException e) {
 			e.printStackTrace();
         }
@@ -148,6 +181,11 @@ public class MsgDistributor {
     }
 
 	public int close(int sockID, int passive) {
+    	if (mfsockid == -1) {
+    		System.out.println("ERROR: Init MsgDistributor first!");
+    		return -1;
+    	}
+    	
     	return 0;
     }
 }
