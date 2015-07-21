@@ -135,17 +135,30 @@ public class JClient {
         // }
         // System.out.println(command);
 
-        byte[] command = {'a', 'b', 'c', 'd'};
-        for (byte c : command) {
-            // System.out.printf("%s\n", c);
-            System.out.printf("%x\n", c);
-        }
+        // byte[] command = {'a', 'b', 'c', 'd'};
+        // int id = 10;
+        // for (byte c : command) {
+        //     // System.out.printf("%s\n", c);
+        //     System.out.printf("%x\n", c);
+        // }
 
-        String commandString = new String(command);
-        commandString = commandString.trim();
-        System.out.println(commandString);
-        if (commandString.equals("abcd")) {
-            System.out.println("equals");
+        // String commandString = new String(command);
+        // commandString = commandString.trim();
+        // System.out.println(commandString);
+        // if (commandString.equals("abcd")) {
+        //     System.out.println("equals");
+        // }
+
+        int newID = 10;
+        String headerString = String.format("accepted,%d", newID);
+        System.out.println(headerString);
+        try {
+            byte[] header = headerString.getBytes("UTF-8");
+            for (byte c : header) {
+                System.out.printf("%x\n", c);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

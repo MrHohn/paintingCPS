@@ -168,12 +168,23 @@ public class MsgDistributor {
 		    {
 		        ++mfsockid;
 		    }
-	    	if (debug) System.out.println("create new id: " + mfsockid);
-	    	int ret = 0;
-	    	byte[] header = new byte[BUFFER_SIZE];
-
+		    int newID = mfsockid;
 	    	idLock.unlock();
-    	} catch (InterruptedException e) {
+	    	if (debug) System.out.println("create new id: " + newID);
+	    	int ret = 0;
+	    	String headerString = String.format("accepted,%d", newID);
+	    	byte[] header = headerString.getBytes("UTF-8");
+	    	sendLock.lock();
+	    	ret = handler.jmfsend(header, BUFFER_SIZE, dstGUID);
+	    	if(ret < 0)
+		    {
+		        System.out.printf ("mfsendmsg error\n");
+		        sendLock.unlock();
+		        return -1;
+		    }
+	    	sendLock.unlock();
+
+    	} catch (Exception e) {
 			e.printStackTrace();
         }
 
