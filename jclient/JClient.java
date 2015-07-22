@@ -16,16 +16,23 @@ import java.util.HashSet;
 
 public class JClient {
     private
-        boolean debug = true;
+        boolean debug;
         boolean globalStop = false;
         Lock sendLock;
         MsgDistributor msgD;
+        int srcGUID;
+        int dstGUID;
+        int BUFFER_SIZE = 1024;
+        String userID = "java";
         // HashSet<Integer> idSet;
 
-    public JClient () {
+    public JClient (int src, int dst, boolean mode) {
         sendLock = new ReentrantLock();
         msgD = new MsgDistributor();
         // idSet = new HashSet<Integer>();
+        srcGUID = src;
+        dstGUID = dst;
+        debug = mode;
     }
 
     private static void usage(){
@@ -38,23 +45,66 @@ public class JClient {
     class ResultThread implements Runnable {
         public void run() {
             if (debug) System.out.println("result thread begin!");
-            System.out.println("now wait for new result from server");
-        }
-    }
+            int sockID, ret = 0;
+            byte[] buf = new byte[BUFFER_SIZE];
+            String response;
 
-    class TransmitChild implements Runnable {
-        private int sock;
-        private String fileName;
+            String header = "result,";
+            header += userID;
+            try {
+                byte[] temp = header.getBytes("UTF-8");            
+                for (int i = 0; i < temp.length; ++i) {
+                    buf[i] = temp[i];
+                }
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
 
-        public TransmitChild (int sock, String fileName) {
-            this.sock = sock;
-            this.fileName = fileName;
-        }
+            // try to connect the server
+            sockID = msgD.connect();
+            if (debug) System.out.printf("[jclient] result thread get connection to server\n");
+            if (debug) System.out.printf("[jclient] start receiving the result\n");
+            // send the header first
+            ret = msgD.send(sockID, buf, BUFFER_SIZE);
+            if (ret < 0) {
+                System.out.println("mfsend error");
+                System.exit(1);
+            }
 
-        public void run() {
-            System.out.println("send one image");
-            sendLock.lock();
-            sendLock.unlock();
+            // get the response
+            buf = new byte[BUFFER_SIZE];
+            ret = msgD.recv(sockID, buf, BUFFER_SIZE);
+            if (ret < 0) {
+                System.out.println("mfrecv error");
+                System.exit(1);
+            }
+            response = new String(buf);
+            response = response.trim();
+            if (response.equals("failed")) {
+                System.out.println("log in failed");
+                System.exit(1);
+            }
+
+            while (!globalStop) {
+                buf = new byte[BUFFER_SIZE];
+                if (debug) System.out.println("still waiting here for a new result");
+                ret = msgD.recv(sockID, buf, BUFFER_SIZE);
+                if (ret < 0) {
+                    System.out.println("mfrecv error");
+                    System.exit(1);
+                }
+                else {
+                    response = new String(buf);
+                    response = response.trim();
+                    if (response.equals("none")) {
+                        // do nothing
+                    }
+                    else {
+                        System.out.println("received result: " + response);
+                    }
+                }
+            }
         }
     }
 
@@ -63,9 +113,10 @@ public class JClient {
             System.out.println("transmit thread begin!");
 
             while (!globalStop) {
-
-                if (debug) System.out.println("create a transmit child thread");
-                (new Thread(new TransmitChild(1, "./pics/default-1.jpg"))).start();
+                String fileName = "./pics/orbit-sample.jpg";
+                if (debug) System.out.println("send one image");
+                sendLock.lock();
+                sendLock.unlock();
 
                 // send one image per second
                 try {
@@ -83,7 +134,7 @@ public class JClient {
             System.out.println("mf listen thread begin!");
 
             while (!globalStop) {
-                if (debug) System.out.println("now listen on GUID: ?");
+                if (debug) System.out.println("now listen on GUID: " + srcGUID);
                 msgD.listen();
             }
         }
@@ -94,7 +145,8 @@ public class JClient {
         System.out.println(Thread.currentThread().getName() + "thread begin!");
 
         // initialize the Message Distributor
-        msgD.init(101, 102, true);
+        msgD.init(srcGUID, dstGUID, debug);
+
         ExecutorService pool = Executors.newCachedThreadPool();
         TransmitThread transmitT = new TransmitThread();
         ResultThread resultT = new ResultThread();
@@ -112,8 +164,24 @@ public class JClient {
             usage();
             return;
         }
-        JClient newTest = new JClient();
+        int src =  Integer.parseInt(args[0]);
+        int dst =  Integer.parseInt(args[1]);
+        // System.out.println("srcGUID: " + src);
+        // System.out.println("dstGUID: " + dst);
+        boolean debug = false;
+        // check if need to run in debug mode
+        if (args.length > 2) {
+            if (args[2].equals("d")) {
+                debug = true;
+            }
+        }
+
+        JClient newTest = new JClient(src, dst, debug);
         // newTest.startClient();
+
+
+
+//-----------below is for test------------
 
         // byte[] buf = new byte[1024];
         // for (int i = 0; i < 4; ++i) {
@@ -149,16 +217,20 @@ public class JClient {
         //     System.out.println("equals");
         // }
 
-        int newID = 10;
-        String headerString = String.format("accepted,%d", newID);
-        System.out.println(headerString);
-        try {
-            byte[] header = headerString.getBytes("UTF-8");
-            for (byte c : header) {
-                System.out.printf("%x\n", c);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // int newID = 10;
+        // String headerString = String.format("accepted,%d", newID);
+        // System.out.println(headerString);
+        // try {
+        //     byte[] header = headerString.getBytes("UTF-8");
+        //     byte[] real = new byte[20];
+        //     for (int i = 0; i < header.length; ++i) {
+        //         real[i] = header[i];
+        //     }
+        //     for (byte c : real) {
+        //         System.out.printf("%x\n", c);
+        //     }
+        // } catch (Exception e) {
+        //     e.printStackTrace();
+        // }
     }
 }
