@@ -72,6 +72,7 @@ public class MsgDistributor {
 		catch (JMFException e) {
 			mfsockid = -1;
 			System.out.println(e.toString());
+			return -1;
 		}
 
     	return 0;
@@ -117,10 +118,13 @@ public class MsgDistributor {
 		            divisor *= 10;
 		            ++idLen;
 		        }
+		        int contentStart = idLen + 6;
 
-		        int contentLen = BUFFER_SIZE - idLen - 6;
-
-		        byte[] content = {0x00};
+		        // copy the message content
+		        byte[] content = new byte[BUFFER_SIZE];
+		        for (int i = contentStart; i < BUFFER_SIZE; ++i) {
+		        	content[i - contentStart] = buf[i];
+		        }
 
 		        Queue<byte[]> idQueue = queueMap.get(sockID);
 		        idQueue.offer(content);
@@ -139,6 +143,7 @@ public class MsgDistributor {
 		}
 		catch (JMFException e) {
 			System.out.println(e.toString());
+			return -1;
 		}
     	
     	return 0;
@@ -191,6 +196,7 @@ public class MsgDistributor {
     	}
     	catch (Exception e) {
 			e.printStackTrace();
+			return -1;
         }
 
     	return 0;
@@ -245,30 +251,98 @@ public class MsgDistributor {
     	} 
     	catch (Exception e) {
 			e.printStackTrace();
+			return -1;
         }
 
     	return 0;
     }
 
-	public int send(int sockID, char[] buf, int size) {
+	public int send(int sockID, byte[] buf, int size) {
     	if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
     		return -1;
     	}
+    	if (!semMap.containsKey(sockID)) {
+    		System.out.println("ERROR: Socket ID not exist");
+    		return -1;
+    	}
 
+    	try {
+			int ret = 0;
+	    	int idLen = 1, divisor = 10;
+	    	while (sockID / divisor != 0) {
+	    		divisor *= 10;
+	    		++idLen;
+	    	}
+	    	int contentLen = BUFFER_SIZE - idLen - 6;
+	    	String headerString = String.format("sock,%d,", sockID);
+	    	byte[] header = headerString.getBytes("UTF-8");
+	    	byte[] content = new byte[BUFFER_SIZE];
+	    	// copy the header
+	    	for (int i = 0; i < header.length; ++i) {
+	    		content[i] = header[i];
+	    	}
+	    	// copy the content
+	    	for (int i = 0; i < contentLen; ++i) {
+	    		content[i + 6 + idLen] = buf[i];
+	    	}
+	    	sendLock.lock();
+	    	if (debug) System.out.printf("now send message in socket: %d\n", sockID);
+		    ret = handler.jmfsend(content, BUFFER_SIZE, dstGUID);
+		    if(ret < 0)
+		    {
+		        System.out.printf ("mfsendmsg error\n");
+			    sendLock.unlock();
+		        return -1;
+		    }
+		    if (debug) System.out.printf("finish\n");
+		    sendLock.unlock();
+    	}
+    	catch (Exception e) {
+    		e.printStackTrace();
+    		return -1;
+    	}
 
-    	
     	return 0;
     }
 
-	public int recv(int sockID, char[] buf, int size) {
+	public int recv(int sockID, byte[] buf, int size) {
     	if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
     		return -1;
     	}
+	    // check if the sock id is valid
+    	if (!semMap.containsKey(sockID)) {
+    		System.out.println("ERROR: Socket ID not exist");
+    		return -1;
+    	}
 
+    	try {
+		    // wait for buffer filled
+	    	Semaphore recvSem = semMap.get(sockID);
+	    	if (debug) System.out.printf("now wait for new message: %d\n", sockID);
+    		recvSem.acquire();
+		    // check if the connection is closed
+	    	if (statusMap.get(sockID) == 0) {
+		    	if (debug) System.out.printf("sockid[%d]: connection is closed\n", sockID);
+		    	// remove the sock id from status map
+		    	mapLock.lock();
+		    	statusMap.remove(sockID);
+		    	mapLock.unlock();
+	    		return -1;
+	    	}
 
-    	
+	    	if (debug) System.out.printf("new message arrived: %d\n", sockID);
+	    	Queue<byte[]> recvQueue = queueMap.get(sockID);
+	    	byte[] recvByte = recvQueue.poll();
+	    	for (int i = 0; i < recvByte.length; ++i) {
+	    		buf[i] = recvByte[i];
+	    	}
+    	}
+    	catch (Exception e) {
+    		e.printStackTrace();
+    	}
+
     	return 0;
     }
 
@@ -318,6 +392,7 @@ public class MsgDistributor {
     		}
     		catch (Exception e) {
 				e.printStackTrace();
+				return -1;
         	}
     	}
 
