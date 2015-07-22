@@ -649,7 +649,7 @@ void *orbit_thread(void *arg)
             printf("[orbit mode] send an image\n");
 
             // set up the file name and encode the frame to jpeg
-            sprintf(file_name, "pics/default-orbit.jpg");
+            sprintf(file_name, "pics/orbit-sample.jpg");
             ++index;
 
 
