@@ -67,11 +67,12 @@ public class MsgDistributor {
 		handler = new JMFAPI();
 		try {
 			handler.jmfopen(scheme, this.srcGUID);		
+    		System.out.println("Finished.");
 		}
 		catch (JMFException e) {
+			mfsockid = -1;
 			System.out.println(e.toString());
 		}
-    	System.out.println("Finished.");
 
     	return 0;
     }
@@ -143,15 +144,59 @@ public class MsgDistributor {
     	return 0;
     }
 
+    // init a new mf socket and return the new created mf socket id, intiative side
     public int connect() {
     	if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
     		return -1;
     	}
+    	try {    		
+	    	int ret = 0;
+	    	String headerString = String.format("create");
+	    	byte[] header = headerString.getBytes("UTF-8");
+	    	byte[] headerSend = new byte[BUFFER_SIZE];
+	    	for (int i = 0; i < header.length; ++i) {
+	    		headerSend[i] = header[i];
+	    	}
+	    	// send the connect request
+	    	sendLock.lock();
+	    	ret = handler.jmfsend(headerSend, BUFFER_SIZE, dstGUID);
+	    	if(ret < 0)
+		    {
+		        System.out.printf ("mfsendmsg error\n");
+		        sendLock.unlock();
+		        return -1;
+		    }
+	    	sendLock.unlock();
+
+	    	// wait for the response
+	    	if (debug) System.out.println("wait for the connect response");
+	    	idLock.lock();
+	    	connectSem.acquire();
+
+	    	if (debug) System.out.println("got response");
+	    	int newID = connectQueue.poll();
+	    	if (debug) System.out.println("accepted id: " + newID);
+
+	    	// create new queue and semaphore for the new conncection
+	    	Semaphore newConnectSem = new Semaphore(0);
+	    	Queue<byte[]> newConnectQueue = new LinkedList<byte[]>();
+	    	mapLock.lock();
+	    	semMap.put(newID, newConnectSem);
+	    	queueMap.put(newID, newConnectQueue);
+	    	statusMap.put(newID, 1);
+	    	if (debug) System.out.println("create and put addrs of queue, semaphore and status into maps");
+	    	mapLock.unlock();
+	    	idLock.unlock();
+    	}
+    	catch (Exception e) {
+			e.printStackTrace();
+        }
 
     	return 0;
     }
 
+    // accept a new connection, return the socket id
     public int accept() {
     	if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
@@ -174,8 +219,12 @@ public class MsgDistributor {
 	    	int ret = 0;
 	    	String headerString = String.format("accepted,%d", newID);
 	    	byte[] header = headerString.getBytes("UTF-8");
+	    	byte[] headerSend = new byte[BUFFER_SIZE];
+	    	for (int i = 0; i < header.length; ++i) {
+	    		headerSend[i] = header[i];
+	    	}
 	    	sendLock.lock();
-	    	ret = handler.jmfsend(header, BUFFER_SIZE, dstGUID);
+	    	ret = handler.jmfsend(headerSend, BUFFER_SIZE, dstGUID);
 	    	if(ret < 0)
 		    {
 		        System.out.printf ("mfsendmsg error\n");
@@ -184,19 +233,94 @@ public class MsgDistributor {
 		    }
 	    	sendLock.unlock();
 
-    	} catch (Exception e) {
+	    	// create new queue and semaphore for the new conncection
+	    	Semaphore newConnectSem = new Semaphore(0);
+	    	Queue<byte[]> newConnectQueue = new LinkedList<byte[]>();
+	    	mapLock.lock();
+	    	semMap.put(newID, newConnectSem);
+	    	queueMap.put(newID, newConnectQueue);
+	    	statusMap.put(newID, 1);
+	    	if (debug) System.out.println("create and put addrs of queue, semaphore and status into maps");
+	    	mapLock.unlock();
+    	} 
+    	catch (Exception e) {
 			e.printStackTrace();
         }
 
     	return 0;
     }
 
-	public int close(int sockID, int passive) {
+	public int send(int sockID, char[] buf, int size) {
     	if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
     		return -1;
     	}
+
+
     	
+    	return 0;
+    }
+
+	public int recv(int sockID, char[] buf, int size) {
+    	if (mfsockid == -1) {
+    		System.out.println("ERROR: Init MsgDistributor first!");
+    		return -1;
+    	}
+
+
+    	
+    	return 0;
+    }
+
+	public int close(int sockID, int mode) {
+    	if (mfsockid == -1) {
+    		System.out.println("ERROR: Init MsgDistributor first!");
+    		return -1;
+    	}
+    	if (!semMap.containsKey(sockID)) {
+    		System.out.println("ERROR: Socket ID not exist");
+    		return -1;
+    	}
+
+    	if (debug) System.out.println("now close the socket: " + sockID);
+    	Semaphore closeSem = semMap.get(sockID);
+    	// Queue<char[]> closeQueue = queueMap.get(sockID);
+    	mapLock.lock();
+    	// change the status from 1 to 0, means closed
+    	statusMap.put(sockID, 0);
+    	// signal the recv to end
+    	closeSem.release();
+    	semMap.remove(sockID);
+    	queueMap.remove(sockID);
+    	mapLock.unlock();
+
+    	if (mode == 0) {
+    		// if not in passive mode, then notify the peer to close the connection
+    		try {
+	    		int ret = 0;
+	    		String headerString = String.format("close,%d", sockID);
+		    	byte[] header = headerString.getBytes("UTF-8");
+		    	byte[] headerSend = new byte[BUFFER_SIZE];
+		    	for (int i = 0; i < header.length; ++i) {
+		    		headerSend[i] = header[i];
+		    	}
+		    	sendLock.lock();
+		    	if (debug) System.out.println("send close command");
+		    	ret = handler.jmfsend(headerSend, BUFFER_SIZE, dstGUID);
+		    	if(ret < 0)
+			    {
+			        System.out.printf ("mfsendmsg error\n");
+			        sendLock.unlock();
+			        return -1;
+			    }
+		    	if (debug) System.out.println("after send close command");
+		    	sendLock.unlock();
+    		}
+    		catch (Exception e) {
+				e.printStackTrace();
+        	}
+    	}
+
     	return 0;
     }
 }
