@@ -258,7 +258,7 @@ public class JClient {
             public void run() {
                 try {
                     globalStop = true;
-                    System.out.println("Set up the stop signal to all threads.");
+                    System.out.println("\nSet up the stop signal to all threads.");
                     Thread.sleep(1000);
                     System.out.println("Now send the close command to server and close the mf handler");
                     msgD.end();

@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.Semaphore;
 import java.util.Queue;
 import java.util.HashMap; 
+import java.util.HashSet; 
 import java.util.LinkedList;
 import edu.rutgers.winlab.jmfapi.*;
 
@@ -399,6 +400,10 @@ public class MsgDistributor {
 
     public void end() {
     	try {
+    		HashSet<Integer> sockSet = new HashSet<Integer>();
+    		for (Integer i : statusMap.keySet()) {
+    			sockSet.add(i);
+    		}
     		for (Integer i : statusMap.keySet()) {
     			// close all remain sock ids
     			System.out.println("Now close the sock id: " + i);
