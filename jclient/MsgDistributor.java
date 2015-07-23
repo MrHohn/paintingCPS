@@ -190,16 +190,15 @@ public class MsgDistributor {
 	    	semMap.put(newID, newConnectSem);
 	    	queueMap.put(newID, newConnectQueue);
 	    	statusMap.put(newID, 1);
-	    	if (debug) System.out.println("create and put addrs of queue, semaphore and status into maps");
+	    	if (debug) System.out.println("create and put references of queue, semaphore and status into maps");
 	    	mapLock.unlock();
 	    	idLock.unlock();
+	    	return newID;
     	}
     	catch (Exception e) {
 			e.printStackTrace();
 			return -1;
         }
-
-    	return 0;
     }
 
     // accept a new connection, return the socket id
@@ -248,13 +247,12 @@ public class MsgDistributor {
 	    	statusMap.put(newID, 1);
 	    	if (debug) System.out.println("create and put addrs of queue, semaphore and status into maps");
 	    	mapLock.unlock();
+	    	return newID;
     	} 
     	catch (Exception e) {
 			e.printStackTrace();
 			return -1;
         }
-
-    	return 0;
     }
 
 	public int send(int sockID, byte[] buf, int size) {

@@ -251,7 +251,7 @@ int MsgDistributor::accept()
     if (debug) printf("create new id: %d\n", mfsockid);
     int ret = 0;
     char header[BUFFER_SIZE];
-    sprintf(header, "accepted,%d", mfsockid);
+    sprintf(header, "accepted,%d,", mfsockid);
     pthread_mutex_lock(&send_lock);
     if (debug) printf("now response to other\n");    
     ret = mfsend(&handle, header, sizeof(header), dst_GUID, 0);
@@ -414,7 +414,7 @@ int MsgDistributor::close(int sock, int passive)
         pthread_mutex_lock(&send_lock);
         int ret = 0;
         char content[BUFFER_SIZE];
-        sprintf(content, "close,%d", sock);
+        sprintf(content, "close,%d,", sock);
         if (debug) printf("send close command\n");
         ret = mfsend(&handle, content, sizeof(content), dst_GUID, 0);
         if(ret < 0)
