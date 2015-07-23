@@ -103,7 +103,7 @@ public class JClient {
                         // do nothing
                     }
                     else {
-                        System.out.println("received result: " + tokens[1]);
+                        System.out.println("received result: " + tokens[0]);
                     }
                 }
             }
