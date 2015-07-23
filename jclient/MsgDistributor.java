@@ -404,7 +404,7 @@ public class MsgDistributor {
     		for (Integer i : statusMap.keySet()) {
     			sockSet.add(i);
     		}
-    		for (Integer i : statusMap.keySet()) {
+    		for (Integer i : sockSet) {
     			// close all remain sock ids
     			System.out.println("Now close the sock id: " + i);
     			this.close(i, 0);
