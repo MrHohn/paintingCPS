@@ -254,10 +254,10 @@ public class MsgDistributor {
 			e.printStackTrace();
 			return -1;
         }
-    }
+	}
 
 	public int send(int sockID, byte[] buf, int size) {
-    	if (mfsockid == -1) {
+		if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
     		return -1;
     	}
@@ -303,7 +303,7 @@ public class MsgDistributor {
     	}
 
     	return 0;
-    }
+	}
 
 	public int recv(int sockID, byte[] buf, int size) {
     	if (mfsockid == -1) {
@@ -343,10 +343,10 @@ public class MsgDistributor {
     	}
 
     	return 0;
-    }
+	}
 
 	public int close(int sockID, int mode) {
-    	if (mfsockid == -1) {
+		if (mfsockid == -1) {
     		System.out.println("ERROR: Init MsgDistributor first!");
     		return -1;
     	}
@@ -398,21 +398,21 @@ public class MsgDistributor {
     	return 0;
     }
 
-    public void end() {
-    	try {
-    		HashSet<Integer> sockSet = new HashSet<Integer>();
-    		for (Integer i : statusMap.keySet()) {
-    			sockSet.add(i);
-    		}
-    		for (Integer i : sockSet) {
-    			// close all remain sock ids
-    			System.out.println("Now close the sock id: " + i);
-    			this.close(i, 0);
-    		}
-	    	handler.jmfclose();		
-    	}
-    	catch (JMFException e) {
-			System.out.println(e.toString());
+	public void end() {
+		HashSet<Integer> sockSet = new HashSet<Integer>();
+		for (Integer i : statusMap.keySet()) {
+			sockSet.add(i);
 		}
+		for (Integer i : sockSet) {
+			// close all remain sock ids
+			System.out.println("Now close the sock id: " + i);
+			this.close(i, 0);
+		}
+
+		// try {
+		// 	handler.jmfclose();		
+		// } catch (JMFException e) {
+		// 	System.out.println(e.toString());
+		// }
     }
 }
