@@ -97,7 +97,7 @@ public class MsgDistributor {
 			String bufString = new String(buf);
 			String delims = "[,]";
 			String[] tokens = bufString.split(delims);
-			System.out.println("receive new message, header: " + tokens[0]);
+			if (debug) System.out.println("receive new message, header: " + tokens[0]);
 			if (tokens[0].equals("create")) {
 		    	acceptSem.release();
 			}

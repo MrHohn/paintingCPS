@@ -210,9 +210,9 @@ public class JClient {
                     System.exit(1);
                 }
 
-                // send one image per second
+                // send one image per 2 seconds
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
