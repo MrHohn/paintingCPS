@@ -45,7 +45,7 @@ public class JClient {
  
     class ResultThread implements Runnable {
         public void run() {
-            if (debug) System.out.println("result thread begin!");
+            System.out.println("result thread begin!");
             int sockID, ret = 0;
             byte[] buf = new byte[BUFFER_SIZE];
             String response;
@@ -271,66 +271,5 @@ public class JClient {
         JClient newTest = new JClient(src, dst, debug);
         newTest.startClient();
 
-
-
-//-----------below is for test------------
-
-        // byte[] buf = new byte[1024];
-        // for (int i = 0; i < 4; ++i) {
-        //     buf[i] = (byte)0x21;
-        // }
-        // // buf[4] = (byte)0x00;
-        // String bufString = new String(buf);
-        // bufString = bufString.trim();
-        // System.out.println(bufString);
-        // if (bufString.equals("!!!!")) {
-        //     System.out.println("equals");
-        // }
-
-        // String command = "accept,1,hello";
-        // String delims = "[,]";
-        // String[] tokens = command.split(delims);
-        // for (String ele : tokens) {
-        //     System.out.println(ele);
-        // }
-        // System.out.println(command);
-
-        // byte[] command = {'a', 'b', 'c', 'd'};
-        // int id = 10;
-        // for (byte c : command) {
-        //     // System.out.printf("%s\n", c);
-        //     System.out.printf("%x\n", c);
-        // }
-
-        // String commandString = new String(command);
-        // commandString = commandString.trim();
-        // System.out.println(commandString);
-        // if (commandString.equals("abcd")) {
-        //     System.out.println("equals");
-        // }
-
-        // int newID = 10;
-        // String headerString = String.format("accepted,%d", newID);
-        // System.out.println(headerString);
-        // try {
-        //     byte[] header = headerString.getBytes("UTF-8");
-        //     byte[] real = new byte[20];
-        //     for (int i = 0; i < header.length; ++i) {
-        //         real[i] = header[i];
-        //     }
-        //     for (byte c : real) {
-        //         System.out.printf("%x\n", c);
-        //     }
-        // } catch (Exception e) {
-        //     e.printStackTrace();
-        // }
-
-
-        // String fileName = "./pics/orbit-sample.jpg";
-        // File file = new File(fileName);
-        // long fileLen = file.length();
-        // System.out.println(fileLen);
-        // String content = String.format(fileName + ",%d", fileLen);
-        // System.out.println(content);
     }
 }
