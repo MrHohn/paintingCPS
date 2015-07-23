@@ -13,12 +13,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.Semaphore;
 import java.util.HashSet;
+import java.io.*;
 
 public class JClient {
     private
         boolean debug;
         boolean globalStop = false;
-        Lock sendLock;
+        // Lock sendLock;
         MsgDistributor msgD;
         int srcGUID;
         int dstGUID;
@@ -27,7 +28,7 @@ public class JClient {
         // HashSet<Integer> idSet;
 
     public JClient (int src, int dst, boolean mode) {
-        sendLock = new ReentrantLock();
+        // sendLock = new ReentrantLock();
         msgD = new MsgDistributor();
         // idSet = new HashSet<Integer>();
         srcGUID = src;
@@ -97,11 +98,12 @@ public class JClient {
                 else {
                     response = new String(buf);
                     response = response.trim();
-                    if (response.equals("none")) {
+                    String[] tokens = response.split("[,]");
+                    if (tokens[0].equals("none")) {
                         // do nothing
                     }
                     else {
-                        System.out.println("received result: " + response);
+                        System.out.println("received result: " + tokens[1]);
                     }
                 }
             }
@@ -111,12 +113,102 @@ public class JClient {
     class TransmitThread implements Runnable {
         public void run() {
             System.out.println("transmit thread begin!");
+            int sockID;
+            int ret = 0;
+            String fileName = "./pics/orbit-sample.jpg";
+            byte[] buf = new byte[BUFFER_SIZE];
+            String response;
+
+            String header = "transmit,";
+            header += userID;
+            try {
+                byte[] temp = header.getBytes("UTF-8");            
+                for (int i = 0; i < temp.length; ++i) {
+                    buf[i] = temp[i];
+                }
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            // try to connect the server
+            sockID = msgD.connect();
+            if (debug) System.out.printf("[jclient] transmit thread get connection to server\n");
+            if (debug) System.out.printf("[jclient] start transmitting current frame\n\n");
+            // send the header first
+            ret = msgD.send(sockID, buf, BUFFER_SIZE);
+            if (ret < 0) {
+                System.out.println("mfsend error");
+                System.exit(1);
+            }
+
+            // get the response
+            buf = new byte[BUFFER_SIZE];
+            ret = msgD.recv(sockID, buf, BUFFER_SIZE);
+            if (ret < 0) {
+                System.out.println("mfrecv error");
+                System.exit(1);
+            }
+            response = new String(buf);
+            response = response.trim();
+            if (response.equals("failed")) {
+                System.out.println("log in failed");
+                System.exit(1);
+            }
+
+            int divisor = 10;
+            int idLen = 1;
+            while (idLen / divisor > 0) {
+                ++idLen;
+                divisor *= 10;
+            }
+            int sendSize = BUFFER_SIZE - 6 - idLen;
+            if (debug) System.out.printf("one time size: %d\n", sendSize);
 
             while (!globalStop) {
-                String fileName = "./pics/orbit-sample.jpg";
-                if (debug) System.out.println("send one image");
-                sendLock.lock();
-                sendLock.unlock();
+                try {
+                    if (debug) System.out.println("send one image");
+                    buf = new byte[BUFFER_SIZE];
+
+                    File frame = new File(fileName);
+                    FileInputStream readFile = new FileInputStream(fileName);                
+                    long fileLen = frame.length();
+                    int length;
+
+                    // send the file info, combine with ','
+                    System.out.println("[client] file name: " + fileName);
+                    String content = String.format(fileName + ",%d", fileLen);
+                    try {
+                        byte[] temp = content.getBytes("UTF-8");            
+                        for (int i = 0; i < temp.length; ++i) {
+                            buf[i] = temp[i];
+                        }
+                    }
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    ret = msgD.send(sockID, buf, BUFFER_SIZE);
+                    if (ret < 0) {
+                        System.out.println("mfsend error");
+                        System.exit(1);
+                    }
+
+                    // get the response
+                    buf = new byte[BUFFER_SIZE];
+                    ret = msgD.recv(sockID, buf, BUFFER_SIZE);
+                    if (ret < 0) {
+                        System.out.println("mfrecv error");
+                        System.exit(1);
+                    }
+
+                    while ((length = readFile.read(buf, 0, sendSize)) > 0) {
+                        msgD.send(sockID, buf, BUFFER_SIZE);
+                    }
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                    System.exit(1);
+                }
 
                 // send one image per second
                 try {
@@ -177,7 +269,7 @@ public class JClient {
         }
 
         JClient newTest = new JClient(src, dst, debug);
-        // newTest.startClient();
+        newTest.startClient();
 
 
 
@@ -232,5 +324,13 @@ public class JClient {
         // } catch (Exception e) {
         //     e.printStackTrace();
         // }
+
+
+        // String fileName = "./pics/orbit-sample.jpg";
+        // File file = new File(fileName);
+        // long fileLen = file.length();
+        // System.out.println(fileLen);
+        // String content = String.format(fileName + ",%d", fileLen);
+        // System.out.println(content);
     }
 }
