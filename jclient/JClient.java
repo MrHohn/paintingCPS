@@ -216,8 +216,10 @@ public class JClient {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-
             }
+
+            System.out.println("tramsmit thread end");
+
         }
     }
 
@@ -251,6 +253,23 @@ public class JClient {
         System.out.println(Thread.currentThread().getName() + "thread end!");
     }
 
+    private void addShutdownHook() {  
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                try {
+                    globalStop = true;
+                    System.out.println("Set up the stop signal to all threads.");
+                    Thread.sleep(1000);
+                    System.out.println("Now send the close command to server and close the mf handler");
+                    msgD.end();
+                    System.out.println("JClient end.");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }  
+
     public static void main(String[] args) {
         if(args.length < 2){
             usage();
@@ -268,8 +287,10 @@ public class JClient {
             }
         }
 
-        JClient newTest = new JClient(src, dst, debug);
-        newTest.startClient();
-
+        JClient client = new JClient(src, dst, debug);
+        // add hookup to terminate the program gracefully
+        client.addShutdownHook();
+        // start the client
+        client.startClient();
     }
 }

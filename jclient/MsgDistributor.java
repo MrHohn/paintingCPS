@@ -396,4 +396,17 @@ public class MsgDistributor {
 
     	return 0;
     }
+
+    public void end() {
+    	try {
+    		for (Integer i : statusMap.keySet()) {
+    			// close all remain sock ids
+    			this.close(i, 0);
+    		}
+	    	handler.jmfclose();		
+    	}
+    	catch (JMFException e) {
+			System.out.println(e.toString());
+		}
+    }
 }
