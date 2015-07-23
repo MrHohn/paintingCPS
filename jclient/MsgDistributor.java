@@ -401,6 +401,7 @@ public class MsgDistributor {
     	try {
     		for (Integer i : statusMap.keySet()) {
     			// close all remain sock ids
+    			System.out.println("Now close the sock id: " + i);
     			this.close(i, 0);
     		}
 	    	handler.jmfclose();		
