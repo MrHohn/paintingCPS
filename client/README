@@ -1,0 +1,28 @@
+
+Make sure you have installed the MFAPI and OpenCV library on the machine. To compile the codes, enter:
+	
+	make
+
+Type ./client-OpenCV -h for more information, as listed below:
+
+ Help for client-OpenCV application
+ ---------------------------------------------------------------
+ The following parameters can be passed to this software:
+
+ [-h | --help ]........: display this help
+ [-v | --version ].....: display version information
+ [-id].................: user ID to input
+ [-orbit]..............: run in orbit mode
+ [-d]..................: debug mode, print more details
+ [-m]..................: mine GUID, a.k.a src_GUID
+ [-o]..................: other's GUID, a.k.a dst_GUID
+ 
+ ---------------------------------------------------------------
+ Please start the client after the server is started
+ Your need to be the root or use sudo to run the orbit mode
+ Last, you should run the mfstack first before run this application in orbit mode
+ ---------------------------------------------------------------
+ sample commands:
+   ./client-OpenCV -d
+   ./client-OpenCV -id yourid
+   sudo ./client-OpenCV -orbit -m 101 -o 102
