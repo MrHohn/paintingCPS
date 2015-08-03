@@ -20,6 +20,8 @@ string ImgMatch::featureClusterAdd;
 string ImgMatch::imgInfoAdd;
 vector<int> ImgMatch::index_IMG;
 int ImgMatch::minHessian = 1000;
+flann::Index* ImgMatch::flannIndex;
+
 ImgMatch::ImgMatch()
 {
     minHessian = 1000;
@@ -120,6 +122,9 @@ void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,strin
     storage["index"] >> featureCluster;
     storage.release();
     imgInfoAdd = imgInfoAdd;
+
+    flannIndex = new flann::Index(featureCluster, flann::KDTreeIndexParams(), cvflann::FLANN_DIST_EUCLIDEAN);
+
     printf("Finished\n"); 
 }
  
@@ -159,9 +164,9 @@ void ImgMatch::matchImg(string srcImgAdd){
       return;    
     }
 
-    flann::Index flannIndex(featureCluster, flann::KDTreeIndexParams(), cvflann::FLANN_DIST_EUCLIDEAN);
+
     const int knn = 2;
-    flannIndex.knnSearch(despSRC, indices, dists, knn, flann::SearchParams());
+    flannIndex->knnSearch(despSRC, indices, dists, knn, flann::SearchParams());
     if(deb)
       printf("total number of found descriptors is %d\n",despSRC.rows);
     /*
@@ -189,7 +194,6 @@ void ImgMatch::matchImg(string srcImgAdd){
             }
         }
     }
-    flannIndex.~Index();
  
     //display possible matched image index
     /*
