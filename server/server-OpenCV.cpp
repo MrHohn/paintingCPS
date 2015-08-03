@@ -76,6 +76,12 @@ void help(void)
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
+            " Your need to be the root or use sudo to run the orbit mode\n"
+            " Last, you should run the mfstack first before run this application in orbit mode\n"
+            " ---------------------------------------------------------------\n" \
+            " sample commands:\n" \
+            "   ./server-OpenCV -d\n" \
+            "   sudo ./server-OpenCV -orbit -m 102 -o 101\n" \
             " \n");
 }
 
