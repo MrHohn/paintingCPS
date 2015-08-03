@@ -9,7 +9,7 @@ server/server-OpenCV
 *.class
 
 # Compiled Dynamic libraries
-*.so
+#*.so
 
 # Compiled Static libraries
 *.lai
