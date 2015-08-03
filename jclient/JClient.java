@@ -40,7 +40,7 @@ public class JClient {
         System.out.println("Usage:");
         System.out.println("JCLient <dst_GUID> <src_GUID>");
         System.out.println("compile: javac *.java -cp jmfapi-1.0-SNAPSHOT.jar");
-        System.out.println("run: java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102");
+        System.out.println("run: sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102");
     }
  
     class ResultThread implements Runnable {
