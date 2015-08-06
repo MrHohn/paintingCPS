@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\libs\android-support-v4.jar"
+        jumboMode="false"
+        revision="21.1.1"
+        sha1="48c94ae70fa65718b382098237806a5909bb096e">
+        <dex dex="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\build\intermediates\pre-dexed\debug\android-support-v4-44ad8ca08f7ed2a34d4fd5808abc9c34024be5b7.jar" />
+    </item>
+    <item
+        jar="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\libs\jmfapi.jar"
+        jumboMode="false"
+        revision="21.1.1"
+        sha1="0e9eb5e4c357daf54165e71bf9b7391246959426">
+        <dex dex="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\build\intermediates\pre-dexed\debug\jmfapi-408740aedd459b8b1bc214b35e7f92aaf86d0566.jar" />
+    </item>
+
+</items>

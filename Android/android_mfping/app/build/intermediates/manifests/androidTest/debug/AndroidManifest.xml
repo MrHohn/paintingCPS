@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="edu.rutgers.winlab.mfapi.mfping.test">
+
+    <uses-sdk android:minSdkVersion="10" android:targetSdkVersion="17" />
+
+    <application>
+        <uses-library android:name="android.test.runner" />
+    </application>
+
+    <instrumentation android:name="android.test.InstrumentationTestRunner"
+                     android:targetPackage="edu.rutgers.winlab.mfapi.mfping"
+                     android:handleProfiling="false"
+                     android:functionalTest="false"
+                     android:label="Tests for edu.rutgers.winlab.mfapi.mfping"/>
+</manifest>

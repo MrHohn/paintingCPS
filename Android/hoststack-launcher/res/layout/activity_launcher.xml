@@ -1,0 +1,105 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".LauncherActivity" >
+
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" >
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <LinearLayout
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" >
+
+
+                <Button
+                    android:id="@+id/startButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:onClick="startStack"
+                    android:text="@string/start" />
+
+                <!--<EditText
+                    android:id="@+id/editGUID"
+                    android:layout_width="0dip"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:layout_weight="1"
+                    android:hint="@string/guid_message" >
+                </EditText>-->
+
+                <RadioGroup
+                    android:id="@+id/radioService"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" >
+
+                    <RadioButton
+                        android:id="@+id/radioQuiet"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="27dp"
+                        android:checked="true"
+                        android:text="Fatal" />
+
+                    <RadioButton
+                        android:id="@+id/radioDebug"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="27dp"
+                        android:text="Debug" />
+                </RadioGroup>
+            </LinearLayout>
+
+            <!--<Button
+                android:id="@+id/startButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:onClick="startStack"
+                android:text="@string/start" />-->
+
+            <Button
+                android:id="@+id/stopButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:onClick="stopStack"
+                android:text="@string/stop" />
+
+            <!--<Button
+                android:id="@+id/logButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:onClick="logStack"
+                android:text="@string/s_log" />-->
+
+            <Button
+                android:id="@+id/installButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:onClick="installStack"
+                android:text="@string/install" />
+
+            <EditText
+                android:id="@+id/editGUID"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/guid_message"
+                >
+            </EditText>
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

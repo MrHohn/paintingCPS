@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jmfapi">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/app/libs/jmfapi.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

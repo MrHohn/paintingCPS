@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">MFStack</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="start">Start Stack</string>
+    <string name="stop">Stop Stack</string>
+    <string name="s_log">Get Stack\'s Log</string>
+    <string name="title_activity_s">sActivity</string>
+    <string name="pref_boot">Start after boot?</string>
+    <string name="pref_boot_summ">This option allows to decide if starting the stack process during the start up of the OS</string>
+    <string name="install">Install</string>
+    <string name="guid_message">GUID value</string>
+
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="C:\Users\Think\AndroidStudioProjects\android_mfping\app\libs\jmfapi.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="0e9eb5e4c357daf54165e71bf9b7391246959426">
+        <dex dex="C:\Users\Think\AndroidStudioProjects\android_mfping\app\build\intermediates\pre-dexed\debug\jmfapi-0d02e4527b25439cd2e435e7768124a884079bb2.jar" />
+    </item>
+    <item
+        jar="C:\Users\Think\AppData\Local\Android\sdk\extras\android\m2repository\com\android\support\support-v4\18.0.0\support-v4-18.0.0.jar"
+        jumboMode="false"
+        revision="22.0.1"
+        sha1="44ec51e9d395a47aab135e5e1b556c0007442156">
+        <dex dex="C:\Users\Think\AndroidStudioProjects\android_mfping\app\build\intermediates\pre-dexed\debug\support-v4-18.0.0-87beff26dd7c0be8a07084aebd6d8fe73693136a.jar" />
+    </item>
+
+</items>

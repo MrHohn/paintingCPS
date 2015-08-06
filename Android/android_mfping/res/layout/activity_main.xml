@@ -1,0 +1,59 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity" >
+
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" >
+
+            <RadioGroup
+                android:id="@+id/radioService"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" >
+
+                <RadioButton
+                    android:id="@+id/radioClient"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="Client" />
+
+                <RadioButton
+                    android:id="@+id/radioServer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Server" />
+            </RadioGroup>
+
+            <EditText
+                android:id="@+id/editGUID"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="Set this side GUID" >
+            </EditText>
+            
+            <EditText
+                android:id="@+id/editGUID2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="Set other side GUID" >
+            </EditText>
+
+            <Button
+                android:id="@+id/startButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:onClick="onStart"
+                android:text="Start Pinging" />
+        </LinearLayout>
+    </ScrollView>
+
+</RelativeLayout>

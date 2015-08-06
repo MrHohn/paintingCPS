@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merger version="3"><dataSet config="main"><source path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res"><file name="ic_launcher" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\drawable-hdpi\ic_launcher.png" qualifiers="hdpi-v4" type="drawable"/><file name="ic_launcher" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\drawable-ldpi\ic_launcher.png" qualifiers="ldpi-v4" type="drawable"/><file name="ic_launcher" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\drawable-mdpi\ic_launcher.png" qualifiers="mdpi-v4" type="drawable"/><file name="ic_launcher" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\drawable-xhdpi\ic_launcher.png" qualifiers="xhdpi-v4" type="drawable"/><file name="activity_launcher" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\layout\activity_launcher.xml" qualifiers="" type="layout"/><file name="activity_s" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\layout\activity_s.xml" qualifiers="" type="layout"/><file name="activity_launcher" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\menu\activity_launcher.xml" qualifiers="" type="menu"/><file name="activity_s" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\menu\activity_s.xml" qualifiers="" type="menu"/><file path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\values\strings.xml" qualifiers=""><string name="title_activity_s">sActivity</string><string name="start">Start Stack</string><string name="pref_boot_summ">This option allows to decide if starting the stack process during the start up of the OS</string><string name="s_log">Get Stack\'s Log</string><string name="app_name">MFStack</string><string name="guid_message">GUID value</string><string name="install">Install</string><string name="stop">Stop Stack</string><string name="hello_world">Hello world!</string><string name="pref_boot">Start after boot?</string><string name="menu_settings">Settings</string></file><file path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\values\strings_activity_settings.xml" qualifiers=""><string-array name="pref_sync_frequency_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>-1</item>
+    </string-array><string name="title_activity_settings">Settings</string><string name="pref_ringtone_silent">Silent</string><string-array name="pref_example_list_values">
+        <item>1</item>
+        <item>0</item>
+        <item>-1</item>
+    </string-array><string name="pref_title_display_name">Display name</string><string name="pref_title_sync_frequency">Sync frequency</string><string name="pref_description_social_recommendations">Recommendations for people to contact based on your message history</string><string name="pref_header_general">General</string><string name="pref_title_add_friends_to_messages">Add friends to messages</string><string name="pref_default_display_name">John Smith</string><string-array name="pref_example_list_titles">
+        <item>Always</item>
+        <item>When possible</item>
+        <item>Never</item>
+    </string-array><string name="pref_title_new_message_notifications">New message notifications</string><string name="pref_title_vibrate">Vibrate</string><string name="pref_title_ringtone">Ringtone</string><string name="pref_title_social_recommendations">Enable social recommendations</string><string name="pref_header_notifications">Notifications</string><string-array name="pref_sync_frequency_titles">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>Never</item>
+    </string-array><string name="pref_title_system_sync_settings">System sync settings</string><string name="pref_header_data_sync">Data &amp; sync</string></file><file path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\values\styles.xml" qualifiers=""><style name="AppBaseTheme" parent="android:Theme.Light">
+        <!--
+            Theme customizations available in newer API levels can go in
+            res/values-vXX/styles.xml, while customizations related to
+            backward-compatibility can go here.
+        -->
+    </style><style name="AppTheme" parent="AppBaseTheme">
+        <!-- All customizations that are NOT specific to a particular API-level can go here. -->
+    </style></file><file path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\values-v11\styles.xml" qualifiers="v11"><style name="AppBaseTheme" parent="android:Theme.Holo.Light">
+        <!-- API 11 theme customizations can go here. -->
+    </style></file><file path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\values-v14\styles.xml" qualifiers="v14"><style name="AppBaseTheme" parent="android:Theme.Holo.Light.DarkActionBar">
+        <!-- API 14 theme customizations can go here. -->
+    </style></file><file name="preferences" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\xml\preferences.xml" qualifiers="" type="xml"/><file name="pref_data_sync" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\xml\pref_data_sync.xml" qualifiers="" type="xml"/><file name="pref_general" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\xml\pref_general.xml" qualifiers="" type="xml"/><file name="pref_headers" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\xml\pref_headers.xml" qualifiers="" type="xml"/><file name="pref_notification" path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\res\xml\pref_notification.xml" qualifiers="" type="xml"/></source><source path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\build\generated\res\rs\debug"/><source path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\build\generated\res\generated\debug"/></dataSet><dataSet config="debug"><source path="C:\Users\Think\AndroidStudioProjects\hoststack-launcher\build-types\debug\res"/></dataSet><mergedItems/></merger>
