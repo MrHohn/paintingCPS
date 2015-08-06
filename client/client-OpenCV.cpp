@@ -47,6 +47,7 @@ int global_dst_GUID; // used for close command
 
 int global_stop = 0;
 int orbit = 0;
+bool test = false;
 char *userID;
 int debug = 0;
 MsgDistributor MsgD;
@@ -56,6 +57,7 @@ string result_title = "";
 string result_artist = "";
 string result_date = "";
 float coord[8];
+int delay_time = 0;
 
 struct arg_transmit {
     int sock;
@@ -80,6 +82,7 @@ void help(void)
             " [-d]..................: debug mode, print more details\n" \
             " [-m]..................: mine GUID, a.k.a src_GUID\n" \
             " [-o]..................: other's GUID, a.k.a dst_GUID\n" \
+            " [-t]..................: testing mode, please define delay\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -450,15 +453,7 @@ void *display_thread(void *arg)
     int count = 0;
     
     char file_name[100] = {0};
-    VideoCapture capture(0);
-    Mat frame;
 
-    // set up the image format and the quality
-    // capture.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-    // capture.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
-    vector<int> compression_params;
-    compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-    compression_params.push_back(95);
 
 
     /*-----------------network part--------------*/
@@ -521,65 +516,131 @@ void *display_thread(void *arg)
   
     /*-------------------end----------------------*/
 
-    // // create window
-    // namedWindow("Real-Time CPS", 1);
 
-    while (capture.isOpened() && !global_stop)
-    {
-        ++count;
-        capture.read(frame);
-        // capture >> frame;
-        // writer << frame;
-    
-        if (count >= 30 && !frame.empty()) {
-            count = 0;
+    if (!test) {
 
+        // // create window
+        // namedWindow("Real-Time CPS", 1);
 
-            // set up the file name and encode the frame to jpeg
-            sprintf(file_name, "pics/%s-%d.jpg", userID, index);
-            imwrite(file_name, frame, compression_params);
-            ++index;
+        VideoCapture capture(0);
+        Mat frame;
 
-            /*-------------------send current frame here--------------*/
+        // set up the image format and the quality
+        // capture.set(CV_CAP_PROP_FRAME_WIDTH, 640);
+        // capture.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+        vector<int> compression_params;
+        compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+        compression_params.push_back(95);
 
-            pthread_t thread_id;
-            struct arg_transmit trans_info;
-            trans_info.sock = sockfd;
-            strcpy(trans_info.file_name, file_name);
-            /* create thread and pass socket and file name to send file */
-            if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
-            {
-                fprintf(stderr,"pthread_create error!\n");
-                break; //break while loop
-            }
-            pthread_detach(thread_id);
-
-            /*---------------------------end--------------------------*/
-        }
+        while (capture.isOpened() && !global_stop)
+        {
+            ++count;
+            capture.read(frame);
+            // capture >> frame;
+            // writer << frame;
         
-        if (drawResult)
-        {
-            putText(frame, result_title, Point(10, 30), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
-            putText(frame, result_artist, Point(10, 60), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
-            putText(frame, result_date, Point(10, 90), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
-            line(frame, cvPoint(coord[0], coord[1]), cvPoint(coord[2], coord[3]), Scalar(0, 0, 255), 2);
-            line(frame, cvPoint(coord[2], coord[3]), cvPoint(coord[4], coord[5]), Scalar(0, 0, 255), 2);
-            line(frame, cvPoint(coord[4], coord[5]), cvPoint(coord[6], coord[7]), Scalar(0, 0, 255), 2);
-            line(frame, cvPoint(coord[6], coord[7]), cvPoint(coord[0], coord[1]), Scalar(0, 0, 255), 2);
+            if (count >= 30 && !frame.empty()) {
+                count = 0;
+
+
+                // set up the file name and encode the frame to jpeg
+                sprintf(file_name, "pics/%s-%d.jpg", userID, index);
+                imwrite(file_name, frame, compression_params);
+                ++index;
+
+                /*-------------------send current frame here--------------*/
+
+                pthread_t thread_id;
+                struct arg_transmit trans_info;
+                trans_info.sock = sockfd;
+                strcpy(trans_info.file_name, file_name);
+                /* create thread and pass socket and file name to send file */
+                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+                {
+                    fprintf(stderr,"pthread_create error!\n");
+                    break; //break while loop
+                }
+                pthread_detach(thread_id);
+
+                /*---------------------------end--------------------------*/
+            }
+            
+            if (drawResult)
+            {
+                putText(frame, result_title, Point(10, 30), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
+                putText(frame, result_artist, Point(10, 60), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
+                putText(frame, result_date, Point(10, 90), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
+                line(frame, cvPoint(coord[0], coord[1]), cvPoint(coord[2], coord[3]), Scalar(0, 0, 255), 2);
+                line(frame, cvPoint(coord[2], coord[3]), cvPoint(coord[4], coord[5]), Scalar(0, 0, 255), 2);
+                line(frame, cvPoint(coord[4], coord[5]), cvPoint(coord[6], coord[7]), Scalar(0, 0, 255), 2);
+                line(frame, cvPoint(coord[6], coord[7]), cvPoint(coord[0], coord[1]), Scalar(0, 0, 255), 2);
+            }
+
+            if(!frame.empty()){
+                imshow("Real-Time CPS", frame);
+            }
+            if (index == 1 && count == 1) {
+                moveWindow("Real-Time CPS", 100, 150 ); 
+            }
+            if (cvWaitKey(20) == 27)
+            {
+                break;
+            }
+            // usleep(1000 * DELAY);
         }
 
-        if(!frame.empty()){
-            imshow("Real-Time CPS", frame);
-        }
-        if (index == 1 && count == 1) {
-            moveWindow("Real-Time CPS", 100, 150 ); 
-        }
-        if (cvWaitKey(20) == 27)
-        {
-            break;
-        }
-        // usleep(1000 * DELAY);
     }
+    // test mode
+    else
+    {
+        while (!global_stop)
+        {
+            ++count;
+        
+            if (count >= 10) {
+                count = 0;
+
+                printf("[test mode] send an image\n");
+
+                // set up the file name and encode the frame to jpeg
+                sprintf(file_name, "pics/orbit-sample.jpg");
+                ++index;
+
+
+                /*-------------------send current frame here--------------*/
+
+                pthread_t thread_id;
+                struct arg_transmit trans_info;
+                trans_info.sock = sockfd;
+                bzero(&trans_info.file_name, BUFFER_SIZE);
+                strcpy(trans_info.file_name, file_name);
+                /* create thread and pass socket and file name to send file */
+                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+                {
+                    fprintf(stderr,"pthread_create error!\n");
+                    break; //break while loop
+                }
+                pthread_detach(thread_id);
+
+                /*---------------------------end--------------------------*/
+            }
+            
+            if (drawResult)
+            {
+                printf("\n[test] got result from server\n");
+                printf("[test] %s\n", resultShown.c_str());
+                printf("[test] coordinates as below:\n");
+                printf("%f, %f\n", coord[0], coord[1]);
+                printf("%f, %f\n", coord[2], coord[3]);
+                printf("%f, %f\n", coord[4], coord[5]);
+                printf("%f, %f\n\n", coord[6], coord[7]);
+                drawResult = 0;
+            }
+
+            usleep(100 * delay_time); // sleep a while to imitate video catching
+        }
+    }
+
     
     close(sockfd); // disconnect server
     printf("[client] connection closed --- transmit\n");
@@ -858,6 +919,7 @@ int main(int argc, char *argv[])
             {"d", no_argument, 0, 0},
             {"m", required_argument, 0, 0},
             {"o", required_argument, 0, 0},
+            {"t", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -916,6 +978,12 @@ int main(int argc, char *argv[])
         case 8:
             dst_GUID = strtol(optarg, NULL, 10);
             global_dst_GUID = dst_GUID;
+            break;
+
+            /* testing mode delay */
+        case 9:
+            delay_time = strtol(optarg, NULL, 10);
+            test = true;
             break;
 
         default:
