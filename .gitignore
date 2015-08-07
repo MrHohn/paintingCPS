@@ -19,6 +19,10 @@ server/server-OpenCV
 # image files
 *.jpeg
 *.jpg
+# Except for sample images
+!jclient/pics/orbit-sample.jpg
+!client/pics/orbit-sample.jpg
+!server/pics/orbit-sample.jpg
 
 # cmake files
 client/CMakeCache.txt
