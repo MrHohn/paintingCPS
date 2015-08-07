@@ -1,7 +1,7 @@
 /*************************************************
 #
 # Purpose: main program for "CPS client"
-# Author.: Zihong Zheng
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
 # Version: 0.1
 # License: 
 #

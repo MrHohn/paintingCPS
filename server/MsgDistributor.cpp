@@ -2,7 +2,7 @@
 #
 # Purpose: "Message Distributor" aims to distribute the message
             received through the unique GUID
-# Author.: Zihong Zheng
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
 # Version: 0.1
 # License: 
 #

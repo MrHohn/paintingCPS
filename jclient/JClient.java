@@ -1,7 +1,7 @@
 /*************************************************
 #
 # Purpose: main program for "Java CPS client"
-# Author.: Zihong Zheng
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
 # Version: 0.1
 # License: 
 #
@@ -39,8 +39,11 @@ public class JClient {
     private static void usage(){
         System.out.println("Usage:");
         System.out.println("JCLient <dst_GUID> <src_GUID>");
-        System.out.println("compile: javac *.java -cp jmfapi-1.0-SNAPSHOT.jar");
-        System.out.println("run: sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102");
+        System.out.println("  compile: javac *.java -cp jmfapi-1.0-SNAPSHOT.jar");
+        System.out.println("  run: sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102");
+        System.out.println("Or using makefile:");
+        System.out.println("  compile: make");
+        System.out.println("  run: make run");
     }
  
     class ResultThread implements Runnable {

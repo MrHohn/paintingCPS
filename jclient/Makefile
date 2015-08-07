@@ -1,7 +1,7 @@
 ###############################################################
 #
 # Purpose: Makefile for "JClient"
-# Author.: Zihong Zheng
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
 # Version: 0.1
 # License: 
 #

@@ -2,7 +2,7 @@
 #
 # Purpose: "Message Distributor" aims to distribute the message
             received through the unique GUID
-# Author.: Zihong Zheng
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
 # Version: 0.1
 # License: 
 #
@@ -398,6 +398,7 @@ public class MsgDistributor {
     	return 0;
     }
 
+    //TODO: something wrong when call jmfclose(), needed to fix
 	public void end() {
 		HashSet<Integer> sockSet = new HashSet<Integer>();
 		for (Integer i : statusMap.keySet()) {
