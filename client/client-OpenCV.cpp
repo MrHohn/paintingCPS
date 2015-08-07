@@ -366,8 +366,8 @@ void *transmit_child(void *arg)
     {
         struct stat file_stat; // stat of file, to get the size
         int n;
-        char bufferSend[BUFFER_SIZE];
-        bzero(bufferSend, BUFFER_SIZE);
+        char bufferSend[BUFFER_SIZE * 4];
+        bzero(bufferSend, sizeof(bufferSend));
 
         // get the id length and send length
         int id_length = 1;
@@ -377,7 +377,8 @@ void *transmit_child(void *arg)
             ++id_length;
             divisor *= 10;
         }
-        int send_size = BUFFER_SIZE - 6 - id_length;
+        // int send_size = BUFFER_SIZE - 6 - id_length;
+        int send_size = BUFFER_SIZE * 4; //4096 bytes per time
         
         // get the status of file
         if (stat(file_name, &file_stat) == -1)
@@ -408,7 +409,7 @@ void *transmit_child(void *arg)
         }  
         else  
         {  
-            bzero(bufferSend, BUFFER_SIZE);
+            bzero(bufferSend, sizeof(bufferSend));
 
             // get the response
             n = MsgD.recv(sockfd, bufferSend, BUFFER_SIZE);
@@ -420,13 +421,13 @@ void *transmit_child(void *arg)
             {  
                 // if (debug) printf("send length: %d\n", file_block_length);
                 // send data to the client side  
-                if (MsgD.send(sockfd, bufferSend, BUFFER_SIZE) < 0)  
+                if (MsgD.send(sockfd, bufferSend, send_size) < 0)  
                 {  
                     printf("Send File: %s Failed!\n", file_name);  
                     break;  
                 }
 
-                bzero(bufferSend, BUFFER_SIZE);  
+                bzero(bufferSend, sizeof(bufferSend)); 
             }
 
             fclose(fp);  
@@ -627,6 +628,7 @@ void *display_thread(void *arg)
             
             if (drawResult)
             {
+                if (debug) printf("drawResult: %d\n", drawResult); 
                 printf("\n[test] got result from server\n");
                 printf("[test] %s\n", resultShown.c_str());
                 printf("[test] coordinates as below:\n");
@@ -993,16 +995,18 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    if(signal(SIGINT, signal_handler) == SIG_ERR)
-    {
-        printf("could not register signal handler\n");
-        exit(EXIT_FAILURE);
-    }
+    if (!orbit) {
+        if(signal(SIGINT, signal_handler) == SIG_ERR)
+        {
+            printf("could not register signal handler\n");
+            exit(EXIT_FAILURE);
+        }
 
-    if (pthread_mutex_init(&sendLock, NULL) != 0)
-    {
-        printf("\n mutex init failed\n");
-        return 1;
+        if (pthread_mutex_init(&sendLock, NULL) != 0)
+        {
+            printf("\n mutex init failed\n");
+            return 1;
+        }   
     }
 
     if (orbit)

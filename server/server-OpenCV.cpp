@@ -298,7 +298,6 @@ void server_transmit (int sock, string userID)
     // printf("transmitting part\n");
     
     int n;
-    char buffer[BUFFER_SIZE];
     char response[] = "ok";
     char file_name_temp[60];
     char *file_name;
@@ -322,6 +321,7 @@ void server_transmit (int sock, string userID)
 
     if (!orbit)
     {
+        char buffer[BUFFER_SIZE];
         char *file_size_char;
         int file_size;
         int received_size = 0;
@@ -425,6 +425,7 @@ void server_transmit (int sock, string userID)
     // below is orbit mode
     else
     {
+        char buffer[BUFFER_SIZE * 4];
         // get the id length
         int id_length = 1;
         int divisor = 10;
@@ -433,7 +434,8 @@ void server_transmit (int sock, string userID)
             ++id_length;
             divisor *= 10;
         }
-        int recv_length = BUFFER_SIZE - 6 - id_length;
+        // int recv_length = BUFFER_SIZE - 6 - id_length;
+        int recv_length = BUFFER_SIZE * 4; // 4096 bytes per time
         char *file_size_char;
         int file_size;
         int received_size = 0;
@@ -447,7 +449,7 @@ void server_transmit (int sock, string userID)
         while (!global_stop)
         {
             received_size = 0;
-            bzero(buffer, BUFFER_SIZE);
+            bzero(buffer, sizeof(buffer));
             // get the file info from client
             n = MsgD.recv(sock, buffer, BUFFER_SIZE);
             if (n <= 0)
@@ -464,6 +466,11 @@ void server_transmit (int sock, string userID)
             file_size = strtol(file_size_char, NULL, 10);
             printf("[server] file size: %d\n", file_size);
 
+            // calculate the time consumption here
+            struct timeval tpstart,tpend;
+            double timeuse;
+            gettimeofday(&tpstart,NULL);
+
             // reponse to the client
             MsgD.send(sock, response, BUFFER_SIZE);
             
@@ -477,8 +484,8 @@ void server_transmit (int sock, string userID)
             // receive the data from server and store them into buffer
             while(1)  
             {
-                bzero(buffer, BUFFER_SIZE);
-                n = MsgD.recv(sock, buffer, BUFFER_SIZE);
+                bzero(buffer, sizeof(buffer));
+                n = MsgD.recv(sock, buffer, recv_length);
                 if (n <= 0)
                 {
                     pthread_mutex_destroy(&queueLock);
@@ -505,8 +512,15 @@ void server_transmit (int sock, string userID)
                     printf("File:\t Write Failed!\n");  
                     break;  
                 }  
-                received_size += BUFFER_SIZE - 6 - id_length;
+                received_size += recv_length;
             }
+
+            // print out time comsumption
+            gettimeofday(&tpend,NULL);
+            timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+            // printf("used time:%fus\n",timeuse);
+            printf("receive used time:%fms\n",timeuse / 1000);
+
             printf("[server] Recieve Finished!\n\n");  
             // finished 
             fclose(fp);

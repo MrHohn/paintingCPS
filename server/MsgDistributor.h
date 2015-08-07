@@ -39,6 +39,7 @@ private:
     int debug = 0;
     int stop = 0;
     int BUFFER_SIZE = 1024;
+    int MAX_CHUNK = 50000;
     int mfsockid;
     struct Handle handle;
     pthread_mutex_t send_lock;          // lock for send
