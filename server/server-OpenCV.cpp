@@ -132,7 +132,7 @@ void *result_child(void *arg)
     int sock = args->sock;
     char *file_name = args->file_name;
     int matchedIndex;
-    char defMsg[BUFFER_SIZE] = "none";
+    char defMsg[] = "none";
     char sendInfo[BUFFER_SIZE];
     vector<float> coord;
     ImgMatch imgM;
@@ -152,7 +152,7 @@ void *result_child(void *arg)
         }
         else
         {
-            MsgD.send(sock, defMsg, BUFFER_SIZE);
+            MsgD.send(sock, defMsg, sizeof(defMsg));
         }
 
         if (debug) printf("not match\n");            
@@ -180,7 +180,7 @@ void *result_child(void *arg)
         }
         else
         {
-            MsgD.send(sock, sendInfo, BUFFER_SIZE);
+            MsgD.send(sock, sendInfo, sizeof(sendInfo));
         }
         if (debug) printf("matched image index: %d\n", matchedIndex);
 
@@ -202,7 +202,7 @@ void server_result (int sock, string userID)
     // printf("result thread\n\n");
 
     int n;
-    char response[BUFFER_SIZE] = "ok";
+    char response[] = "ok";
     sem_t *sem_match = new sem_t(); // create a new semaphore in heap
     queue<string> *imgQueue = 0;    // queue storing the file names 
 
@@ -227,7 +227,7 @@ void server_result (int sock, string userID)
     }
     else
     {
-        MsgD.send(sock, response, BUFFER_SIZE);
+        MsgD.send(sock, response, sizeof(response));
     }
 
     while(!global_stop) 
@@ -338,7 +338,7 @@ void server_transmit (int sock, string userID)
         {
             received_size = 0;
             // receive the file info
-            bzero(buffer,BUFFER_SIZE);
+            bzero(buffer, sizeof(buffer));
             n = read(sock,buffer, sizeof(buffer));
             if (n <= 0)
             {
@@ -375,7 +375,7 @@ void server_transmit (int sock, string userID)
 
             // receive the data from server and store them into buffer
             bzero(buffer, sizeof(buffer));
-            while((length = recv(sock, buffer, BUFFER_SIZE, 0)))  
+            while((length = recv(sock, buffer, sizeof(buffer), 0)))  
             {
                 if (length < 0)  
                 {  
@@ -389,7 +389,7 @@ void server_transmit (int sock, string userID)
                     printf("File:\t Write Failed!\n");  
                     break;  
                 }  
-                bzero(buffer, BUFFER_SIZE);
+                bzero(buffer, sizeof(buffer));
                 received_size += length;
                 if (received_size >= file_size)
                 {
@@ -425,7 +425,6 @@ void server_transmit (int sock, string userID)
     // below is orbit mode
     else
     {
-        char buffer[BUFFER_SIZE * 4];
         // get the id length
         int id_length = 1;
         int divisor = 10;
@@ -434,8 +433,8 @@ void server_transmit (int sock, string userID)
             ++id_length;
             divisor *= 10;
         }
-        // int recv_length = BUFFER_SIZE - 6 - id_length;
         int recv_length = BUFFER_SIZE * 4; // 4096 bytes per time
+        char buffer[recv_length];
         char *file_size_char;
         int file_size;
         int received_size = 0;
@@ -444,14 +443,14 @@ void server_transmit (int sock, string userID)
 
 
         // reponse to the client
-        MsgD.send(sock, response, BUFFER_SIZE);
+        MsgD.send(sock, response, sizeof(response));
 
         while (!global_stop)
         {
             received_size = 0;
             bzero(buffer, sizeof(buffer));
             // get the file info from client
-            n = MsgD.recv(sock, buffer, BUFFER_SIZE);
+            n = MsgD.recv(sock, buffer, 100);
             if (n <= 0)
             {
                 pthread_mutex_destroy(&queueLock);
@@ -472,7 +471,7 @@ void server_transmit (int sock, string userID)
             gettimeofday(&tpstart,NULL);
 
             // reponse to the client
-            MsgD.send(sock, response, BUFFER_SIZE);
+            MsgD.send(sock, response, sizeof(response));
             
             FILE *fp = fopen(file_name, "w");  
             if (fp == NULL)  
@@ -485,7 +484,7 @@ void server_transmit (int sock, string userID)
             while(1)  
             {
                 bzero(buffer, sizeof(buffer));
-                n = MsgD.recv(sock, buffer, recv_length);
+                n = MsgD.recv(sock, buffer, sizeof(buffer));
                 if (n <= 0)
                 {
                     pthread_mutex_destroy(&queueLock);
@@ -561,13 +560,13 @@ void *serverThread (void * inputsock)
 {
     int sock = *((int *)inputsock);
     int n;
-    char buffer[BUFFER_SIZE];
+    char buffer[100];
     string userID;
     char *threadType;
-    char fail[BUFFER_SIZE] = "failed";
+    char fail[] = "failed";
 
     // Receive the header
-    bzero(buffer, BUFFER_SIZE);
+    bzero(buffer, sizeof(buffer));
     if (!orbit)
     {
         n = read(sock, buffer, sizeof(buffer));
@@ -579,7 +578,7 @@ void *serverThread (void * inputsock)
     // below is orbit mode, using MFAPI
     else
     {
-        MsgD.recv(sock, buffer, BUFFER_SIZE);
+        MsgD.recv(sock, buffer, sizeof(buffer));
     }
 
     printf("[server] header content: %s\n\n",buffer);
@@ -617,7 +616,7 @@ void *serverThread (void * inputsock)
             }
             else
             {
-                MsgD.send(sock, fail, BUFFER_SIZE);
+                MsgD.send(sock, fail, sizeof(fail));
             }
             printf("[server] User exist. Connection closed.\n\n");
             return 0;

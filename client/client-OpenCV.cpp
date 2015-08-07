@@ -119,8 +119,8 @@ void *result_thread(void *arg)
 {
     if (debug) printf("In the receiver thread.\n");
     char buffer[BUFFER_SIZE];
-    char header[BUFFER_SIZE];
-    char response[BUFFER_SIZE];
+    char header[100];
+    char response[10];
     sprintf(header, "result,%s", userID);
     char *resultTemp;
     int sockfd, n;
@@ -215,7 +215,7 @@ void *result_thread(void *arg)
         else
         {
             if (debug) printf("Still waiting here for the new result\n");
-            n = MsgD.recv(sockfd, buffer, BUFFER_SIZE);
+            n = MsgD.recv(sockfd, buffer, sizeof(buffer));
         }
 
         if (n < 0) 
@@ -321,7 +321,7 @@ void *transmit_child(void *arg)
 
         // send the file info, combine with ','
         printf("[client] file name: %s\n", file_name);
-        bzero(bufferSend, BUFFER_SIZE); 
+        bzero(bufferSend, sizeof(bufferSend)); 
         sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
 
         // send and read through the tcp socket
@@ -342,7 +342,7 @@ void *transmit_child(void *arg)
         }  
         else  
         {  
-            bzero(bufferSend, BUFFER_SIZE);  
+            bzero(bufferSend, sizeof(bufferSend));  
             int file_block_length = 0;
             // start transmitting the file
             while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
@@ -366,8 +366,6 @@ void *transmit_child(void *arg)
     {
         struct stat file_stat; // stat of file, to get the size
         int n;
-        char bufferSend[BUFFER_SIZE * 4];
-        bzero(bufferSend, sizeof(bufferSend));
 
         // get the id length and send length
         int id_length = 1;
@@ -379,6 +377,7 @@ void *transmit_child(void *arg)
         }
         // int send_size = BUFFER_SIZE - 6 - id_length;
         int send_size = BUFFER_SIZE * 4; //4096 bytes per time
+        char bufferSend[send_size];
         
         // get the status of file
         if (stat(file_name, &file_stat) == -1)
@@ -397,7 +396,7 @@ void *transmit_child(void *arg)
         sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
 
         // send through the socket
-        n = MsgD.send(sockfd, bufferSend, BUFFER_SIZE);
+        n = MsgD.send(sockfd, bufferSend, 100);
         if (n < 0) 
             error("ERROR writing to socket");
 
@@ -412,8 +411,8 @@ void *transmit_child(void *arg)
             bzero(bufferSend, sizeof(bufferSend));
 
             // get the response
-            n = MsgD.recv(sockfd, bufferSend, BUFFER_SIZE);
-            bzero(bufferSend, BUFFER_SIZE);
+            n = MsgD.recv(sockfd, bufferSend, 10);
+            bzero(bufferSend, sizeof(bufferSend));
 
             int file_block_length = 0;
             // start transmitting the file
@@ -672,8 +671,8 @@ void *orbit_thread(void *arg)
 
     /*-----------------network part--------------*/
 
-    char response[BUFFER_SIZE];
-    char header[BUFFER_SIZE];
+    char response[10];
+    char header[100];
     sprintf(header, "transmit,%s", userID);
 
     sockfd = MsgD.connect();
@@ -753,7 +752,7 @@ void *orbit_thread(void *arg)
             drawResult = 0;
         }
 
-        usleep(1000 * 60); // sleep a while to imitate video catching
+        usleep(1000 * 40); // sleep a while to imitate video catching
     }
     
     // MsgD.close(sockfd, 0);
