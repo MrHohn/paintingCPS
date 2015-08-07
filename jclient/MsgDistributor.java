@@ -21,6 +21,7 @@ public class MsgDistributor {
 	private
 		boolean debug = true;
 		int BUFFER_SIZE = 1024;
+		int MAX_CHUNK = 50000;
 		int mfsockid;
 		Lock sendLock;
 		Lock recvLock;
@@ -85,16 +86,17 @@ public class MsgDistributor {
     		return -1;
     	}
 
-    	byte[] buf = new byte[BUFFER_SIZE];
+    	byte[] buf = new byte[MAX_CHUNK];
 		int ret;
 
 		try {
-			ret = handler.jmfrecv_blk(null, buf, BUFFER_SIZE);
+			ret = handler.jmfrecv_blk(null, buf, MAX_CHUNK);
 			if(ret < 0)
 		    {
-		        System.out.printf("mfrec error\n"); 
+		        System.out.printf("mfrec error\n");
 		        return -1;
 		    }
+		    if (debug) System.out.println("ret: " + ret);
 			String bufString = new String(buf);
 			String delims = "[,]";
 			String[] tokens = bufString.split(delims);
@@ -120,10 +122,11 @@ public class MsgDistributor {
 		            ++idLen;
 		        }
 		        int contentStart = idLen + 6;
+		        int contentLen = ret - idLen - 6;
 
 		        // copy the message content
-		        byte[] content = new byte[BUFFER_SIZE];
-		        for (int i = contentStart; i < BUFFER_SIZE; ++i) {
+		        byte[] content = new byte[contentLen];
+		        for (int i = contentStart; i < ret; ++i) {
 		        	content[i - contentStart] = buf[i];
 		        }
 
@@ -266,35 +269,36 @@ public class MsgDistributor {
     		return -1;
     	}
 
+		int ret = 0;
     	try {
-			int ret = 0;
 	    	int idLen = 1, divisor = 10;
 	    	while (sockID / divisor != 0) {
 	    		divisor *= 10;
 	    		++idLen;
 	    	}
-	    	int contentLen = BUFFER_SIZE - idLen - 6;
+	    	// int contentLen = BUFFER_SIZE - idLen - 6;
+	    	int contentLen = size + idLen + 6;
 	    	String headerString = String.format("sock,%d,", sockID);
 	    	byte[] header = headerString.getBytes("UTF-8");
-	    	byte[] content = new byte[BUFFER_SIZE];
+	    	byte[] content = new byte[contentLen];
 	    	// copy the header
 	    	for (int i = 0; i < header.length; ++i) {
 	    		content[i] = header[i];
 	    	}
 	    	// copy the content
-	    	for (int i = 0; i < contentLen; ++i) {
+	    	for (int i = 0; i < size; ++i) {
 	    		content[i + 6 + idLen] = buf[i];
 	    	}
 	    	sendLock.lock();
 	    	if (debug) System.out.printf("now send message in socket: %d\n", sockID);
-		    ret = handler.jmfsend(content, BUFFER_SIZE, dstGUID);
+		    ret = handler.jmfsend(content, contentLen, dstGUID);
 		    if(ret < 0)
 		    {
 		        System.out.printf ("mfsendmsg error\n");
 			    sendLock.unlock();
 		        return -1;
 		    }
-		    if (debug) System.out.printf("finish\n");
+		    if (debug) System.out.printf("finish, ret: %d\n", ret);
 		    sendLock.unlock();
     	}
     	catch (Exception e) {
@@ -302,7 +306,7 @@ public class MsgDistributor {
     		return -1;
     	}
 
-    	return 0;
+    	return ret;
 	}
 
 	public int recv(int sockID, byte[] buf, int size) {
@@ -334,7 +338,8 @@ public class MsgDistributor {
 	    	if (debug) System.out.printf("new message arrived: %d\n", sockID);
 	    	Queue<byte[]> recvQueue = queueMap.get(sockID);
 	    	byte[] recvByte = recvQueue.poll();
-	    	for (int i = 0; i < recvByte.length; ++i) {
+	    	int getSize = Integer.min(recvByte.length, size);
+	    	for (int i = 0; i < getSize; ++i) {
 	    		buf[i] = recvByte[i];
 	    	}
     	}

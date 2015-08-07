@@ -13,6 +13,9 @@ all:
 
 run:
 	sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102
-		
+
+debug:
+	sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102 d
+
 clean:
 	rm -rf *.class

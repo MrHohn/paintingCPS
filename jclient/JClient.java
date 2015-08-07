@@ -119,7 +119,8 @@ public class JClient {
             int sockID;
             int ret = 0;
             String fileName = "./pics/orbit-sample.jpg";
-            byte[] buf = new byte[BUFFER_SIZE];
+            int sendSize = BUFFER_SIZE * 4;
+            byte[] buf = new byte[sendSize];
             String response;
 
             String header = "transmit,";
@@ -139,15 +140,15 @@ public class JClient {
             if (debug) System.out.printf("[jclient] transmit thread get connection to server\n");
             if (debug) System.out.printf("[jclient] start transmitting current frame\n\n");
             // send the header first
-            ret = msgD.send(sockID, buf, BUFFER_SIZE);
+            ret = msgD.send(sockID, buf, 100);
             if (ret < 0) {
                 System.out.println("mfsend error");
                 System.exit(1);
             }
 
             // get the response
-            buf = new byte[BUFFER_SIZE];
-            ret = msgD.recv(sockID, buf, BUFFER_SIZE);
+            buf = new byte[sendSize];
+            ret = msgD.recv(sockID, buf, 10);
             if (ret < 0) {
                 System.out.println("mfrecv error");
                 System.exit(1);
@@ -159,19 +160,12 @@ public class JClient {
                 System.exit(1);
             }
 
-            int divisor = 10;
-            int idLen = 1;
-            while (idLen / divisor > 0) {
-                ++idLen;
-                divisor *= 10;
-            }
-            int sendSize = BUFFER_SIZE - 6 - idLen;
             if (debug) System.out.printf("one time size: %d\n", sendSize);
 
             while (!globalStop) {
                 try {
                     if (debug) System.out.println("send one image");
-                    buf = new byte[BUFFER_SIZE];
+                    buf = new byte[sendSize];
 
                     File frame = new File(fileName);
                     FileInputStream readFile = new FileInputStream(fileName);                
@@ -190,22 +184,23 @@ public class JClient {
                     catch (Exception e) {
                         e.printStackTrace();
                     }
-                    ret = msgD.send(sockID, buf, BUFFER_SIZE);
+                    ret = msgD.send(sockID, buf, 100);
                     if (ret < 0) {
                         System.out.println("mfsend error");
                         System.exit(1);
                     }
 
                     // get the response
-                    buf = new byte[BUFFER_SIZE];
-                    ret = msgD.recv(sockID, buf, BUFFER_SIZE);
+                    buf = new byte[sendSize];
+                    ret = msgD.recv(sockID, buf, 10);
                     if (ret < 0) {
                         System.out.println("mfrecv error");
                         System.exit(1);
                     }
 
                     while ((length = readFile.read(buf, 0, sendSize)) > 0) {
-                        msgD.send(sockID, buf, BUFFER_SIZE);
+                        msgD.send(sockID, buf, sendSize);
+                        buf = new byte[sendSize];
                     }
                 }
                 catch (Exception e) {
@@ -292,7 +287,7 @@ public class JClient {
 
         JClient client = new JClient(src, dst, debug);
         // add hookup to terminate the program gracefully
-        client.addShutdownHook();
+        // client.addShutdownHook();
         // start the client
         client.startClient();
     }
