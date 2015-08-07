@@ -330,6 +330,7 @@ int MsgDistributor::send(int sock, char* buffer, int size)
 
 }
 
+// TODO size might exceed the actual recv size, needed to fix
 //  receive the message according to the socket id
 int MsgDistributor::recv(int sock, char *buffer, int size)
 {
@@ -371,13 +372,6 @@ int MsgDistributor::recv(int sock, char *buffer, int size)
     char  *recv_char = recv_queue->front();
     recv_queue->pop();
 
-    // int id_length = 1, divisor = 10;
-    // while (sock / divisor != 0)
-    // {
-    //     divisor *= 10;
-    //     ++id_length;
-    // }
-    // int content_length = BUFFER_SIZE - id_length - 6;
     memcpy(buffer, recv_char, size);
     free(recv_char);
 
