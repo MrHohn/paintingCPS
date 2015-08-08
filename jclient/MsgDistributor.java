@@ -63,13 +63,13 @@ public class MsgDistributor {
     	statusMap = new HashMap<Integer, Integer>();
 
     	// init the mfapi
-    	System.out.println("Start to initialize the mf.");
+    	if (debug) System.out.println("Start to initialize the mf.");
 		this.srcGUID = new GUID(srcGUID);
 		this.dstGUID = new GUID(dstGUID);
 		handler = new JMFAPI();
 		try {
 			handler.jmfopen(scheme, this.srcGUID);		
-    		System.out.println("Finished.");
+    		if (debug) System.out.println("Finished.");
 		}
 		catch (JMFException e) {
 			mfsockid = -1;
@@ -289,17 +289,17 @@ public class MsgDistributor {
 	    	for (int i = 0; i < size; ++i) {
 	    		content[i + 6 + idLen] = buf[i];
 	    	}
-	    	sendLock.lock();
+	    	// sendLock.lock();
 	    	if (debug) System.out.printf("now send message in socket: %d\n", sockID);
 		    ret = handler.jmfsend(content, contentLen, dstGUID);
 		    if(ret < 0)
 		    {
 		        System.out.printf ("mfsendmsg error\n");
-			    sendLock.unlock();
+			    // sendLock.unlock();
 		        return -1;
 		    }
 		    if (debug) System.out.printf("finish, ret: %d\n", ret);
-		    sendLock.unlock();
+		    // sendLock.unlock();
     	}
     	catch (Exception e) {
     		e.printStackTrace();
@@ -382,17 +382,17 @@ public class MsgDistributor {
 		    	for (int i = 0; i < header.length; ++i) {
 		    		headerSend[i] = header[i];
 		    	}
-		    	sendLock.lock();
+		    	// sendLock.lock();
 		    	if (debug) System.out.println("send close command");
 		    	ret = handler.jmfsend(headerSend, BUFFER_SIZE, dstGUID);
 		    	if(ret < 0)
 			    {
 			        System.out.printf ("mfsendmsg error\n");
-			        sendLock.unlock();
+			        // sendLock.unlock();
 			        return -1;
 			    }
 		    	if (debug) System.out.println("after send close command");
-		    	sendLock.unlock();
+		    	// sendLock.unlock();
     		}
     		catch (Exception e) {
 				e.printStackTrace();
