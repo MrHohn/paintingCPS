@@ -300,7 +300,7 @@ int MsgDistributor::send(int sock, char* buffer, int size)
         return -1;
     }
 
-    pthread_mutex_lock(&send_lock);
+    // pthread_mutex_lock(&send_lock);
     int ret = 0;
     int id_length = 1, divisor = 10;
     while (sock / divisor != 0)
@@ -319,12 +319,12 @@ int MsgDistributor::send(int sock, char* buffer, int size)
     if(ret < 0)
     {
         printf ("mfsendmsg error\n");
-        pthread_mutex_unlock(&send_lock);
+        // pthread_mutex_unlock(&send_lock);
         return -1;
     }
     if (debug) printf("finish, ret: %d\n", ret);
 
-    pthread_mutex_unlock(&send_lock);
+    // pthread_mutex_unlock(&send_lock);
 
     return ret;
 
@@ -409,7 +409,7 @@ int MsgDistributor::close(int sock, int passive)
 
     if (passive == 0)
     {
-        pthread_mutex_lock(&send_lock);
+        // pthread_mutex_lock(&send_lock);
         int ret = 0;
         char content[BUFFER_SIZE];
         sprintf(content, "close,%d,", sock);
@@ -418,11 +418,11 @@ int MsgDistributor::close(int sock, int passive)
         if(ret < 0)
         {
             printf ("mfsendmsg error\n");
-            pthread_mutex_unlock(&send_lock);
+            // pthread_mutex_unlock(&send_lock);
             return -1;
         }
         if (debug) printf("after send close command\n");
-        pthread_mutex_unlock(&send_lock);        
+        // pthread_mutex_unlock(&send_lock);        
     }
 
     return 0;
