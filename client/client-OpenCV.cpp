@@ -93,6 +93,8 @@ void help(void)
             "   ./client-OpenCV -d\n" \
             "   ./client-OpenCV -id yourid\n" \
             "   sudo ./client-OpenCV -orbit -m 101 -o 102\n" \
+            "   make run\n" \
+            "   make orbit\n" \
             " \n");
 }
 
@@ -236,12 +238,12 @@ void *result_thread(void *arg)
                     drawResult = 0;
                     if (debug) printf("result: %s\n", buffer);
                     resultShown = strtok(buffer, ",");
-                    resultShown = "matched index: " + resultShown;
-                    for (int i = 0; i < 8; ++i) {
-                        resultTemp = strtok(NULL, ",");
-                        coord[i] = atof(resultTemp);
-                        if (debug) printf("%f\n", coord[i]);
-                    }
+                    resultShown = "painting title: " + resultShown;
+                    // for (int i = 0; i < 8; ++i) {
+                    //     resultTemp = strtok(NULL, ",");
+                    //     coord[i] = atof(resultTemp);
+                    //     if (debug) printf("%f\n", coord[i]);
+                    // }
                     drawResult = 1;
                 }
                 // tcp version now display more info
@@ -744,11 +746,11 @@ void *orbit_thread(void *arg)
         {
             printf("\n[orbit] got result from server\n");
             printf("[orbit] %s\n", resultShown.c_str());
-            printf("[orbit] coordinates as below:\n");
-            printf("%f, %f\n", coord[0], coord[1]);
-            printf("%f, %f\n", coord[2], coord[3]);
-            printf("%f, %f\n", coord[4], coord[5]);
-            printf("%f, %f\n\n", coord[6], coord[7]);
+            // printf("[orbit] coordinates as below:\n");
+            // printf("%f, %f\n", coord[0], coord[1]);
+            // printf("%f, %f\n", coord[2], coord[3]);
+            // printf("%f, %f\n", coord[4], coord[5]);
+            // printf("%f, %f\n\n", coord[6], coord[7]);
             drawResult = 0;
         }
 

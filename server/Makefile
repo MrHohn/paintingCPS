@@ -27,5 +27,17 @@ $(EXECUTABLE): $(OBJECTS)
 .cpp.o:
 	$(CC) $(CFLAGS) $< -o $@
 
+run:
+	./server-OpenCV
+
+debug:
+	./server-OpenCV -d
+
+orbit:
+	sudo ./server-OpenCV -orbit -m 102 -o 101
+
+odebug:
+	sudo ./server-OpenCV -orbit -m 102 -o 101 -d
+
 clean:
 	rm -rf *.o $(EXECUTABLE)

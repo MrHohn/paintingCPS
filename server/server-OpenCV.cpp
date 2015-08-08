@@ -82,6 +82,8 @@ void help(void)
             " sample commands:\n" \
             "   ./server-OpenCV -d\n" \
             "   sudo ./server-OpenCV -orbit -m 102 -o 101\n" \
+            "   make run\n" \
+            "   make orbit\n" \
             " \n");
 }
 
@@ -133,7 +135,7 @@ void *result_child(void *arg)
     char *file_name = args->file_name;
     int matchedIndex;
     char defMsg[] = "none";
-    char sendInfo[BUFFER_SIZE];
+    char sendInfo[200];
     vector<float> coord;
     ImgMatch imgM;
 
@@ -163,7 +165,9 @@ void *result_child(void *arg)
         coord = imgM.calLocation();
         if (orbit)
         {
-            sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+            // sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+            string info = imgM.getInfo();
+            sprintf(sendInfo, "%s,", info.c_str());
         }
         else
         {
