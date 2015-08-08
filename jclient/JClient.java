@@ -35,6 +35,9 @@ public class JClient {
         byte[] img = null;
         int imgSize = 0;
 
+    // srcGUID = the GUID of Android phone, usually should be 101
+    // dstGUID = the GUID of server, usually should be 102
+    // debug = whether to run in debug mode which would print out more details.
     public JClient (int src, int dst, boolean mode) {
         // sendLock = new ReentrantLock();
         resultSem = new Semaphore(0);
@@ -266,6 +269,8 @@ public class JClient {
         }
     }
 
+    // start() method is used to create connection to server using MFAPI, make sure you've call it before you send out an image or request a result.
+    // And notice that, this program would return once it finished set up the connection.
     public void start() {
         // initialize the Message Distributor
         msgD.init(srcGUID, dstGUID, debug);
@@ -298,6 +303,8 @@ public class JClient {
         });
     }
 
+    // stop() method is used to close the connection to server and also close the MFAPI interface
+    // This part might be still buggy, but we should have it.
     public int stop() {
         globalStop = true;
         System.out.println("\nSet up the stop signal to all threads.");
@@ -309,6 +316,10 @@ public class JClient {
         return 0;
     }
 
+    // sendImage(byte[] , int ) method is used to trigger an action to send out your image to server.
+    // assume the image is stored in an byte array as below: 
+    // byte[] imgArray;
+    // Also, it would return once the image is sent out
     public int sendImage(byte[] img, int size) {
         try {
             this.img = img;
@@ -325,6 +336,11 @@ public class JClient {
         return 0;
     }
 
+    // getResult() method would return you a result sent by server
+    // if the image does not match any paintings in our database, the result would be "none"
+    // otherwise, it would be like "author,title,date"
+    // last, this method would keep waiting if there is no result from the server
+    // it would return immediately once the server send you back a result("none" or information)
     public String getResult() {
         try {
             // now wait for a result
