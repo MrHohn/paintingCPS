@@ -74,7 +74,7 @@ public class TestClient {
         }
 
         System.out.println("Test end.");
-        // client.stop();
+        client.stop();
         System.exit(1);
     }
 }
