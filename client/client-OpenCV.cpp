@@ -631,17 +631,20 @@ void *display_thread(void *arg)
             {
                 if (debug) printf("drawResult: %d\n", drawResult); 
                 printf("\n[test] got result from server\n");
-                printf("[test] %s\n", resultShown.c_str());
-                printf("[test] coordinates as below:\n");
-                printf("%f, %f\n", coord[0], coord[1]);
-                printf("%f, %f\n", coord[2], coord[3]);
-                printf("%f, %f\n", coord[4], coord[5]);
-                printf("%f, %f\n\n", coord[6], coord[7]);
+                printf("[test] %s\n", result_title.c_str());
+                printf("[test] %s\n", result_artist.c_str());
+                printf("[test] %s\n", result_date.c_str());
+                // printf("[test] coordinates as below:\n");
+                // printf("%f, %f\n", coord[0], coord[1]);
+                // printf("%f, %f\n", coord[2], coord[3]);
+                // printf("%f, %f\n", coord[4], coord[5]);
+                // printf("%f, %f\n\n", coord[6], coord[7]);
                 drawResult = 0;
             }
 
             usleep(100 * delay_time); // sleep a while to imitate video catching
         }
+        exit(1);
     }
 
     
@@ -650,7 +653,7 @@ void *display_thread(void *arg)
     global_stop = 1;
     // exit(0);
 
-    return NULL;
+    return 0;
 }
 
 /******************************************************************************
