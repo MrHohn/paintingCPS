@@ -107,16 +107,16 @@ void errorSocket(const char *msg, int sock)
 {
     errno = EBADF;
     perror(msg);
+    printf("[server] Connection closed. --- error\n\n");
     if (!orbit)
     {
         close(sock);     
+        pthread_exit(NULL); //terminate calling thread!
     }
     else
     {
         // MsgD.close(sock, 1);
     }
-    printf("[server] Connection closed. --- error\n\n");
-    pthread_exit(NULL); //terminate calling thread!
 }
 
 
@@ -257,7 +257,8 @@ void server_result (int sock, string userID)
             //     MsgD.close(sock, 0);                
             // }
             printf("[server] client disconnected --- result\n");
-            pthread_exit(NULL); //terminate calling thread!
+            // pthread_exit(NULL); //terminate calling thread!
+            return;
         }
 
         if (debug) printf("\n----------- start matching -------------\n");
@@ -288,7 +289,8 @@ void server_result (int sock, string userID)
     }
     printf("[server] Connection closed. --- result\n\n");
     delete(sem_match);
-    pthread_exit(NULL); //terminate calling thread!
+    // pthread_exit(NULL); //terminate calling thread!
+    return;
 
 }
 
@@ -455,12 +457,13 @@ void server_transmit (int sock, string userID)
             bzero(buffer, sizeof(buffer));
             // get the file info from client
             n = MsgD.recv(sock, buffer, 100);
-            if (n <= 0)
+            if (n < 0)
             {
                 pthread_mutex_destroy(&queueLock);
                 // signal the result thread to terminate
                 sem_post(sem_match);
                 errorSocket("ERROR reading from socket", sock);
+                return;
             } 
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
@@ -549,7 +552,8 @@ void server_transmit (int sock, string userID)
 
     delete(imgQueue);
     printf("[server] Connection closed. --- transmit\n\n");
-    pthread_exit(NULL); //terminate calling thread!
+    // pthread_exit(NULL); //terminate calling thread!
+    return;
 
 }
 
@@ -746,6 +750,8 @@ void server_main()
             usleep(1000 * 5); //  sleep 5ms to avoid clients gain same sock
 
         } /* end of while */
+
+        if (debug) printf("main end\n");
     }
 
 }
@@ -763,6 +769,7 @@ void *mflisten_thread(void *arg)
         MsgD.listen();
     }
 
+    if (debug) printf("mflisten end\n");
     return NULL;
 }
 
