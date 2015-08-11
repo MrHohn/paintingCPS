@@ -89,8 +89,9 @@ public class StormMatch{
 	    String srcImgAddr = tuple.getString(0);
 	    String result = JniImageMatching.matchingIndex(srcImgAddr,initiatePointer);
 
-		String temp = "1";
-		sendData = temp.getBytes();
+	    String delims = "[,]";
+		String[] tokens = result.split(delims);
+		sendData = tokens[2].getBytes();
 		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 		try {
 			clientSocket.send(sendPacket);		
