@@ -338,7 +338,7 @@ public class MsgDistributor {
 	    	if (debug) System.out.printf("new message arrived: %d\n", sockID);
 	    	Queue<byte[]> recvQueue = queueMap.get(sockID);
 	    	byte[] recvByte = recvQueue.poll();
-	    	int getSize = Integer.min(recvByte.length, size);
+	    	int getSize = Math.min(recvByte.length, size);
 	    	for (int i = 0; i < getSize; ++i) {
 	    		buf[i] = recvByte[i];
 	    	}
