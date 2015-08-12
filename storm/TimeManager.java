@@ -9,8 +9,10 @@ class TimeManager {
 		long currentTime;
 		long first = 0;
 		long time;
-		int num = 1;
-		int parallelism = 0;
+		int result = 0;
+		int parallel = 0;
+		int prepare = 0;
+		int spout = 0;
 
         while(true) {
 			byte[] receiveData = new byte[1024];
@@ -19,22 +21,26 @@ class TimeManager {
 			String sentence = new String(receivePacket.getData());
 			sentence = sentence.trim();
 			if (sentence.equals("start")) {
-				++parallelism;
+				++parallel;
 			}
 			else if (sentence.equals("prepare")) {
+				++prepare;
+			}
+			else if (sentence.equals("spout")) {
+				++spout;
 			}
 			else {
-				--parallelism;
+				++result;
+				--parallel;
 			}
-			System.out.println("Message: " + sentence + " Count: " + num + " Parallelism: " + parallelism);
-			++num;
+			System.out.println("[Message]: " + sentence + " [prepare]: " + prepare + " [spout]: " + spout + " [result]: " + result + " [Parallel]: " + parallel);
 			currentTime = System.currentTimeMillis();
 			if (first == 0) {
 				first = currentTime;
 			}
 			time = (currentTime - first);
 
-			System.out.println("Current time consumption: " + time + "ms");
+			System.out.println("Current time consumption: " + time + " ms");
 		}
 	}
 }
