@@ -51,13 +51,16 @@ public class StormMatch{
 
 	@Override	
 	public void nextTuple(){
-	       Utils.sleep(500);
+        // Utils.sleep(200);
 	    // int index = _rand.nextInt(100);
-	     for( int index = 1; index< 20; index++){
-	     String srcImgAddr = JniImageMatching.combineName(JniImageMatching.imgFolderAddr, JniImageMatching.imgPrefix, index, JniImageMatching.imgFormat);
-		_collector.emit(new Values(srcImgAddr));
-	     }
-	     Utils.sleep(1000000);
+
+		for (int i = 0; i < 10; ++i) {
+			for( int index = 1; index< 20; index++){
+				String srcImgAddr = JniImageMatching.combineName(JniImageMatching.imgFolderAddr, JniImageMatching.imgPrefix, index, JniImageMatching.imgFormat);
+				_collector.emit(new Values(srcImgAddr));
+			}
+		}
+		Utils.sleep(1000000);
 	}
 
 	@Override
@@ -74,41 +77,59 @@ public class StormMatch{
 	public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector){
 	    _collector = collector;
 	    initiatePointer = JniImageMatching.initiate_imageMatching(JniImageMatching.indexImgTableAddr,JniImageMatching.imgIndexYmlAddr,JniImageMatching.infoDatabaseAddr);
+
 	    try {
+	    	//send the prepare signal
 		    clientSocket = new DatagramSocket();
-		    IPAddress = InetAddress.getByName("localhost");
+		    IPAddress = InetAddress.getByName("10.0.0.200");
+		    String buffer = "prepare";
+    		byte[] sendData = new byte[100];
+    		sendData = buffer.getBytes();
+    		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+			clientSocket.send(sendPacket);
 	    }
 	    catch (Exception e) {
 	    	e.printStackTrace();
 	    }
+
 	}
 
 	@Override
 	public void execute(Tuple tuple){
-		byte[] sendData = new byte[1024];
-	    String srcImgAddr = tuple.getString(0);
-	    String result = JniImageMatching.matchingIndex(srcImgAddr,initiatePointer);
-
-	    String delims = "[,]";
-		String[] tokens = result.split(delims);
-		sendData = tokens[2].getBytes();
-		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 		try {
-			clientSocket.send(sendPacket);		
+			// send the start signal
+			byte[] sendData = new byte[1024];
+			String buf = "start";
+			sendData = buf.getBytes();
+			DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+			clientSocket.send(sendPacket);
+
+			// start to match
+		    String srcImgAddr = tuple.getString(0);
+		    String result = JniImageMatching.matchingIndex(srcImgAddr,initiatePointer);
+
+		    // send the finish signal
+			sendData = new byte[1024];
+		    String delims = "[,]";
+			String[] tokens = result.split(delims);
+			sendData = tokens[2].getBytes();
+			sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+			clientSocket.send(sendPacket);
 		}
 	    catch (Exception e) {
 	    	e.printStackTrace();
 	    }
 
-	    PrintWriter writer;
-	    String fileAddr = "/home/hadoop/worksapce/storm/Results.txt";
-	    try{
-		writer = new PrintWriter(new BufferedWriter(new FileWriter(fileAddr,true)));
-		writer.println(result + "\n");
-		writer.close();
-	    }catch (IOException e){
-		e.printStackTrace();
-	    }
+	    // write down the result
+	 //    PrintWriter writer;
+	 //    String fileAddr = "/home/hadoop/worksapce/storm/Results.txt";
+	 //    try{
+		// writer = new PrintWriter(new BufferedWriter(new FileWriter(fileAddr,true)));
+		// writer.println(result + "\n");
+		// writer.close();
+	 //    }catch (IOException e){
+		// e.printStackTrace();
+	 //    }
 	    
 	}
 
@@ -120,12 +141,12 @@ public class StormMatch{
 
 
     public static void main(String args[]) throws Exception{
-	//crate the topology                                                                        
+		//crate the topology                                                                        
         TopologyBuilder builder = new TopologyBuilder();
         //attach the randomSentence to the topology -- parallelism of 10                            
         builder.setSpout("rand-image",new RequestedImageSpout(),1);
         //attch the exclamationBolt to the topology -- parallelism of 3                             
-        builder.setBolt("image-matching",new ImgMatchingBolt(),5).shuffleGrouping("rand-image");
+        builder.setBolt("image-matching",new ImgMatchingBolt(),4).shuffleGrouping("rand-image");
 
         Config conf = new Config();
 
@@ -133,7 +154,7 @@ public class StormMatch{
             // Run it on a live storm cluser                                                        
             conf.setNumWorkers(4);
             StormSubmitter.submitTopology(args[0],conf,builder.createTopology());
-        }else{
+        } else {
             // Run it on a simulated local cluster                                                  
             LocalCluster cluster = new LocalCluster();
             //topo name, configuration, builder.topo                                                
@@ -141,7 +162,7 @@ public class StormMatch{
 
             //let it run 30 seconds;                                                                
             Thread.sleep(30000);
-	    JniImageMatching.releaseInitResource(initiatePointer);
+	   		JniImageMatching.releaseInitResource(initiatePointer);
             cluster.killTopology("stormImageMatch");
             cluster.shutdown();
         }
