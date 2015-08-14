@@ -5,6 +5,9 @@
 client/client-OpenCV
 server/server-OpenCV
 
+#Compiled Maven Target
+storm/target/*
+
 # Compiled Java CLass
 *.class
 
