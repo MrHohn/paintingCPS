@@ -10,8 +10,8 @@ MobilityFirst, thorugh its name based Virtual Network Architecture used to provi
 
 The goal of the project is to implement a CPS Application based on computer vision (i.e. object recognition) that will be used in conjunction with MobilityFirst’s Virtual Network to showcase the benefits of the network service.
 
-Plan:
+What has been done:
 
-To simplify whole process, we are now working on both the client side and server side programs based on OPENCV, which provides a great amount of easy to use API to deal with image, video and display stuffs.
+In the past few months, we've built up all the essential system, including the google glass and linux client program which is able to grab photos, Android application as a go between google glass and the MF server, CPS server main program using TCP or MF, OpenCV object recognition program, and also the cloud computing program based on STORM.
 
-For more details, please go see the README in either client folder or server folder.
+For how to configure/compile/install/use the whole system, please go see the README in each folder.
