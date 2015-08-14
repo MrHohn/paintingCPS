@@ -16,7 +16,7 @@ class TimeManager {
 
         while(true) {
 			byte[] receiveData = new byte[1024];
-        	DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 			serverSocket.receive(receivePacket);
 			String sentence = new String(receivePacket.getData());
 			sentence = sentence.trim();

@@ -1,10 +1,11 @@
-/* StormMatch.java: design spout and bolts running image matching on Storm                     
+/*
+	StormMatch.java: design spout and bolts running image matching on Storm
                                                                                       
-   Author: Wuyang Zhang                                                               
-                                                                                      
-   Data: Aug 8 2015                                                                   
-                                                                                      
-   Version: 1.0                                                                       
+	Author: Wuyang Zhang, Zihong Zheng(zzhonzi@gmail.com)
+
+	Data: Aug 8 2015
+
+	Version: 1.0
 */
 
 package storm.winlab.cps;
@@ -48,7 +49,7 @@ public class StormMatch {
 		@Override
 		public void open(Map conf, TopologyContext context, SpoutOutputCollector collector){
 		    _collector = collector;
-		    _rand = new Random();
+		    // _rand = new Random();
 		}
 
 		@Override	
@@ -56,29 +57,27 @@ public class StormMatch {
 
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-			    // InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
-			    InetAddress IPAddress = InetAddress.getByName("localhost");
-		    	//send the spout signal
-			    String buffer = "spout";
-	    		byte[] sendData = new byte[1024];
-	    		sendData = buffer.getBytes();
-	    		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+				// InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+				InetAddress IPAddress = InetAddress.getByName("localhost");
+				//send the spout signal
+				String buffer = "spout";
+				byte[] sendData = new byte[1024];
+				sendData = buffer.getBytes();
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
 
 				// now read the img file
-				String fileName = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
-	            // String fileName = "./pics/orbit-sample.jpg";
-	            File frame = new File(fileName);
-	            FileInputStream readFile = new FileInputStream(fileName);                
-	            int size = (int)frame.length();
-	            byte[] img = new byte[size];
-	            int length = readFile.read(img, 0, size);
-	            if (length != size) {
-	                System.out.println("Read image error!");
-	                System.exit(1);
-	            }
+				String filePath = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
+				File frame = new File(filePath);
+				FileInputStream readFile = new FileInputStream(filePath);                
+				int size = (int)frame.length();
+				byte[] img = new byte[size];
+				int length = readFile.read(img, 0, size);
+				if (length != size) {
+				    System.out.println("Read image error!");
+				    System.exit(1);
+				}
 
-				// _collector.emit(new Values(fileName));
 				_collector.emit(new Values(img, index));
 				++index;
 
@@ -89,10 +88,10 @@ public class StormMatch {
 					Utils.sleep(10000000);
 				}
 
-		    }
-		    catch (Exception e) {
-		    	e.printStackTrace();
-		    }
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 
 		@Override
@@ -112,13 +111,13 @@ public class StormMatch {
 
 		    try {
 				DatagramSocket clientSocket = new DatagramSocket();
-			    // InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
-			    InetAddress IPAddress = InetAddress.getByName("localhost");
-		    	//send the prepare signal
-			    String buffer = "prepare";
-	    		byte[] sendData = new byte[1024];
-	    		sendData = buffer.getBytes();
-	    		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+				// InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+				InetAddress IPAddress = InetAddress.getByName("localhost");
+				//send the prepare signal
+				String buffer = "prepare";
+				byte[] sendData = new byte[1024];
+				sendData = buffer.getBytes();
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
 		    }
 		    catch (Exception e) {
@@ -131,8 +130,8 @@ public class StormMatch {
 		public void execute(Tuple tuple) {
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-			    // InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
-			    InetAddress IPAddress = InetAddress.getByName("localhost");
+				// InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+				InetAddress IPAddress = InetAddress.getByName("localhost");
 				// send the start signal
 				byte[] sendData = new byte[1024];
 				String buf = "start";
@@ -140,30 +139,25 @@ public class StormMatch {
 				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
 
-				// start to match
+				// store the image first
 				byte[] img = tuple.getBinaryByField("img");
 				int index = tuple.getIntegerByField("index");
-			    // String srcImgAddr = tuple.getString(0);
-			    String srcImgAddr = "/home/hadoop/worksapce/opencv-CPS/server/pics/orbit-sample.jpg";
-			    String result = JniImageMatching.matchingIndex(srcImgAddr,initiatePointer);
+				String imgPath = "/home/hadoop/worksapce/opencv-CPS/storm/tmp/";
+				imgPath = imgPath + index + ".jpg";
+				FileOutputStream saveImg = new FileOutputStream(imgPath);
+				saveImg.write(img);
+				saveImg.close();
 
-			    // send the finish signal
+				// start to match
+				String result = JniImageMatching.matchingIndex(imgPath,initiatePointer);
+
+				// send the finish signal
 				sendData = new byte[1024];
-			    String delims = "[,]";
+				String delims = "[,]";
 				String[] tokens = result.split(delims);
-				String temp = "";
-				temp += index;
-				// sendData = tokens[2].getBytes();
-				sendData = temp.getBytes();
+				sendData = tokens[2].getBytes();
 				sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
-		    
-			 //    // write down the result
-			 //    PrintWriter writer;
-			 //    String fileAddr = "/home/hadoop/worksapce/storm/Results.txt";
-				// writer = new PrintWriter (new BufferedWriter (new FileWriter (fileAddr,true)));
-				// writer.println(result + "\n");
-				// writer.close();
 			}
 		    catch (Exception e) {
 		    	e.printStackTrace();
@@ -180,27 +174,26 @@ public class StormMatch {
 
 
     public static void main(String args[]) throws Exception{
-
-		//create the topology                                                                        
+		//create the topology                
         TopologyBuilder builder = new TopologyBuilder();
-        //attach the randomSentence to the topology -- parallelism of 10                            
-        builder.setSpout("rand-image",new RequestedImageSpout(), 1);
-        //attch the exclamationBolt to the topology -- parallelism of 3                             
-        builder.setBolt("image-matching",new ImgMatchingBolt(), 3).shuffleGrouping("rand-image");
+        //attach the randomSentence to the topology -- parallelism of 1
+        builder.setSpout("image-received",new RequestedImageSpout(), 1);
+        //attch the exclamationBolt to the topology -- parallelism of 3
+        builder.setBolt("image-matching",new ImgMatchingBolt(), 3).shuffleGrouping("image-received");
 
         Config conf = new Config();
 
         if(args != null && args.length > 0){
-            // Run it on a live storm cluser                          
+            // Run it on a live storm cluser
             conf.setNumWorkers(3);
             StormSubmitter.submitTopology(args[0],conf,builder.createTopology());
         } else {
-            // Run it on a simulated local cluster                                                  
+            // Run it on a simulated local cluster
             LocalCluster cluster = new LocalCluster();
-            //topo name, configuration, builder.topo                                                
+            //topo name, configuration, builder.topo
             cluster.submitTopology("stormImageMatch",conf, builder.createTopology());
 
-            //let it run 30 seconds;                                                                
+            //let it run 30 seconds;                        
             Thread.sleep(30000);
 	   		JniImageMatching.releaseInitResource(initiatePointer);
             cluster.killTopology("stormImageMatch");

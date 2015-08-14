@@ -10,13 +10,13 @@ package storm.winlab.cps;
 public class JniImageMatching{
     //define image full address
 
-    public static String imgFolderAddr = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/MET_IMG/";
+    public static String imgFolderAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/";
     public static String imgPrefix = "IMG_";
     public static String imgFormat = ".jpg";
     
-    public static String indexImgTableAddr = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/indexImgTable";
-    public static String imgIndexYmlAddr = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/ImgIndex.yml";
-    public static String infoDatabaseAddr = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/MET_INFO/";
+    public static String indexImgTableAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/indexImgTable";
+    public static String imgIndexYmlAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/ImgIndex.yml";
+    public static String infoDatabaseAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_INFO/";
 
 
 
