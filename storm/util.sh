@@ -1,3 +1,9 @@
+#
+# Purpose: Shell script, the finger saver
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
+# Version: 1.0
+# License: 
+#
 
 case $1 in
 start)
