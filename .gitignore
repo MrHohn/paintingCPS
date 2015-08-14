@@ -39,4 +39,5 @@ server/imgDB/*
 server/infoDB/*
 *.yml
 server/indexImgTable
+storm/src/jvm/storm/winlab/cps/indexImgTable
 *.txt

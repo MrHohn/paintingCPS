@@ -178,7 +178,7 @@ public class StormMatch {
 
 
     public static void main(String args[]) throws Exception{
-		//create the topology                
+    	// create the topology
         TopologyBuilder builder = new TopologyBuilder();
         //attach the randomSentence to the topology -- parallelism of 1
         builder.setSpout("image-received",new RequestedImageSpout(), 1);
