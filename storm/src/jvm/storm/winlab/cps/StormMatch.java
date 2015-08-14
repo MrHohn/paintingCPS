@@ -158,6 +158,10 @@ public class StormMatch {
 				sendData = tokens[2].getBytes();
 				sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
+
+				// delete the tmp img
+				File tmpImg = new File(imgPath);
+				tmpImg.delete();
 			}
 		    catch (Exception e) {
 		    	e.printStackTrace();
