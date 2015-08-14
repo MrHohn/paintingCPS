@@ -37,12 +37,14 @@ import storm.winlab.cps.JniImageMatching;
 
 public class StormMatch {
     private static long initiatePointer;
-    private static int num = 0;
+    private static int num = 30;
+    private static int index = 1;
 
     public static class RequestedImageSpout extends BaseRichSpout {
 	
 		SpoutOutputCollector _collector;
 		Random _rand;
+
 		@Override
 		public void open(Map conf, TopologyContext context, SpoutOutputCollector collector){
 		    _collector = collector;
@@ -52,47 +54,50 @@ public class StormMatch {
 		@Override	
 		public void nextTuple(){
 
-			// Utils.sleep(200);
-			// int index = _rand.nextInt(100);
-
-			// for (int i = 0; i < 10; ++i) {
-			// 	for ( int index = 1; index< 20; index++) {
-			// 		String srcImgAddr = JniImageMatching.combineName(JniImageMatching.imgFolderAddr, JniImageMatching.imgPrefix, index, JniImageMatching.imgFormat);
-			// 		_collector.emit(new Values(srcImgAddr));
-			// 	}
-			// }
-			// Utils.sleep(1000000);
-
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-			    InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+			    // InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+			    InetAddress IPAddress = InetAddress.getByName("localhost");
 		    	//send the spout signal
 			    String buffer = "spout";
 	    		byte[] sendData = new byte[1024];
 	    		sendData = buffer.getBytes();
 	    		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
+
+				// now read the img file
+				String fileName = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
+	            // String fileName = "./pics/orbit-sample.jpg";
+	            File frame = new File(fileName);
+	            FileInputStream readFile = new FileInputStream(fileName);                
+	            int size = (int)frame.length();
+	            byte[] img = new byte[size];
+	            int length = readFile.read(img, 0, size);
+	            if (length != size) {
+	                System.out.println("Read image error!");
+	                System.exit(1);
+	            }
+
+				// _collector.emit(new Values(fileName));
+				_collector.emit(new Values(img, index));
+				++index;
+
+				Utils.sleep(200);
+
+				--num;
+				if (num == 0) {
+					Utils.sleep(10000000);
+				}
+
 		    }
 		    catch (Exception e) {
 		    	e.printStackTrace();
 		    }
-
-			String srcImgAddr = "/home/hadoop/worksapce/storm/jopencv-copy/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
-			_collector.emit(new Values(srcImgAddr));
-
-			Utils.sleep(200);
-
-			++num;
-			if (num == 200) {
-				num = 0;
-				Utils.sleep(1000000);
-			}
-
 		}
 
 		@Override
 		public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		    declarer.declare(new Fields("source requested images"));
+		    declarer.declare(new Fields("img", "index"));
 		}
     }
 
@@ -107,7 +112,8 @@ public class StormMatch {
 
 		    try {
 				DatagramSocket clientSocket = new DatagramSocket();
-			    InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+			    // InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+			    InetAddress IPAddress = InetAddress.getByName("localhost");
 		    	//send the prepare signal
 			    String buffer = "prepare";
 	    		byte[] sendData = new byte[1024];
@@ -125,7 +131,8 @@ public class StormMatch {
 		public void execute(Tuple tuple) {
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-			    InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+			    // InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
+			    InetAddress IPAddress = InetAddress.getByName("localhost");
 				// send the start signal
 				byte[] sendData = new byte[1024];
 				String buf = "start";
@@ -134,14 +141,20 @@ public class StormMatch {
 				clientSocket.send(sendPacket);
 
 				// start to match
-			    String srcImgAddr = tuple.getString(0);
+				byte[] img = tuple.getBinaryByField("img");
+				int index = tuple.getIntegerByField("index");
+			    // String srcImgAddr = tuple.getString(0);
+			    String srcImgAddr = "/home/hadoop/worksapce/opencv-CPS/server/pics/orbit-sample.jpg";
 			    String result = JniImageMatching.matchingIndex(srcImgAddr,initiatePointer);
 
 			    // send the finish signal
 				sendData = new byte[1024];
 			    String delims = "[,]";
 				String[] tokens = result.split(delims);
-				sendData = tokens[2].getBytes();
+				String temp = "";
+				temp += index;
+				// sendData = tokens[2].getBytes();
+				sendData = temp.getBytes();
 				sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
 				clientSocket.send(sendPacket);
 		    
