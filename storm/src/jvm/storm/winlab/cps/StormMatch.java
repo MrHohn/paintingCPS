@@ -38,8 +38,13 @@ import storm.winlab.cps.JniImageMatching;
 
 public class StormMatch {
     private static long initiatePointer;
-    private static int num = 30;
+    private static int num = 15;
     private static int index = 1;
+    private static boolean found = false;
+    private static int monitorPort = 9876;
+    private static int spoutFinderPort = 9877;
+    private static int requestPort = 9878;
+    private static boolean monitor = true;
 
     public static class RequestedImageSpout extends BaseRichSpout {
 	
@@ -57,14 +62,23 @@ public class StormMatch {
 
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-				// InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
-				InetAddress IPAddress = InetAddress.getByName("localhost");
+				// InetAddress serverIP = InetAddress.getByName("10.0.0.200");
+				InetAddress serverIP = InetAddress.getByName("localhost");
 				//send the spout signal
 				String buffer = "spout";
 				byte[] sendData = new byte[1024];
 				sendData = buffer.getBytes();
-				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-				clientSocket.send(sendPacket);
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
+				if (monitor) clientSocket.send(sendPacket);
+				if (!found) {
+					// tell the SpoutFinder where the spout is
+					buffer = "here";
+					sendData = new byte[1024];
+					sendData = buffer.getBytes();
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, spoutFinderPort);
+					clientSocket.send(sendPacket);
+					found = true;
+				}
 
 				// now read the img file
 				String filePath = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
@@ -109,19 +123,21 @@ public class StormMatch {
 		    _collector = collector;
 		    initiatePointer = JniImageMatching.initiate_imageMatching (JniImageMatching.indexImgTableAddr,JniImageMatching.imgIndexYmlAddr,JniImageMatching.infoDatabaseAddr);
 
-		    try {
-				DatagramSocket clientSocket = new DatagramSocket();
-				// InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
-				InetAddress IPAddress = InetAddress.getByName("localhost");
-				//send the prepare signal
-				String buffer = "prepare";
-				byte[] sendData = new byte[1024];
-				sendData = buffer.getBytes();
-				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-				clientSocket.send(sendPacket);
-		    }
-		    catch (Exception e) {
-		    	e.printStackTrace();
+		    if (monitor) {
+			    try {
+					DatagramSocket clientSocket = new DatagramSocket();
+					// InetAddress serverIP = InetAddress.getByName("10.0.0.200");
+					InetAddress serverIP = InetAddress.getByName("localhost");
+					//send the prepare signal
+					String buffer = "prepare";
+					byte[] sendData = new byte[1024];
+					sendData = buffer.getBytes();
+					DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, 9876);
+					clientSocket.send(sendPacket);
+			    }
+			    catch (Exception e) {
+			    	e.printStackTrace();
+			    }
 		    }
 
 		}
@@ -129,15 +145,19 @@ public class StormMatch {
 		@Override
 		public void execute(Tuple tuple) {
 			try {
-				DatagramSocket clientSocket = new DatagramSocket();
-				// InetAddress IPAddress = InetAddress.getByName("10.0.0.200");
-				InetAddress IPAddress = InetAddress.getByName("localhost");
-				// send the start signal
-				byte[] sendData = new byte[1024];
-				String buf = "start";
-				sendData = buf.getBytes();
-				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-				clientSocket.send(sendPacket);
+				InetAddress serverIP = InetAddress.getByName("localhost");
+				DatagramSocket clientSocket = new DatagramSocket();;
+				DatagramPacket sendPacket;
+				byte[] sendData;
+
+				if (monitor) {	
+					// send the start signal
+					sendData = new byte[1024];
+					String buf = "start";
+					sendData = buf.getBytes();
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, 9876);
+					clientSocket.send(sendPacket);
+				}
 
 				// store the image first
 				byte[] img = tuple.getBinaryByField("img");
@@ -151,13 +171,15 @@ public class StormMatch {
 				// start to match
 				String result = JniImageMatching.matchingIndex(imgPath,initiatePointer);
 
-				// send the finish signal
-				sendData = new byte[1024];
-				String delims = "[,]";
-				String[] tokens = result.split(delims);
-				sendData = tokens[2].getBytes();
-				sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-				clientSocket.send(sendPacket);
+				if (monitor) {
+					// send the finish signal
+					sendData = new byte[1024];
+					String delims = "[,]";
+					String[] tokens = result.split(delims);
+					sendData = tokens[2].getBytes();
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, 9876);
+					clientSocket.send(sendPacket);
+				}
 
 				// delete the tmp img
 				File tmpImg = new File(imgPath);

@@ -1,3 +1,12 @@
+/*************************************************
+#
+# Purpose: Simple test program for ClusterMonitor
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
+# Version: 1.0
+# License: 
+#
+*************************************************/
+
 import java.io.*;
 import java.net.*;
 

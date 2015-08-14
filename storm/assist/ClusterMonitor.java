@@ -1,10 +1,21 @@
+/*************************************************
+#
+# Purpose: This program is used to monitor the Storm cluster.
+			It will record the number of prepares, spouts, finished 
+			requests, and the current parallel bolts.
+# Author.: Zihong Zheng (zzhonzi@gmail.com)
+# Version: 1.0
+# License: 
+#
+*************************************************/
+
 import java.io.*;
 import java.net.*;
 
-class TimeManager {
+class ClusterMonitor {
 	public static void main(String args[]) throws Exception {
 		int port = 9876;
-		DatagramSocket serverSocket = new DatagramSocket(9876);
+		DatagramSocket serverSocket = new DatagramSocket(port);
 		System.out.println("Now wait for the responser...");
 		long currentTime;
 		long first = 0;
