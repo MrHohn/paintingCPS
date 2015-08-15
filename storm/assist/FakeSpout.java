@@ -45,7 +45,6 @@ public class FakeSpout {
 				if (debug) System.out.println("got connection");
 
 				// initiallize the new accepted socket
-
 				DataInputStream in = new DataInputStream(serverSock.getInputStream());
 				PrintWriter out = new PrintWriter(new OutputStreamWriter(serverSock.getOutputStream()),true);
 
@@ -67,16 +66,19 @@ public class FakeSpout {
 				receivedData = new byte[fileSize];
 				int index = 0;
 				int once = 2048;
-				while (in.available() != 0) {
+				while (true) {
 					if (fileSize - index <= once) {
 						ret = in.read(receivedData, index, fileSize - index);
+						if (debug) System.out.println("ret: " + ret);
+						break;
 					}
 					else {
 						ret = in.read(receivedData, index, once);
+						if (debug) System.out.println("ret: " + ret);
 					}
 					index += ret;
-					if (debug) System.out.println("ret: " + ret);
 				}
+
 			}
 
 
