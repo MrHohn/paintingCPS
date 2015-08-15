@@ -43,10 +43,10 @@ public class StormMatch {
     private static boolean found = false;
     private static int monitorPort = 9876;
     private static int spoutFinderPort = 9877;
-    private static int requestPort = 9878;
+    private static int spoutPort = 9878;
     private static boolean monitor = true;
-    private static String serverHost = "localhost";
-    private static boolean testMode = true;
+    private static String monitorHost = "localhost";
+    private static boolean testMode = false;
 
     public static class RequestedImageSpout extends BaseRichSpout {
 	
@@ -64,7 +64,7 @@ public class StormMatch {
 
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-				InetAddress serverIP = InetAddress.getByName(serverHost);
+				InetAddress serverIP = InetAddress.getByName(monitorHost);
 				//send the spout signal
 				String buffer = "spout";
 				byte[] sendData = new byte[1024];
@@ -82,8 +82,25 @@ public class StormMatch {
 				}
 
 				if (!testMode) {
+					ServerSocket spoutServer = new ServerSocket(spoutPort);
+					Socket serverSock;
+
 					// wait for the CPS server to connect
-					
+					serverSock = spoutServer.accept();
+
+					// initiallize the new accepted socket
+					BufferedReader in = new BufferedReader(new InputStreamReader(serverSock.getInputStream()));
+					DataInputStream receiveData = new DataInputStream(serverSock.getInputStream());
+					PrintWriter out = new PrintWriter(new OutputStreamWriter(serverSock.getOutputStream()),true);
+
+					// received the file size first
+					String message;
+					message = in.readLine();
+					// System.out.println("file size: " + message);
+					int fileSize = Integer.parseInt(message);
+					out.println("ok");
+					// byte[];
+
 				}
 				else {
 					// now read the img file
@@ -134,7 +151,7 @@ public class StormMatch {
 		    if (monitor) {
 			    try {
 					DatagramSocket clientSocket = new DatagramSocket();
-					InetAddress serverIP = InetAddress.getByName(serverHost);
+					InetAddress serverIP = InetAddress.getByName(monitorHost);
 					//send the prepare signal
 					String buffer = "prepare";
 					byte[] sendData = new byte[1024];
@@ -152,7 +169,7 @@ public class StormMatch {
 		@Override
 		public void execute(Tuple tuple) {
 			try {
-				InetAddress serverIP = InetAddress.getByName(serverHost);
+				InetAddress serverIP = InetAddress.getByName(monitorHost);
 				DatagramSocket clientSocket = new DatagramSocket();;
 				DatagramPacket sendPacket;
 				byte[] sendData;

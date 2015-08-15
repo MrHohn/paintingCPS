@@ -27,10 +27,11 @@ int main(void)
 	char spoutFinderHost[100];
 	sprintf(spoutFinderHost, "127.0.0.1");	/* change this to use a different server */
 	char buf[1024];
-	int recvlen;			/* # bytes received */
+	int ret;			/* # bytes received */
 	int spoutFinderPort = 9877;
+	int spoutPort = 9878;
 	int serverPort = 9879;
-	int serverPort = 9876;
+	string spoutIP;
 
 	/* create a socket */
 
@@ -74,8 +75,8 @@ int main(void)
 
 	// now receive the IP of spout
 	bzero(buf, sizeof(buf));
-	recvlen = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&remaddr, &addrlen);
-	if (recvlen > 0)
+	ret = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&remaddr, &addrlen);
+	if (ret > 0)
 	{
 		if (strcmp(buf, "none") == 0)
 		{
@@ -88,7 +89,8 @@ int main(void)
 		// 	printf("here\n");
 		// }
 		else {
-			string spoutIP(buf);
+			string spoutIP_temp(buf);
+			spoutIP = spoutIP_temp;
 			printf("Spout IP: %s\n", spoutIP.c_str());
 		}
 	}
@@ -96,8 +98,73 @@ int main(void)
 	{
 		printf("receive error\n");		
 	}
-
 	close(fd);
+
+
+	printf("Now try to connect the spout\n");
+	int sockfd;
+    struct sockaddr_in spout_addr;
+    struct hostent *spout;
+    struct in_addr ipv4addr;
+    char buf_spout[100];
+    int file_size = 65536;
+    char* spout_IP;
+	const int len = spoutIP.length();
+	spout_IP = new char[len+1];
+	strcpy(spout_IP, spoutIP.c_str());
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        printf("ERROR opening socket\n");
+    	return -1;
+    }
+    inet_pton(AF_INET, spout_IP, &ipv4addr);
+    spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+	printf("\n[server] Spout address: %s\n", spout_IP);
+	if (spout == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *) &spout_addr, sizeof(spout_addr));
+    spout_addr.sin_family = AF_INET;
+    bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
+    spout_addr.sin_port = htons(spoutPort);
+
+    if (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
+    {
+        printf("-------- The spout is not available now. ---------\n\n");
+        return -1;
+    }
+    else
+    {
+        printf("[server] Get connection to spout\n");
+    }
+
+    sprintf(buf_spout, "%d", file_size);
+    printf("[server] send the file size\n");
+    ret = write(sockfd, buf_spout, sizeof(buf_spout));
+    if (ret < 0)
+    {
+    	printf("error sending\n");
+    	return -1;
+    }
+
+    // get the response
+    bzero(buf_spout, sizeof(buf_spout));
+    printf("[server] now wait for response\n");
+    ret = read(sockfd, buf_spout, sizeof(buf_spout));
+    if (ret < 0)
+    {
+    	printf("error reading\n");
+    	return -1;
+    }
+
+    printf("got response: %s\n", buf_spout);
+
+
+	close(sockfd);
+
 	return 0;
 
 }

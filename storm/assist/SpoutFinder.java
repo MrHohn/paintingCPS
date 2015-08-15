@@ -19,7 +19,7 @@ class SpoutFinder {
 		System.out.println("Now wait for the spout...");
 		String spoutIP = "none";
 
-        while(true) {
+		while(true) {
 			byte[] receiveData = new byte[1024];
 			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 			serverSocket.receive(receivePacket);
