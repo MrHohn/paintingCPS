@@ -45,6 +45,8 @@ public class StormMatch {
     private static int spoutFinderPort = 9877;
     private static int requestPort = 9878;
     private static boolean monitor = true;
+    private static String serverHost = "localhost";
+    private static boolean testMode = true;
 
     public static class RequestedImageSpout extends BaseRichSpout {
 	
@@ -62,8 +64,7 @@ public class StormMatch {
 
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
-				// InetAddress serverIP = InetAddress.getByName("10.0.0.200");
-				InetAddress serverIP = InetAddress.getByName("localhost");
+				InetAddress serverIP = InetAddress.getByName(serverHost);
 				//send the spout signal
 				String buffer = "spout";
 				byte[] sendData = new byte[1024];
@@ -80,26 +81,33 @@ public class StormMatch {
 					found = true;
 				}
 
-				// now read the img file
-				String filePath = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
-				File frame = new File(filePath);
-				FileInputStream readFile = new FileInputStream(filePath);                
-				int size = (int)frame.length();
-				byte[] img = new byte[size];
-				int length = readFile.read(img, 0, size);
-				if (length != size) {
-				    System.out.println("Read image error!");
-				    System.exit(1);
+				if (!testMode) {
+					// wait for the CPS server to connect
+					
 				}
+				else {
+					// now read the img file
+					String filePath = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
+					File frame = new File(filePath);
+					FileInputStream readFile = new FileInputStream(filePath);                
+					int size = (int)frame.length();
+					byte[] img = new byte[size];
+					int length = readFile.read(img, 0, size);
+					if (length != size) {
+					    System.out.println("Read image error!");
+					    System.exit(1);
+					}
 
-				_collector.emit(new Values(img, index));
-				++index;
+					_collector.emit(new Values(img, index));
+					++index;
 
-				Utils.sleep(200);
+					Utils.sleep(200);
 
-				--num;
-				if (num == 0) {
-					Utils.sleep(10000000);
+					--num;
+					if (num == 0) {
+						Utils.sleep(10000000);
+					}
+
 				}
 
 			}
@@ -126,8 +134,7 @@ public class StormMatch {
 		    if (monitor) {
 			    try {
 					DatagramSocket clientSocket = new DatagramSocket();
-					// InetAddress serverIP = InetAddress.getByName("10.0.0.200");
-					InetAddress serverIP = InetAddress.getByName("localhost");
+					InetAddress serverIP = InetAddress.getByName(serverHost);
 					//send the prepare signal
 					String buffer = "prepare";
 					byte[] sendData = new byte[1024];
@@ -145,7 +152,7 @@ public class StormMatch {
 		@Override
 		public void execute(Tuple tuple) {
 			try {
-				InetAddress serverIP = InetAddress.getByName("localhost");
+				InetAddress serverIP = InetAddress.getByName(serverHost);
 				DatagramSocket clientSocket = new DatagramSocket();;
 				DatagramPacket sendPacket;
 				byte[] sendData;

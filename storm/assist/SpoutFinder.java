@@ -13,8 +13,9 @@ import java.net.*;
 
 class SpoutFinder {
 	public static void main(String args[]) throws Exception {
-		int port = 9877;
-		DatagramSocket serverSocket = new DatagramSocket(port);
+		int spoutFinderPort = 9877;
+		int serverPort = 9879;
+		DatagramSocket serverSocket = new DatagramSocket(spoutFinderPort);
 		System.out.println("Now wait for the spout...");
 		String spoutIP = "none";
 
@@ -27,7 +28,7 @@ class SpoutFinder {
 			System.out.println("New message");
 			// message from spout
 			if (sentence.equals("here")) {
-				System.out.println("Found spout.");
+				System.out.println("Found new spout.");
 				InetAddress IPAddress = receivePacket.getAddress();
 				spoutIP = IPAddress.getHostAddress();
 				System.out.println("Spout IP: " + spoutIP);
@@ -35,8 +36,15 @@ class SpoutFinder {
 			}
 			// message from CPS server
 			if (sentence.equals("where")) {
-				InetAddress IPAddress = receivePacket.getAddress();
-				
+				System.out.println("CPS server querying.");
+				// send back the ip of spout
+				DatagramSocket clientSocket = new DatagramSocket();
+				InetAddress serverIP = receivePacket.getAddress();
+				byte[] sendData = new byte[1024];
+				sendData = spoutIP.getBytes();
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, serverPort);
+				System.out.println("send back the spout IP: " + spoutIP);
+				clientSocket.send(sendPacket);
 			}
 		}
 	}

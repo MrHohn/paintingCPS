@@ -4,6 +4,7 @@
 *.o
 client/client-OpenCV
 server/server-OpenCV
+storm/assist/starter
 
 #Compiled Maven Target
 storm/target/*
