@@ -17,6 +17,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <string>
+#include <sys/stat.h>
+
 using namespace std;
 
 int main(void)
@@ -107,7 +109,6 @@ int main(void)
     struct hostent *spout;
     struct in_addr ipv4addr;
     char buf_spout[100];
-    int file_size = 65536;
     char* spout_IP;
 	const int len = spoutIP.length();
 	spout_IP = new char[len+1];
@@ -141,7 +142,21 @@ int main(void)
         printf("[server] Get connection to spout\n");
     }
 
-    sprintf(buf_spout, "%d", file_size);
+    char file_name[256] = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
+    // stat of file, to get the size
+    struct stat file_stat;
+
+    // get the status of file
+    if (stat(file_name, &file_stat) == -1)
+    {
+        perror("stat");
+        exit(EXIT_FAILURE);
+    }
+    
+    printf("file size: %ld\n", file_stat.st_size);
+
+    bzero(buf_spout, sizeof(buf_spout));
+    sprintf(buf_spout, "%ld", file_stat.st_size);
     printf("[server] send the file size\n");
     ret = write(sockfd, buf_spout, sizeof(buf_spout));
     if (ret < 0)
@@ -162,6 +177,31 @@ int main(void)
 
     printf("got response: %s\n", buf_spout);
 
+    FILE *fp = fopen(file_name, "r");  
+    if (fp == NULL)  
+    {  
+        printf("File:\t%s Not Found!\n", file_name);
+        return -1;
+    }
+
+    char img[file_stat.st_size];
+	printf("[server] send the img\n");
+    ret = fread(img, sizeof(char), file_stat.st_size, fp);
+    if (ret < 0)
+    {
+        printf("read errro\n");
+        return -1;    	
+    }
+	printf("ret: %d\n", ret);
+
+	printf("[server] send the img\n");
+    ret = write(sockfd, img, sizeof(img));
+    if (ret < 0)
+    {
+    	printf("error sending\n");
+    	return -1;
+    }
+	printf("ret: %d\n", ret);
 
 	close(sockfd);
 

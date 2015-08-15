@@ -45,21 +45,38 @@ public class FakeSpout {
 				if (debug) System.out.println("got connection");
 
 				// initiallize the new accepted socket
-				BufferedReader in = new BufferedReader(new InputStreamReader(serverSock.getInputStream()));
-				DataInputStream receiveData = new DataInputStream(serverSock.getInputStream());
+
+				DataInputStream in = new DataInputStream(serverSock.getInputStream());
 				PrintWriter out = new PrintWriter(new OutputStreamWriter(serverSock.getOutputStream()),true);
 
 				// received the file size first
+				byte[] receivedData = new byte[100];
 				String message;
+				int ret;
 				if (debug) System.out.println("now read from socket");
-				message = in.readLine();
-				if (debug) System.out.println("file size: " + message);
-				int fileSize = Integer.parseInt(message);
+				ret = in.read(receivedData);
+				if (debug) System.out.println("ret: " + ret);
 				if (debug) System.out.println("now response");
 				out.println("ok");
-				if (debug) System.out.println("start receiving image");
-				// byte[];
+				message = new String(receivedData, "UTF-8");
+				message = message.trim();
+				int fileSize = Integer.parseInt(message);
+				if (debug) System.out.println("file size: " + fileSize);
 
+				if (debug) System.out.println("start receiving image");
+				receivedData = new byte[fileSize];
+				int index = 0;
+				int once = 2048;
+				while (in.available() != 0) {
+					if (fileSize - index <= once) {
+						ret = in.read(receivedData, index, fileSize - index);
+					}
+					else {
+						ret = in.read(receivedData, index, once);
+					}
+					index += ret;
+					if (debug) System.out.println("ret: " + ret);
+				}
 			}
 
 
