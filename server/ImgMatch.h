@@ -40,6 +40,7 @@ public:
     void clearLocation();
     void getMatchedImgInfo();
     string getInfo();
+    static string getInfo(int);
     void locateDrawRect(vector<float> location);
     void locateDrawCirle(vector<float> location);
 private:

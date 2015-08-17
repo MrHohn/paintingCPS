@@ -430,3 +430,21 @@ string ImgMatch::getInfo() {
     return info;
 }
 
+string ImgMatch::getInfo(int index) {
+    string line;
+    string info;
+    char file_name[100];
+    sprintf(file_name, "MET_INFO/%d.txt", index);
+
+    ifstream info_file(file_name);
+    if (info_file)
+    {
+        while (getline(info_file, line)) {
+            info = line;
+            // cout << line << endl;
+        }
+    }
+    info_file.close();
+
+    return info;
+}
