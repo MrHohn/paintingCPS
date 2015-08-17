@@ -132,15 +132,13 @@ int main(void)
     bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
     spout_addr.sin_port = htons(spoutPort);
 
-    if (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
+    while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
     {
-        printf("-------- The spout is not available now. ---------\n\n");
-        return -1;
-    }
-    else
-    {
-        printf("[server] Get connection to spout\n");
-    }
+        printf("The spout is not available now, wait a while and reconnect\n\n");
+        usleep(20000); // sleep 20ms
+	}
+
+    printf("[server] Get connection to spout\n");
 
     char file_name[256] = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
     // stat of file, to get the size

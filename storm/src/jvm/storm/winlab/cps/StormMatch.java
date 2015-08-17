@@ -47,6 +47,7 @@ public class StormMatch {
     private static boolean monitor = true;
     private static String monitorHost = "localhost";
     private static boolean testMode = false;
+    private static boolean debug = false;
 
     public static class RequestedImageSpout extends BaseRichSpout {
 	
@@ -66,11 +67,10 @@ public class StormMatch {
 				DatagramSocket clientSocket = new DatagramSocket();
 				InetAddress serverIP = InetAddress.getByName(monitorHost);
 				//send the spout signal
-				String buffer = "spout";
-				byte[] sendData = new byte[1024];
-				sendData = buffer.getBytes();
-				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
-				if (monitor) clientSocket.send(sendPacket);
+				String buffer;
+				byte[] sendData;
+				DatagramPacket sendPacket;
+				
 				if (!found) {
 					// tell the SpoutFinder where the spout is
 					buffer = "here";
@@ -86,21 +86,49 @@ public class StormMatch {
 					Socket serverSock;
 
 					// wait for the CPS server to connect
+					if (debug) System.out.println("wait for connection");
 					serverSock = spoutServer.accept();
+					if (debug) System.out.println("got connection");
 
 					// initiallize the new accepted socket
-					BufferedReader in = new BufferedReader(new InputStreamReader(serverSock.getInputStream()));
-					DataInputStream receiveData = new DataInputStream(serverSock.getInputStream());
+					DataInputStream in = new DataInputStream(serverSock.getInputStream());
 					PrintWriter out = new PrintWriter(new OutputStreamWriter(serverSock.getOutputStream()),true);
 
 					// received the file size first
+					byte[] receivedData = new byte[100];
 					String message;
-					message = in.readLine();
-					// System.out.println("file size: " + message);
-					int fileSize = Integer.parseInt(message);
+					int ret;
+					if (debug) System.out.println("now read from socket");
+					ret = in.read(receivedData);
+					if (debug) System.out.println("ret: " + ret);
+					if (debug) System.out.println("now response");
 					out.println("ok");
-					// byte[];
+					message = new String(receivedData, "UTF-8");
+					message = message.trim();
+					int fileSize = Integer.parseInt(message);
+					if (debug) System.out.println("file size: " + fileSize);
 
+					if (debug) System.out.println("start receiving image");
+					byte[] img = new byte[fileSize];
+					int offset = 0;
+					int once = 2048;
+					while (true) {
+						if (fileSize - offset <= once) {
+							ret = in.read(img, offset, fileSize - offset);
+							if (debug) System.out.println("ret: " + ret);
+							break;
+						}
+						else {
+							ret = in.read(img, offset, once);
+							if (debug) System.out.println("ret: " + ret);
+						}
+						offset += ret;
+					}
+
+					spoutServer.close();
+
+					_collector.emit(new Values(img, index));
+					++index;
 				}
 				else {
 					// now read the img file
@@ -126,6 +154,12 @@ public class StormMatch {
 					}
 
 				}
+
+				buffer = "spout";
+				sendData = new byte[1024];
+				sendData = buffer.getBytes();
+				sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
+				if (monitor) clientSocket.send(sendPacket);
 
 			}
 			catch (Exception e) {

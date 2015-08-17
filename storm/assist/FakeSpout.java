@@ -15,76 +15,81 @@ public class FakeSpout {
 
 	public static void main(String args[]){
 
-		try {
-			DatagramSocket clientSocket = new DatagramSocket();
-			InetAddress serverIP = InetAddress.getByName(monitorHost);
-			//send the spout signal
-			String buffer = "spout";
-			byte[] sendData = new byte[1024];
-			sendData = buffer.getBytes();
-			DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
-			if (debug) System.out.println("send spout to monitor");
-			if (monitor) clientSocket.send(sendPacket);
-			if (!found) {
-				// tell the SpoutFinder where the spout is
-				buffer = "here";
-				sendData = new byte[1024];
+		while (true) {
+
+			try {
+				DatagramSocket clientSocket = new DatagramSocket();
+				InetAddress serverIP = InetAddress.getByName(monitorHost);
+				//send the spout signal
+				String buffer = "spout";
+				byte[] sendData = new byte[1024];
 				sendData = buffer.getBytes();
-				sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, spoutFinderPort);
-				clientSocket.send(sendPacket);
-				found = true;
-			}
-
-			if (!testMode) {
-				ServerSocket spoutServer = new ServerSocket(spoutPort);
-				Socket serverSock;
-
-				// wait for the CPS server to connect
-				if (debug) System.out.println("wait for connection");
-				serverSock = spoutServer.accept();
-				if (debug) System.out.println("got connection");
-
-				// initiallize the new accepted socket
-				DataInputStream in = new DataInputStream(serverSock.getInputStream());
-				PrintWriter out = new PrintWriter(new OutputStreamWriter(serverSock.getOutputStream()),true);
-
-				// received the file size first
-				byte[] receivedData = new byte[100];
-				String message;
-				int ret;
-				if (debug) System.out.println("now read from socket");
-				ret = in.read(receivedData);
-				if (debug) System.out.println("ret: " + ret);
-				if (debug) System.out.println("now response");
-				out.println("ok");
-				message = new String(receivedData, "UTF-8");
-				message = message.trim();
-				int fileSize = Integer.parseInt(message);
-				if (debug) System.out.println("file size: " + fileSize);
-
-				if (debug) System.out.println("start receiving image");
-				receivedData = new byte[fileSize];
-				int index = 0;
-				int once = 2048;
-				while (true) {
-					if (fileSize - index <= once) {
-						ret = in.read(receivedData, index, fileSize - index);
-						if (debug) System.out.println("ret: " + ret);
-						break;
-					}
-					else {
-						ret = in.read(receivedData, index, once);
-						if (debug) System.out.println("ret: " + ret);
-					}
-					index += ret;
+				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
+				if (debug) System.out.println("send spout to monitor");
+				if (monitor) clientSocket.send(sendPacket);
+				if (!found) {
+					// tell the SpoutFinder where the spout is
+					buffer = "here";
+					sendData = new byte[1024];
+					sendData = buffer.getBytes();
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, spoutFinderPort);
+					clientSocket.send(sendPacket);
+					found = true;
 				}
 
+				if (!testMode) {
+					ServerSocket spoutServer = new ServerSocket(spoutPort);
+					Socket serverSock;
+
+					// wait for the CPS server to connect
+					if (debug) System.out.println("wait for connection");
+					serverSock = spoutServer.accept();
+					if (debug) System.out.println("got connection");
+
+					// initiallize the new accepted socket
+					DataInputStream in = new DataInputStream(serverSock.getInputStream());
+					PrintWriter out = new PrintWriter(new OutputStreamWriter(serverSock.getOutputStream()),true);
+
+					// received the file size first
+					byte[] receivedData = new byte[100];
+					String message;
+					int ret;
+					if (debug) System.out.println("now read from socket");
+					ret = in.read(receivedData);
+					if (debug) System.out.println("ret: " + ret);
+					if (debug) System.out.println("now response");
+					out.println("ok");
+					message = new String(receivedData, "UTF-8");
+					message = message.trim();
+					int fileSize = Integer.parseInt(message);
+					if (debug) System.out.println("file size: " + fileSize);
+
+					if (debug) System.out.println("start receiving image");
+					byte[] img = new byte[fileSize];
+					int offset = 0;
+					int once = 2048;
+					while (true) {
+						if (fileSize - offset <= once) {
+							ret = in.read(img, offset, fileSize - offset);
+							if (debug) System.out.println("ret: " + ret);
+							break;
+						}
+						else {
+							ret = in.read(img, offset, once);
+							if (debug) System.out.println("ret: " + ret);
+						}
+						offset += ret;
+					}
+
+					spoutServer.close();
+				}
+
+
 			}
-
-
+			catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
+
 	}
 }
