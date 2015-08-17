@@ -1086,62 +1086,6 @@ void server_run()
 
     server_main();
 
-
-    // // below for test
-    // char file_name[256] = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
-    // int ret;
-
-    // // stat of file, to get the size
-    // struct stat file_stat;
-
-    // // get the status of file
-    // if (stat(file_name, &file_stat) == -1)
-    // {
-    //     perror("stat");
-    //     exit(EXIT_FAILURE);
-    // }
-    
-    // if (debug) printf("file size: %ld\n", file_stat.st_size);
-
-    // FILE *fp = fopen(file_name, "r");  
-    // if (fp == NULL)  
-    // {  
-    //     printf("File:\t%s Not Found!\n", file_name);
-    //     return;
-    // }
-
-    // char img[file_stat.st_size];
-    // if (debug) printf("[server] read the img\n");
-    // ret = fread(img, sizeof(char), file_stat.st_size, fp);
-    // if (ret < 0)
-    // {
-    //     printf("read errro\n");
-    //     return;      
-    // }
-    // if (debug) printf("ret: %d\n", ret);
-
-    // // calculate the time consumption here
-    // struct timeval tpstart,tpend;
-    // double timeuse;
-    // gettimeofday(&tpstart,NULL);
-
-    // vector<uchar> jpgbytes;
-    // for (int i = 0; i < file_stat.st_size; ++i) {
-    //     jpgbytes.push_back(img[i]);
-    // }
-
-    // // print out time comsumption
-    // gettimeofday(&tpend,NULL);
-    // timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-    // // printf("used time:%fus\n",timeuse);
-    // printf("receive used time:%fms\n",timeuse / 1000);
-
-    // Mat img_read = imdecode(jpgbytes, CV_LOAD_IMAGE_COLOR);
-
-    // imshow("test", img_read);
-
-    // waitKey(0);
-
 }
 
 /******************************************************************************
