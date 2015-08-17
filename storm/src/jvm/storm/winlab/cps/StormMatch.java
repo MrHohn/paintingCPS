@@ -232,14 +232,9 @@ public class StormMatch {
 				// store the image first
 				byte[] img = tuple.getBinaryByField("img");
 				int index = tuple.getIntegerByField("index");
-				String imgPath = "/home/hadoop/worksapce/opencv-CPS/storm/tmp/";
-				imgPath = imgPath + index + ".jpg";
-				FileOutputStream saveImg = new FileOutputStream(imgPath);
-				saveImg.write(img);
-				saveImg.close();
 
 				// start to match
-				String result = JniImageMatching.matchingIndex(imgPath,initiatePointer);
+				String result = JniImageMatching.matchingIndex(img, img.length);
 
 				if (monitor) {
 					// send the finish signal
@@ -254,10 +249,6 @@ public class StormMatch {
 					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);
 				}
-
-				// delete the tmp img
-				File tmpImg = new File(imgPath);
-				tmpImg.delete();
 			}
 		    catch (Exception e) {
 		    	e.printStackTrace();

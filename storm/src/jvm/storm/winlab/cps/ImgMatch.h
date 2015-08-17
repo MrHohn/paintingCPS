@@ -32,7 +32,7 @@ public:
     static long int init_matchImg(string indexImgAdd,string featureClusterAdd,string imgInfoAdd);
 
     string matchImg(string srcImgAdd, long int initiatePointer);
-
+    string matchImg(char* img, int size);
     void set_minHessian(int minHessian);
     static void set_dbSize(int size_DB);
     static void releaseInitResource(long int initiatePointer  );

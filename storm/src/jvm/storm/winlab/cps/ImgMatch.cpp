@@ -247,23 +247,171 @@ string ImgMatch::matchImg(string srcImgAdd,long int initiatePointer){
         if (t.Freq == maxFreq)
             matchedImgIndex = t.ImgIndex;
     }
-    if(deb){
+    if( deb ){
+
       gettimeofday(&tpend,NULL);
       timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
       
       printf("[TIMECOSTING] total used time:%fms\n",timeuse / 1000);
     }
+
     if( deb ){
       printf( "[INFO] Matched image index is%d\n",matchedImgIndex);
     }
+
+      gettimeofday(&tpend,NULL);
+      timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
     struct timeval tp;
     gettimeofday( &tp,NULL );
     double ms = tp.tv_sec * 1000 + tp.tv_usec/1000;
     string output = to_string( timeuse / 1000 );
-    output.append( "," ).append( to_string( ms )).append( to_string(matchedImgIndex) ).append( "," ).append( srcImgAdd );
+    output.append( " ," ).append( to_string( ms )).append( " ," ).append( to_string(matchedImgIndex) ).append( " ," ).append( srcImgAdd );
     return output;
 }
+
+string ImgMatch::matchImg(char* img, int size){
+    struct timeval tpstart,tpend;
+  
+    double timeuse = 0;
+    double timeuseDesp;
+    double timeuseKnnSearch;
+    
+    gettimeofday(&tpstart,NULL);
+
+    vector<uchar> jpgbytes;
+    for (int i = 0; i < size; ++i) {
+        jpgbytes.push_back(img[i]);
+    }
+
+    srcImg = imdecode(jpgbytes, CV_LOAD_IMAGE_COLOR);
+    if (!srcImg.data){
+      printf( "source image NOT found\n");
+        matchedImgIndex = 0;
+        return NULL;
+    }
+    // -- default matched index is 0, means no matching image is found
+     matchedImgIndex = 0;
+
+     /*
+        \calculate input image's descriptor
+    */
+     if(deb){
+       // cout<<"\n[INFO] Read source image "<<srcImgAdd<<" successfully! Start matching"<<endl;
+       
+
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
+    printf("[TIMECOSTING] initiating and reading srcIMG used time :%f ms\n",timeuse / 1000);
+     }
+
+
+    SurfFeatureDetector detector(minHessian);
+    SurfDescriptorExtractor extractor;
+    detector.detect(srcImg, keyPoints1);
+    extractor.compute(srcImg, keyPoints1, despSRC);
+
+
+    if(deb){
+    gettimeofday(&tpend,NULL);
+    timeuseDesp=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
+
+    printf("[TIMECOSTING] extracting descriptors used time :%f ms\n",(timeuseDesp-timeuse) / 1000);
+    }
+
+   
+    if(despSRC.empty()){
+      if(deb)
+    printf("source iamge is empty, quit");
+      return NULL;    
+    }
+   
+    
+   const int knn = 2; 
+   flannIndex->knnSearch(despSRC, indices, dists, knn, flann::SearchParams());
+   
+   if(deb){
+   gettimeofday(&tpend,NULL);
+    timeuseKnnSearch=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
+    printf("[TIMECOSTING] Knnsearch used time: %f ms\n",(timeuseKnnSearch-timeuseDesp) / 1000);
+   }
+   
+ /*
+        \find best match img
+    */
+    float nndrRatio = 0.8f;
+    vector<ImgFreq>imgFreq;
+    for (int i = 0; i < indices.rows; i++){
+        if (dists.at<float>(i, 0) < dists.at<float>(i, 1) * nndrRatio){
  
+            const int ImgNum = index_IMG.at(indices.at<int>(i, 0));
+            bool findImgNum = false;
+            for (auto &t : imgFreq){
+                if (t.ImgIndex == ImgNum){
+                    t.Freq++;
+                    findImgNum = true;
+                }
+ 
+            }
+            if (!findImgNum){
+                ImgFreq nextIMG;
+                nextIMG.ImgIndex = ImgNum;
+                nextIMG.Freq = 1;
+                imgFreq.push_back(nextIMG);
+            }
+        }
+    }
+   
+    //display possible matched image index
+    /*
+    for (auto&t : imgFreq){
+    cout << "possible imatch " << t.ImgIndex << " times is: " << t.Freq << endl;
+    }
+    */
+     
+ 
+    int maxFreq = 1;
+    for (auto &t : imgFreq){
+        if (t.Freq > maxFreq)
+            maxFreq = t.Freq;
+    }
+  
+    
+    /*
+    \if max matched times is smaller than 3, it fails to find a matched object
+    */
+    // if(deb){
+    //   printf("max matched time is%d\n",maxFreq);
+    // }
+    if (maxFreq < 3){
+        // cout << "Can not find matched ojbect" << endl;
+        return NULL;
+    }
+    for (auto &t : imgFreq){ 
+        if (t.Freq == maxFreq)
+            matchedImgIndex = t.ImgIndex;
+    }
+    if( deb ){
+
+      gettimeofday(&tpend,NULL);
+      timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
+      
+      printf("[TIMECOSTING] total used time:%fms\n",timeuse / 1000);
+    }
+
+    if( deb ){
+      printf( "[INFO] Matched image index is%d\n",matchedImgIndex);
+    }
+
+      gettimeofday(&tpend,NULL);
+      timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;
+    struct timeval tp;
+    gettimeofday( &tp,NULL );
+    double ms = tp.tv_sec * 1000 + tp.tv_usec/1000;
+    string output = to_string( timeuse / 1000 );
+    output.append( "," ).append(to_string( ms )).append( "," ).append( to_string(matchedImgIndex) ).append( "," );
+    return output;
+}
+
 void ImgMatch::set_minHessian(int m){
     if (m > 0){
         this->minHessian = m;

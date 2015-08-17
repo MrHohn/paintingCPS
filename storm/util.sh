@@ -26,7 +26,7 @@ run)
 	storm jar target/storm-winlab-cps-0.9.5-jar-with-dependencies.jar storm.winlab.cps.StormMatch CPS
 	;;
 kill)
-	echo "now kil the topo CPS"
+	echo "now kill the topo CPS"
 	storm kill CPS
 	;;
 esac
