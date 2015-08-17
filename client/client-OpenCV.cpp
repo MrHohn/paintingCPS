@@ -602,7 +602,7 @@ void *display_thread(void *arg)
             if (count >= 10) {
                 count = 0;
 
-                printf("[test mode] send an image\n");
+                printf("\n[test mode] send an image\n");
 
                 // set up the file name and encode the frame to jpeg
                 sprintf(file_name, "pics/orbit-sample.jpg");

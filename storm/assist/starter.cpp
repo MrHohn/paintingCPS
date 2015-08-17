@@ -34,12 +34,13 @@ int main(void)
 	int spoutPort = 9878;
 	int serverPort = 9879;
 	string spoutIP;
+	int debug = 1;
 
 	/* create a socket */
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		printf("socket create failed\n");
-	printf("socket created\n");
+	if (debug) printf("socket created\n");
 
 	/* bind it to all local addresses and pick any port number */
 
@@ -52,7 +53,7 @@ int main(void)
 		perror("bind failed");
 		return 0;
 	}       
-	printf("socket binded\n");
+	if (debug) printf("socket binded\n");
 
 	/* now define remaddr, the address to whom we want to send messages */
 	/* For convenience, the host address is expressed as a numeric IP address */
@@ -68,7 +69,7 @@ int main(void)
 
 	/* now let's send the messages */
 
-	printf("Sending packet to %s port %d\n", spoutFinderHost, spoutFinderPort);
+	if (debug) printf("Sending packet to %s port %d\n", spoutFinderHost, spoutFinderPort);
 	sprintf(buf, "where");
 	if (sendto(fd, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, slen) == -1)
 	{
@@ -86,10 +87,6 @@ int main(void)
 			close(fd);
 			return 0;	
 		}
-		// else if (strcmp(buf, "127.0.0.1") == 0)
-		// {
-		// 	printf("here\n");
-		// }
 		else {
 			string spoutIP_temp(buf);
 			spoutIP = spoutIP_temp;
@@ -103,7 +100,7 @@ int main(void)
 	close(fd);
 
 
-	printf("Now try to connect the spout\n");
+	if (debug) printf("Now try to connect the spout\n");
 	int sockfd;
     struct sockaddr_in spout_addr;
     struct hostent *spout;
@@ -122,7 +119,7 @@ int main(void)
     }
     inet_pton(AF_INET, spout_IP, &ipv4addr);
     spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-	printf("\n[server] Spout address: %s\n", spout_IP);
+	if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
 	if (spout == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         exit(0);
@@ -151,11 +148,11 @@ int main(void)
         exit(EXIT_FAILURE);
     }
     
-    printf("file size: %ld\n", file_stat.st_size);
+    if (debug) printf("file size: %ld\n", file_stat.st_size);
 
     bzero(buf_spout, sizeof(buf_spout));
     sprintf(buf_spout, "%ld", file_stat.st_size);
-    printf("[server] send the file size\n");
+    if (debug) printf("[server] send the file size\n");
     ret = write(sockfd, buf_spout, sizeof(buf_spout));
     if (ret < 0)
     {
@@ -165,7 +162,7 @@ int main(void)
 
     // get the response
     bzero(buf_spout, sizeof(buf_spout));
-    printf("[server] now wait for response\n");
+    if (debug) printf("[server] now wait for response\n");
     ret = read(sockfd, buf_spout, sizeof(buf_spout));
     if (ret < 0)
     {
@@ -173,7 +170,7 @@ int main(void)
     	return -1;
     }
 
-    printf("got response: %s\n", buf_spout);
+    if (debug) printf("got response: %s\n", buf_spout);
 
     FILE *fp = fopen(file_name, "r");  
     if (fp == NULL)  
@@ -183,25 +180,61 @@ int main(void)
     }
 
     char img[file_stat.st_size];
-	printf("[server] send the img\n");
+	if (debug) printf("[server] read the img\n");
     ret = fread(img, sizeof(char), file_stat.st_size, fp);
     if (ret < 0)
     {
         printf("read errro\n");
         return -1;    	
     }
-	printf("ret: %d\n", ret);
+	if (debug) printf("ret: %d\n", ret);
 
-	printf("[server] send the img\n");
+	if (debug) printf("[server] send the img\n");
     ret = write(sockfd, img, sizeof(img));
     if (ret < 0)
     {
     	printf("error sending\n");
     	return -1;
     }
-	printf("ret: %d\n", ret);
+	if (debug) printf("ret: %d\n", ret);
+	printf("[server] Finished transmitting image to spout\n");
 
 	close(sockfd);
+
+
+	// now receive the result from bolt
+	/* create a socket */
+
+	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+		printf("socket create failed\n");
+	if (debug) printf("socket created\n");
+
+	/* bind it to all local addresses and pick any port number */
+
+	memset((char *)&myaddr, 0, sizeof(myaddr));
+	myaddr.sin_family = AF_INET;
+	myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	myaddr.sin_port = htons(serverPort);
+
+	if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
+		perror("bind failed");
+		return 0;
+	}       
+	if (debug) printf("socket binded\n");
+
+	// receive part
+	bzero(buf, sizeof(buf));
+	printf("wait for the result...\n");
+	ret = recv(fd, buf, sizeof(buf), 0);
+	if (ret > 0)
+	{
+		printf("received result: %s\n", buf);
+	}
+	else
+	{
+		printf("receive error\n");		
+	}
+	close(fd);	
 
 	return 0;
 

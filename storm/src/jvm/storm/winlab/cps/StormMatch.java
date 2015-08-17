@@ -44,6 +44,7 @@ public class StormMatch {
     private static int monitorPort = 9876;
     private static int spoutFinderPort = 9877;
     private static int spoutPort = 9878;
+    private static int serverPort = 9879;
     private static boolean monitor = true;
     private static String monitorHost = "localhost";
     private static boolean testMode = false;
@@ -66,7 +67,6 @@ public class StormMatch {
 			try {
 				DatagramSocket clientSocket = new DatagramSocket();
 				InetAddress serverIP = InetAddress.getByName(monitorHost);
-				//send the spout signal
 				String buffer;
 				byte[] sendData;
 				DatagramPacket sendPacket;
@@ -129,6 +129,15 @@ public class StormMatch {
 
 					_collector.emit(new Values(img, index));
 					++index;
+
+					if (monitor) {
+						buffer = "spout";
+						sendData = new byte[1024];
+						sendData = buffer.getBytes();
+						sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
+						//send the spout signal
+						clientSocket.send(sendPacket);
+					}
 				}
 				else {
 					// now read the img file
@@ -145,6 +154,15 @@ public class StormMatch {
 
 					_collector.emit(new Values(img, index));
 					++index;
+					
+					if (monitor) {
+						buffer = "spout";
+						sendData = new byte[1024];
+						sendData = buffer.getBytes();
+						sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
+						//send the spout signal
+						clientSocket.send(sendPacket);
+					}
 
 					Utils.sleep(200);
 
@@ -154,12 +172,6 @@ public class StormMatch {
 					}
 
 				}
-
-				buffer = "spout";
-				sendData = new byte[1024];
-				sendData = buffer.getBytes();
-				sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
-				if (monitor) clientSocket.send(sendPacket);
 
 			}
 			catch (Exception e) {
@@ -190,7 +202,7 @@ public class StormMatch {
 					String buffer = "prepare";
 					byte[] sendData = new byte[1024];
 					sendData = buffer.getBytes();
-					DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, 9876);
+					DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);
 			    }
 			    catch (Exception e) {
@@ -213,7 +225,7 @@ public class StormMatch {
 					sendData = new byte[1024];
 					String buf = "start";
 					sendData = buf.getBytes();
-					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, 9876);
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);
 				}
 
@@ -235,7 +247,11 @@ public class StormMatch {
 					String delims = "[,]";
 					String[] tokens = result.split(delims);
 					sendData = tokens[2].getBytes();
-					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, 9876);
+					// send back the result to server
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, serverPort);
+					clientSocket.send(sendPacket);
+					// send back the result to monitor
+					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);
 				}
 
