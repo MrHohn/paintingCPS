@@ -318,13 +318,41 @@ void server_result (int sock, string userID)
             bzero(buf, sizeof(buf));
             printf("wait for the result...\n");
             ret = recv(fd, buf, sizeof(buf), 0);
-            if (ret > 0)
+            if (ret < 0)
             {
-                printf("received result: %s\n", buf);
+                printf("receive error\n");
             }
             else
             {
-                printf("receive error\n");      
+                int matchedIndex = atoi(buf);
+                printf("received result: %d\n\n", matchedIndex);
+                char defMsg[] = "none";
+                char sendInfo[200];
+                if (matchedIndex == 0)
+                {   
+                    // write none to client
+                    if (write(sock, defMsg, sizeof(defMsg)) < 0)
+                    {
+                       errorSocket("ERROR writting to socket", sock);
+                    }
+                    if (debug) printf("not match\n");            
+                }
+                else
+                {
+                    // send result to client
+
+                    sprintf(sendInfo, "%d,%d,%d,0,0,0,0,0,0,0,0,", matchedIndex, matchedIndex, matchedIndex);
+                    
+                    if (debug) printf("sendInfo: %s\n", sendInfo);
+
+                    if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
+                    {
+                        errorSocket("ERROR writting to socket", sock);
+                    }       
+
+                    if (debug) printf("matched image index: %d\n", matchedIndex);
+                }
+
             }
         }
 

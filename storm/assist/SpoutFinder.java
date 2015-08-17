@@ -8,6 +8,8 @@
 #
 *************************************************/
 
+package assist;
+
 import java.io.*;
 import java.net.*;
 
