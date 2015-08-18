@@ -173,7 +173,7 @@ void *result_child(void *arg)
         {
             // sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
             string info = imgM.getInfo();
-            sprintf(sendInfo, "%s,", info.c_str());
+            sprintf(sendInfo, "%d,%s,", matchedIndex, info.c_str());
             printf("Matched Index: %d\n", matchedIndex);
         }
         else
@@ -1072,7 +1072,7 @@ void server_run()
 
 
     // prepare the img database
-    // ImgMatch::init_DB(20,"./MET_IMG/","./indexImgTable","ImgIndex.yml");
+    // ImgMatch::init_DB(100,"./MET_IMG/","./indexImgTable","ImgIndex.yml");
     ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
 
     if (orbit)
