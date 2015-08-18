@@ -160,6 +160,7 @@ void *result_child(void *arg)
         else
         {
             MsgD.send(sock, defMsg, sizeof(defMsg));
+            printf("Not match.\n");
         }
 
         if (debug) printf("not match\n");            
@@ -173,6 +174,7 @@ void *result_child(void *arg)
             // sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
             string info = imgM.getInfo();
             sprintf(sendInfo, "%s,", info.c_str());
+            printf("Matched Index: %d\n", matchedIndex);
         }
         else
         {
