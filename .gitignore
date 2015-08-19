@@ -5,6 +5,7 @@
 client/client-OpenCV
 server/server-OpenCV
 storm/assist/starter
+enctyption/AEScipher
 
 #Compiled Maven Target
 storm/target/*
