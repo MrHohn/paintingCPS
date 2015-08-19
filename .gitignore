@@ -28,7 +28,6 @@ storm/target/*
 !jclient/pics/orbit-sample.jpg
 !client/pics/orbit-sample.jpg
 !database/img/*
-!database/info/*
 
 # cmake files
 client/CMakeCache.txt
@@ -44,3 +43,4 @@ server/infoDB/*
 server/indexImgTable
 storm/src/jvm/storm/winlab/cps/indexImgTable
 *.txt
+!database/info/*
