@@ -47,7 +47,7 @@ public class StormMatch {
     private static int serverPort = 9879;
     private static boolean monitor = true;
     private static String monitorHost = "localhost";
-    private static boolean testMode = false;
+    private static boolean testMode = true;
     private static boolean debug = false;
 
     public static class RequestedImageSpout extends BaseRichSpout {
@@ -141,7 +141,7 @@ public class StormMatch {
 				}
 				else {
 					// now read the img file
-					String filePath = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
+					String filePath = "/demo/img/1.jpg";
 					File frame = new File(filePath);
 					FileInputStream readFile = new FileInputStream(filePath);                
 					int size = (int)frame.length();
@@ -236,15 +236,15 @@ public class StormMatch {
 				// start to match
 				String result = JniImageMatching.matchingIndex(img, img.length);
 
+				// send the finish signal
+				sendData = new byte[1024];
+				String delims = "[,]";
+				String[] tokens = result.split(delims);
+				sendData = tokens[2].getBytes();
+				// send back the result to server
+				sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, serverPort);
+				clientSocket.send(sendPacket);
 				if (monitor) {
-					// send the finish signal
-					sendData = new byte[1024];
-					String delims = "[,]";
-					String[] tokens = result.split(delims);
-					sendData = tokens[2].getBytes();
-					// send back the result to server
-					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, serverPort);
-					clientSocket.send(sendPacket);
 					// send back the result to monitor
 					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);

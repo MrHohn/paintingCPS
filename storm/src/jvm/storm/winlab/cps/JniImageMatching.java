@@ -13,13 +13,13 @@ import java.io.*;
 public class JniImageMatching{
     //define image full address
 
-    public static String imgFolderAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/";
-    public static String imgPrefix = "IMG_";
+    public static String imgFolderAddr = "/demo/img/";
+    public static String imgPrefix = "";
     public static String imgFormat = ".jpg";
     
-    public static String indexImgTableAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/indexImgTable";
-    public static String imgIndexYmlAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/ImgIndex.yml";
-    public static String infoDatabaseAddr = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_INFO/";
+    public static String indexImgTableAddr = "/demo/indexImgTable";
+    public static String imgIndexYmlAddr = "/demo/ImgIndex.yml";
+    public static String infoDatabaseAddr = "/demo/info/";
 
 
 
