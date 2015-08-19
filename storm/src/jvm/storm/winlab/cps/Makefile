@@ -1,6 +1,6 @@
 CC = g++
 
-CFLAGS +=-c -g -O0 -Wall -fPIC -std=c++11 -I/usr/lib/jvm/java-8-oracle/include -I/usr/lib/jvm/java-8-oracle/include/linux -I/usr/include -DLINUX 
+CFLAGS +=-c -g -O0 -Wall -fPIC -std=c++11 -I/usr/lib/jvm/java-8-oracle/include -I/usr/lib/jvm/java-8-oracle/include/linux -I/usr/lib/jvm/java-7-openjdk-i386/include -I/usr/lib/jvm/java-7-openjdk-i386/include/linux -I/usr/include -DLINUX 
 
 LFLAGS = `pkg-config --cflags --libs opencv`
 LDFLAGS = -shared
