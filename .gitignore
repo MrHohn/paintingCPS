@@ -5,7 +5,7 @@
 client/client-OpenCV
 server/server-OpenCV
 storm/assist/starter
-enctyption/AEScipher
+encryption/AEScipher
 
 #Compiled Maven Target
 storm/target/*
@@ -41,6 +41,7 @@ server/imgDB/*
 server/infoDB/*
 *.yml
 server/indexImgTable
+server/indexDscNo
 storm/src/jvm/storm/winlab/cps/indexImgTable
 *.txt
 !database/info/*

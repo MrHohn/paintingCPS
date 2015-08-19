@@ -19,12 +19,18 @@ vector<KeyPoint> ImgMatch::dbKeyPoints;
 string ImgMatch::featureClusterAdd;
 string ImgMatch::imgInfoAdd;
 vector<int> ImgMatch::index_IMG;
-int ImgMatch::minHessian = 1000;
-flann::Index* ImgMatch::flannIndex;
+vector<int> dscCnt_IMG;
+int ImgMatch::minHessian = 1700;
+int lastIndex = 0;
+int imgCount = 0;
+//Changed here
+flann::Index ImgMatch::flannIndex;
 
+
+//till here
 ImgMatch::ImgMatch()
 {
-    minHessian = 1000;
+    minHessian = 1700;
  
 }
  
@@ -36,7 +42,8 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     printf("\nStart calculating the descriptors\n");
     set_dbSize(size_DB);
     SurfFeatureDetector extractor;
-    SurfFeatureDetector detector(minHessian);
+    // SurfFeatureDetector detector(minHessian);
+    SurfFeatureDetector detector(2500);
     /*
         \loop calculate descriptors of iamges in database
     */
@@ -48,6 +55,7 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
         string fileAdd = add_DB;
         fileName = fileAdd.append( string(imgName));
         dbImg = imread(fileName);
+        cout<<"File in process: "<<fileName<<"\n";
 
         if (!dbImg.data){
             cout << "Can NOT find img in database!" << endl;
@@ -78,6 +86,48 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     outFile.open(indexImgAdd);
     for (auto &t : index_IMG){
         outFile << t << "\n";
+
+    }
+    // for (auto &t : index_IMG){
+    //  if(t!=lastIndex){
+    //      if(imgCount!=0){
+    //          printf("Count for %d is %d \n",imgCount,dscCnt_IMG.at(imgCount-1));
+    //      }
+    //      dscCnt_IMG.push_back(1);
+    //      lastIndex++;
+    //      imgCount++;
+            
+    //  }
+    //  else{
+    //      dscCnt_IMG.at(t-1)=dscCnt_IMG.at(t-1)+1;
+    //  }
+    // }
+    for (auto &t : index_IMG){
+        if(t!=lastIndex){
+            if ((t = lastIndex + 1)) {    
+                if(imgCount!=0){
+                    printf("Count for %d is %d \n",imgCount,dscCnt_IMG.at(imgCount-1));
+                }
+                dscCnt_IMG.push_back(1);
+                lastIndex++;
+                imgCount++;
+            }
+            else{
+                dscCnt_IMG.push_back(0);
+                dscCnt_IMG.push_back(1);
+                lastIndex=lastIndex + 2;
+                imgCount=imgCount + 2;
+            }    
+        }
+        else{
+            dscCnt_IMG.at(t-1)=dscCnt_IMG.at(t-1)+1;
+        }
+    }
+    outFile.close();
+    ofstream outFile2;
+    outFile2.open("indexDscNo");
+    for (auto &t : dscCnt_IMG){
+        outFile2 << t << "\n";
     }
     /*
         \save feature cluster into file
@@ -112,20 +162,52 @@ void init_infoDB(string add_DB){
     \read all descriptors of database img, and descripotr index-img index map hashtable
 */
 void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,string imgInfoAdd){
+    struct timeval tpstart,tpend;
+    double timeuse;
+    gettimeofday(&tpstart,NULL);
     ifstream inFile(indexImgAdd);
     printf("\nStart loading the database\n");
     int t;
     while (inFile >> t){
         index_IMG.push_back(t);
     }
+    // for (auto &t : index_IMG){
+    //  if(t==lastIndex){
+    //      dscCnt_IMG.at(t)=dscCnt_IMG.at(t)+1;
+    //  }
+    //  else{
+    //      dscCnt_IMG.push_back(1);
+    //  }
+
+    // }
+    // for (std::vector<int>::iterator it = index_IMG.begin() ; it != index_IMG.end(); ++it){
+    //  std::cout << ' ' << *it;
+    // }
+    ifstream inFile2("indexDscNo");
+    while (inFile2 >> t){
+        dscCnt_IMG.push_back(t);
+        printf("read : %d \n",t);
+    }
+
     FileStorage storage(featureClusterAdd, FileStorage::READ);
     storage["index"] >> featureCluster;
     storage.release();
     imgInfoAdd = imgInfoAdd;
+    printf("Finished\n");
+    //time after loading database
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    // printf("used time:%fus\n",timeuse);
+    printf("loading database:%fms\n",timeuse / 1000);
 
-    flannIndex = new flann::Index(featureCluster, flann::KDTreeIndexParams(), cvflann::FLANN_DIST_EUCLIDEAN);
-
-    printf("Finished\n"); 
+    gettimeofday(&tpstart,NULL);
+    //build KDtree
+    flannIndex.build(featureCluster, flann::KMeansIndexParams(), cvflann::FLANN_DIST_EUCLIDEAN);
+    //time after building tree
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    // printf("used time:%fus\n",timeuse);
+    printf("Building Tree:%fms\n",timeuse / 1000); 
 }
  
 void ImgMatch::matchImg(string srcImgAdd){
@@ -164,14 +246,28 @@ void ImgMatch::matchImg(string srcImgAdd){
       return;    
     }
 
+    //time after isolating descriptor
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    // printf("used time:%fus\n",timeuse);
+    printf("descriptor isolation:%fms\n",timeuse / 1000);
 
+
+    gettimeofday(&tpstart,NULL);
+    //flann::Index flannIndex(featureCluster, flann::KDTreeIndexParams(), cvflann::FLANN_DIST_EUCLIDEAN);
     const int knn = 2;
-    flannIndex->knnSearch(despSRC, indices, dists, knn, flann::SearchParams());
+    flannIndex.knnSearch(despSRC, indices, dists, knn, flann::SearchParams());
     if(deb)
       printf("total number of found descriptors is %d\n",despSRC.rows);
     /*
         \find best match img
     */
+    //time after search
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    // printf("used time:%fus\n",timeuse);
+    printf("post knn search:%fms\n",timeuse / 1000);
+      
     float nndrRatio = 0.8f;
     vector<ImgFreq>imgFreq;
     for (int i = 0; i < indices.rows; i++){
@@ -194,6 +290,7 @@ void ImgMatch::matchImg(string srcImgAdd){
             }
         }
     }
+    //flannIndex.~Index();
  
     //display possible matched image index
     /*
@@ -220,14 +317,24 @@ void ImgMatch::matchImg(string srcImgAdd){
     if(deb){
       printf("max matched time is%d\n",maxFreq);
     }
-    if (maxFreq < 3){
-        // cout << "Do not find matched ojbect" << endl;
-        return;
-    }
+    // if (maxFreq < 3){
+    //     // cout << "Do not find matched ojbect" << endl;
+    //     return;
+    // }
     for (auto &t : imgFreq){ 
         if (t.Freq == maxFreq)
             matchedImgIndex = t.ImgIndex;
     }
+    if (matchedImgIndex != 0) {
+        if (maxFreq < .02*dscCnt_IMG.at(matchedImgIndex-1)){
+            // cout << "Do not find matched ojbect" <<oendl;
+            printf("Match at %d, failed with Freq = %d\n",matchedImgIndex,maxFreq);
+            matchedImgIndex=0;
+            return;
+        }
+    }
+    printf("Matched Freq = %d\n",maxFreq);
+    printf("Matched Image Index = %d\n",matchedImgIndex);
 
 }
  
@@ -256,7 +363,7 @@ vector<float> ImgMatch::calLocation(){
 
     char filename[100];
     // sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
-    sprintf(filename, "./MET_IMG/%d.jpg", matchedImgIndex);
+    sprintf(filename, "/demo/img/%d.jpg", matchedImgIndex);
     Mat matchImg = imread(filename);
  
     SurfFeatureDetector detector(minHessian);
@@ -415,7 +522,7 @@ string ImgMatch::getInfo() {
     string line;
     string info;
     char file_name[100];
-    sprintf(file_name, "MET_INFO/%d.txt", matchedImgIndex);
+    sprintf(file_name, "/demo/info/%d.txt", matchedImgIndex);
 
     ifstream info_file(file_name);
     if (info_file)
@@ -430,11 +537,12 @@ string ImgMatch::getInfo() {
     return info;
 }
 
+
 string ImgMatch::getInfo(int index) {
     string line;
     string info;
     char file_name[100];
-    sprintf(file_name, "MET_INFO/%d.txt", index);
+    sprintf(file_name, "/demo/info/%d.txt", index);
 
     ifstream info_file(file_name);
     if (info_file)
