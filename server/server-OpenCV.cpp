@@ -25,7 +25,6 @@
 #include <getopt.h>
 #include <unordered_map>
 #include <errno.h>
-#include <mfapi.h>
 #include <sys/stat.h>
 #include "MsgDistributor.h"
 
@@ -155,6 +154,7 @@ void *result_child(void *arg)
             {
                errorSocket("ERROR writting to socket", sock);
             }
+            printf("Not match.\n");
 
         }
         else
@@ -180,6 +180,7 @@ void *result_child(void *arg)
         {
             string info = imgM.getInfo();
             sprintf(sendInfo, "%s,%f,%f,%f,%f,%f,%f,%f,%f", info.c_str(), coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+            printf("Matched Index: %d\n", matchedIndex);
         }
         if (debug) printf("sendInfo: %s\n", sendInfo);
         if (!orbit)
@@ -1072,8 +1073,8 @@ void server_run()
 
 
     // prepare the img database
-    // ImgMatch::init_DB(100,"./MET_IMG/","./indexImgTable","ImgIndex.yml");
-    ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "./infoDB/");
+    // ImgMatch::init_DB(100,"/demo/img/","./indexImgTable","ImgIndex.yml");
+    ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "/demo/info/");
 
     if (orbit)
     {
