@@ -24,9 +24,11 @@ storm/target/*
 # image files
 *.jpeg
 *.jpg
-# Except for sample images
+# Except for sample images and database
 !jclient/pics/orbit-sample.jpg
 !client/pics/orbit-sample.jpg
+!database/img/*
+!database/info/*
 
 # cmake files
 client/CMakeCache.txt
