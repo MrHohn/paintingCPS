@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="1_jmfapi-2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/mobile/build/libs/jmfapi-2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
