@@ -142,8 +142,9 @@ void *result_thread(void *arg)
         char server_addr[] = "127.0.0.1";
         inet_pton(AF_INET, server_addr, &ipv4addr);
         server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+        // server = gethostbyname("sb");
         if (debug) printf("\n[client] Host name: %s\n", server->h_name);
-        printf("\n[client] Server address: %s\n", server_addr);
+        // printf("\n[client] Server address: %s\n", server_addr);
         if (server == NULL) 
         {
             fprintf(stderr,"ERROR, no such host\n");
@@ -475,8 +476,9 @@ void *display_thread(void *arg)
     char server_addr[] = "127.0.0.1";
     inet_pton(AF_INET, server_addr, &ipv4addr);
     server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+    // server = gethostbyname("sb");
     if (debug) printf("\n[client] Host name: %s\n", server->h_name);
-    printf("\n[client] Server address: %s\n", server_addr);
+    // printf("\n[client] Server address: %s\n", server_addr);
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         exit(0);
@@ -528,8 +530,8 @@ void *display_thread(void *arg)
         Mat frame;
 
         // set up the image format and the quality
-        // capture.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-        // capture.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
+        capture.set(CV_CAP_PROP_FRAME_WIDTH, 800);
+        capture.set(CV_CAP_PROP_FRAME_HEIGHT, 600);
         vector<int> compression_params;
         compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
         compression_params.push_back(95);
@@ -541,7 +543,7 @@ void *display_thread(void *arg)
             // capture >> frame;
             // writer << frame;
         
-            if (count >= 30 && !frame.empty()) {
+            if (count >= 60 && !frame.empty()) {
                 count = 0;
 
 
@@ -757,7 +759,7 @@ void *orbit_thread(void *arg)
             drawResult = 0;
         }
 
-        usleep(1000 * 40); // sleep a while to imitate video catching
+        usleep(1000 * 100); // sleep a while to imitate video catching
     }
     
     // MsgD.close(sockfd, 0);
