@@ -27,7 +27,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include "MsgDistributor.h"
-#include "AEScipher.h"
+// #include "AEScipher.h"
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
@@ -1089,6 +1089,11 @@ void server_run()
     }
 
     server_main();
+
+    // ImgMatch imgM;
+    // imgM.matchImg("/demo/img/15.jpg");
+
+    // imgM.calLocation();
 
 }
 
