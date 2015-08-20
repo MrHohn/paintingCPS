@@ -81,7 +81,7 @@ public class JniImageMatching{
 
     try {
         // now read the img file
-        String filePath = "/home/hadoop/worksapce/opencv-CPS/storm/src/jvm/storm/winlab/cps/MET_IMG/IMG_1.jpg";
+        String filePath = "/demo/img/1.jpg";
         File frame = new File(filePath);
         FileInputStream readFile = new FileInputStream(filePath);                
         int size = (int)frame.length();

@@ -47,7 +47,7 @@ public class StormMatch {
     private static int serverPort = 9879;
     private static boolean monitor = true;
     private static String monitorHost = "localhost";
-    private static boolean testMode = true;
+    private static boolean testMode = false;
     private static boolean debug = false;
 
     public static class RequestedImageSpout extends BaseRichSpout {

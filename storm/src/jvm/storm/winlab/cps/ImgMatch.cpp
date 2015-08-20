@@ -42,7 +42,7 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     for (int i = 1; i <= size_DB; i++){
         char  imgName[100]; 
          
-        sprintf(imgName, "IMG_%d.jpg", i);
+        sprintf(imgName, "%d.jpg", i);
         string fileName;
         string fileAdd = add_DB;
         fileName = fileAdd.append( string(imgName));
