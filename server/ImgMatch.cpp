@@ -186,7 +186,7 @@ void ImgMatch:: init_matchImg(string indexImgAdd, string featureClusterAdd,strin
     ifstream inFile2("indexDscNo");
     while (inFile2 >> t){
         dscCnt_IMG.push_back(t);
-        printf("read : %d \n",t);
+        if (deb) printf("read : %d \n",t);
     }
 
     FileStorage storage(featureClusterAdd, FileStorage::READ);
@@ -309,7 +309,7 @@ void ImgMatch::matchImg(string srcImgAdd){
     gettimeofday(&tpend,NULL);
     timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
     // printf("used time:%fus\n",timeuse);
-    printf("used time:%fms\n",timeuse / 1000);
+    // printf("used time:%fms\n",timeuse / 1000);
     
     /*
     \if max matched times is smaller than 3, it fails to find a matched object
@@ -333,8 +333,8 @@ void ImgMatch::matchImg(string srcImgAdd){
             return;
         }
     }
-    printf("Matched Freq = %d\n",maxFreq);
-    printf("Matched Image Index = %d\n",matchedImgIndex);
+    if (deb) printf("Matched Freq = %d\n",maxFreq);
+    if (deb) printf("Matched Image Index = %d\n",matchedImgIndex);
 
 }
  

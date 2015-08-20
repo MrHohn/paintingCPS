@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include "MsgDistributor.h"
+#include "AEScipher.h"
 
 #define BUFFER_SIZE               1024  
 #define PORT_NO                  20001
@@ -154,16 +155,16 @@ void *result_child(void *arg)
             {
                errorSocket("ERROR writting to socket", sock);
             }
-            printf("Not match.\n");
+            printf("Not match.\n\n");
 
         }
         else
         {
             MsgD.send(sock, defMsg, sizeof(defMsg));
-            printf("Not match.\n");
+            printf("Not match.\n\n");
         }
 
-        if (debug) printf("not match\n");            
+        // if (debug) printf("not match\n");            
     }
     else
     {
@@ -174,13 +175,13 @@ void *result_child(void *arg)
             // sprintf(sendInfo, "%d,%f,%f,%f,%f,%f,%f,%f,%f", matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
             string info = imgM.getInfo();
             sprintf(sendInfo, "%d,%s,", matchedIndex, info.c_str());
-            printf("Matched Index: %d\n", matchedIndex);
+            printf("Matched Index: %d\n\n", matchedIndex);
         }
         else
         {
             string info = imgM.getInfo();
             sprintf(sendInfo, "%s,%f,%f,%f,%f,%f,%f,%f,%f", info.c_str(), coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
-            printf("Matched Index: %d\n", matchedIndex);
+            printf("Matched Index: %d\n\n", matchedIndex);
         }
         if (debug) printf("sendInfo: %s\n", sendInfo);
         if (!orbit)
@@ -194,7 +195,7 @@ void *result_child(void *arg)
         {
             MsgD.send(sock, sendInfo, sizeof(sendInfo));
         }
-        if (debug) printf("matched image index: %d\n", matchedIndex);
+        // if (debug) printf("matched image index: %d\n", matchedIndex);
 
     }
 
@@ -888,7 +889,7 @@ void server_main()
             error("ERROR opening socket");
         } 
         else 
-            printf ("[server] obtain socket descriptor successfully.\n"); 
+            if (debug) printf ("[server] obtain socket descriptor successfully.\n"); 
         bzero((char *) &serv_addr, sizeof(serv_addr));
         // set up the port number
         portno = PORT_NO;
@@ -900,14 +901,14 @@ void server_main()
             error("ERROR on binding");
         }
         else
-            printf("[server] bind tcp port %d sucessfully.\n",portno);
+            if (debug) printf("[server] bind tcp port %d sucessfully.\n",portno);
 
         if(listen(sockfd,5))
         {
             error("ERROR listening");
         }
         else 
-            printf ("[server] listening the port %d sucessfully.\n\n", portno);    
+            if (debug) printf ("[server] listening the port %d sucessfully.\n\n", portno);    
         
         // init finished, now wait for a client
         while (!global_stop) {
@@ -1241,6 +1242,47 @@ int main(int argc, char *argv[])
     }
 
     server_run();
+
+    // // A 256 bit key and 128 bit initialization vector. These are needed in order for the encryption to work.
+    // unsigned char *key = (unsigned char *)"31415926535897932384626433832795"; 
+    // unsigned char *iv = (unsigned char *)"01234567890123456";
+
+    // unsigned char *plaintext = (unsigned char *)"I do not like chocolate ice cream.";/* A hardcoded message that was used for testing. Have this character array set to 
+    // equal the array of the message being sent. */
+
+    // unsigned char ciphertext[128];//this is where the encrypted descriptors would be stored.
+    // unsigned char decryptedtext[128];//this is where the decrypted descriptors would be stored.
+
+    // int decryptedtext_len, ciphertext_len;//This needs to be part of the code
+
+    // //Initialization of libraries. Needed in code. 
+    // ERR_load_crypto_strings();
+    // OpenSSL_add_all_algorithms();
+    // OPENSSL_config(NULL);
+
+    // //Function call to encrypt plaintext. You will probably need this line.
+    // ciphertext_len = encrypt (plaintext, strlen ((char *)plaintext), key, iv,
+    //                         ciphertext);
+
+    // //The following four lines of code are just to display the plaintext and ciphertext. They are not needed for our code to work.
+    // printf("Original message is:\n");
+    // printf("%s\n", plaintext);
+    // printf("Ciphertext is:\n");
+    // BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
+
+    // // Function call to decrypt the ciphertext. You will probably need this line.
+    // decryptedtext_len = decrypt(ciphertext, ciphertext_len, key, iv,decryptedtext);
+
+    // // Adds a NULL terminator.
+    // decryptedtext[decryptedtext_len] = '\0';
+
+    // // Shows the decrypted text. This is not needed in our code. 
+    // printf("Decrypted text is:\n");
+    // printf("%s\n", decryptedtext);
+
+    // // Clean up
+    // EVP_cleanup();
+    // ERR_free_strings();
 
     return 0;
 }
