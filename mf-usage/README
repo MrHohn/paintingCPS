@@ -6,14 +6,20 @@ The libmfapi.so file is used as the MF network api library, it is the 32bit vers
 
 If you use 64bit machine, please go http://mobilityfirst.orbit-lab.org/wiki/Proto/cModules/c0HostProtocolStack/b0Installation and see how to compile the src code and make install.
 
-------------------MF STACK INSTALLATION-----------------------------
+------------------MF STACK INSTALLATION AND RUN-----------------------------
 
 Please go here http://mobilityfirst.orbit-lab.org/wiki/Proto/cModules/c0HostProtocolStack/b0Installation for intalling the MF stack on your own machine.
 
-The hoststack_ah_1.conf file is use for stack set up. To use it after you installed MF stack, enter:
+The hoststack_*.conf files are use for stack set up. To use them after you installed MF stack, for example:
 
-	sudo mfstack -e hoststack_ah_1.conf
+	# run mfstack using a certain configure file
+	sudo mfstack -e hoststack1.conf
 
-Keep in mind that some configurations are needed to be changed within this file for different machines and interfaces.
+	# if you want see more detail, run in the debug mode
+	sudo mfstack -d hoststack1.conf
+
+Keep in mind that some configurations are needed to be changed within this file for different machines and interfaces(say the default GUID, interface's name and address, etc.).
+
+At last, you would need to run mfstack on both client side and server side if you want to use MF network.
 
 ----------------------------------------------------------------------
