@@ -27,7 +27,7 @@ For using the STORM with server, first compile and start the STORM program, All 
 	# kill the topo
 	./util.sh kill
 
-	# for stopping the storm framework, the simplest way is use jps command to get the processes id for each JAVA prpgram and use kill command to kill them one by one.
+	# for stopping the storm framework, the simplest way is use jps command to get the processes id for each JAVA program and use kill command to kill them one by one.
 
 	# if you would like to monitor how the whole program is running, simply go to assist folder and run the ClusterMonitor before you submit the topo.
 	java ClusterMonitor
