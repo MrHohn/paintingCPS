@@ -22,4 +22,8 @@ Keep in mind that some configurations are needed to be changed within this file 
 
 At last, you would need to run mfstack on both client side and server side if you want to use MF network.
 
-----------------------------------------------------------------------
+------------------SET UP THE ACCESS POINT------------------------------
+
+Go here for more instructions http://mobilityfirst.orbit-lab.org/wiki/Proto/cModules/a0ClickRouter/c0Configurations#a6.SettingupWiFiAccessonRouter.
+
+Some configure files used by sb5.node1-1 are already put in this folder actually, as the hostapd.conf, dnsmasq.conf and hostapd.
