@@ -1,0 +1,16 @@
+For using the STORM with server, first compile and start the STORM program, All the necessary operations could be executed through the util.sh shell script. Below is the instruction(make sure you are under the storm/assist folder):
+
+	# for start the whole storm framework(including zooKeepper, nimbus, ui, supervisor, and SpoutFinder)
+	./util.sh start
+	# above is the single machine version, if you would like to deploy a bigger structure, go here http://storm.apache.org/documentation/Setting-up-a-Storm-cluster.html.
+
+	# for compile the codes used for Image Processing
+	./util.sh make
+
+	# submit a topology to storm and start to take request
+	./util.sh run
+
+	# kill the topo
+	./util.sh kill
+
+	#for stopping the storm framework, the simplest way is use jps command to get the processes id for each JAVA prpgram and use kill command to kill them one by one.
