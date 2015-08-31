@@ -135,7 +135,7 @@ void ImgMatch::init_DB(int size_DB,string add_DB, string indexImgAdd,string feat
     cv::FileStorage storage(featureClusterAdd, cv::FileStorage::WRITE);
     storage << "index" << featureCluster;
     storage.release();
-    printf("Finished.");
+    printf("Finished.\n");
 }
  
 void init_infoDB(string add_DB){

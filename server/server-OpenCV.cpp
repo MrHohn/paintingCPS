@@ -39,6 +39,7 @@ static pthread_t mflistenThread;
 int global_stop = 0; 
 int orbit = 0;
 int storm = 0;
+int train = 0;
 string spoutIP;
 int debug = 0;
 MsgDistributor MsgD;
@@ -78,6 +79,7 @@ void help(void)
             " [-m]..................: mine GUID, a.k.a src_GUID\n" \
             " [-o]..................: other's GUID, a.k.a dst_GUID\n" \
             " [-storm]..............: run in storm mode\n" \
+            " [-train]..............: train with the database\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -85,6 +87,7 @@ void help(void)
             " Last, you should run the mfstack first before run this application in orbit mode\n"
             " ---------------------------------------------------------------\n" \
             " sample commands:\n" \
+            "   ./server-OpenCV -train\n" \
             "   ./server-OpenCV -d\n" \
             "   sudo ./server-OpenCV -orbit -m 102 -o 101\n" \
             "   make run\n" \
@@ -1072,9 +1075,7 @@ void server_run()
         close(fd);
     }
 
-
     // prepare the img database
-    // ImgMatch::init_DB(100,"/demo/img/","./indexImgTable","ImgIndex.yml");
     ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "/demo/info/");
 
     if (orbit)
@@ -1147,6 +1148,7 @@ int main(int argc, char *argv[])
             {"m", required_argument, 0, 0},
             {"o", required_argument, 0, 0},
             {"storm", no_argument, 0, 0},
+            {"train", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1205,6 +1207,11 @@ int main(int argc, char *argv[])
             storm = 1;
             break;
 
+            /* train mode */
+        case 9:
+            train = 1;
+            break;
+
         default:
             help();
             return 0;
@@ -1246,48 +1253,14 @@ int main(int argc, char *argv[])
 
     }
 
+    if (train)
+    {
+        // now train with the database
+        ImgMatch::init_DB(100,"/demo/img/","./indexImgTable","ImgIndex.yml");
+        return 0;
+    }
+
     server_run();
-
-    // // A 256 bit key and 128 bit initialization vector. These are needed in order for the encryption to work.
-    // unsigned char *key = (unsigned char *)"31415926535897932384626433832795"; 
-    // unsigned char *iv = (unsigned char *)"01234567890123456";
-
-    // unsigned char *plaintext = (unsigned char *)"I do not like chocolate ice cream.";/* A hardcoded message that was used for testing. Have this character array set to 
-    // equal the array of the message being sent. */
-
-    // unsigned char ciphertext[128];//this is where the encrypted descriptors would be stored.
-    // unsigned char decryptedtext[128];//this is where the decrypted descriptors would be stored.
-
-    // int decryptedtext_len, ciphertext_len;//This needs to be part of the code
-
-    // //Initialization of libraries. Needed in code. 
-    // ERR_load_crypto_strings();
-    // OpenSSL_add_all_algorithms();
-    // OPENSSL_config(NULL);
-
-    // //Function call to encrypt plaintext. You will probably need this line.
-    // ciphertext_len = encrypt (plaintext, strlen ((char *)plaintext), key, iv,
-    //                         ciphertext);
-
-    // //The following four lines of code are just to display the plaintext and ciphertext. They are not needed for our code to work.
-    // printf("Original message is:\n");
-    // printf("%s\n", plaintext);
-    // printf("Ciphertext is:\n");
-    // BIO_dump_fp (stdout, (const char *)ciphertext, ciphertext_len);
-
-    // // Function call to decrypt the ciphertext. You will probably need this line.
-    // decryptedtext_len = decrypt(ciphertext, ciphertext_len, key, iv,decryptedtext);
-
-    // // Adds a NULL terminator.
-    // decryptedtext[decryptedtext_len] = '\0';
-
-    // // Shows the decrypted text. This is not needed in our code. 
-    // printf("Decrypted text is:\n");
-    // printf("%s\n", decryptedtext);
-
-    // // Clean up
-    // EVP_cleanup();
-    // ERR_free_strings();
 
     return 0;
 }

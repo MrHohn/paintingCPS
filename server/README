@@ -15,6 +15,8 @@ Type ./server-OpenCV -h for more information, as listed below:
  [-d]..................: debug mode, print more details
  [-m]..................: mine GUID, a.k.a src_GUID
  [-o]..................: other's GUID, a.k.a dst_GUID
+ [-storm]..............: run in storm mode
+ [-train]..............: train with the database
  
  ---------------------------------------------------------------
  Please start the server first
@@ -22,5 +24,9 @@ Type ./server-OpenCV -h for more information, as listed below:
  Last, you should run the mfstack first before run this application in orbit mode
  ---------------------------------------------------------------
  sample commands:
+   ./server-OpenCV -train
    ./server-OpenCV -d
    sudo ./server-OpenCV -orbit -m 102 -o 101
+   make run
+   make orbit
+
