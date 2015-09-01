@@ -9,7 +9,7 @@ There are three Android Projects. We suggest to use Android Studio's import proj
 
 2.  android_mfping:
 
-	This is actually a ping program using MF network base on Android platform. The usage is almost the same as ping program on linux. It is not need within the CPS application, we basically use it for testing whether the MF network is up or not.
+	This is actually a ping program using MF network based on Android platform. The usage is almost the same as ping program on linux. It would not be needed within the CPS application, we basically use it for testing whether the MF network is up or not.
 
 3. GoogleGlassCPS:
 
