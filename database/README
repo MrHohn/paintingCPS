@@ -1,0 +1,4 @@
+For the storm mode, please put the img folder and info folder into /demo/ folder.
+
+For the local mode(using only one machine to process image), please put these two folders into server/ folder
+ 

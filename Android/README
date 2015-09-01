@@ -1,0 +1,16 @@
+
+There are three Android Projects. We suggest to use Android Studio's import project feature to import them.
+
+1. hoststack-launcher:
+
+	It is as the mfstack program on the linux-PC version, used to set up and start the mfstack service on android phone. All the setting are the same as what we do for the PC version(run with the configure file). For modifying the setting file, go LauncherActivity.java. Interface and default GUID setting is within the createSettingsFile() function.
+
+	PS: Run the program before you start any type of application that would use MF network. For the first time using, enter the GUID and touch install. Touch start and stop for future using if you need not to modify the configuration.
+
+2.  android_mfping:
+
+	This is actually a ping program using MF network base on Android platform. The usage is almost the same as ping program on linux. It is not need within the CPS application, we basically use it for testing whether the MF network is up or not.
+
+3. GoogleGlassCPS:
+
+	The main application for Google Glass client. Both the programs on the Glass and Android phone are under this project. In fact the folder is only a mirror. For detail and instructions, please go to the original repo: https://github.com/avicooper1/GoogleGlassCPS.
