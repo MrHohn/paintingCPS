@@ -16,6 +16,7 @@ Type ./client-OpenCV -h for more information, as listed below:
  [-d]..................: debug mode, print more details
  [-m]..................: mine GUID, a.k.a src_GUID
  [-o]..................: other's GUID, a.k.a dst_GUID
+ [-t]..................: testing mode, please define delay
  
  ---------------------------------------------------------------
  Please start the client after the server is started
@@ -23,6 +24,15 @@ Type ./client-OpenCV -h for more information, as listed below:
  Last, you should run the mfstack first before run this application in orbit mode
  ---------------------------------------------------------------
  sample commands:
-   ./client-OpenCV -d
-   ./client-OpenCV -id yourid
-   sudo ./client-OpenCV -orbit -m 101 -o 102
+	# run in debug mode 
+	./client-OpenCV -d
+   
+	# input a specific id
+	./client-OpenCV -id yourid
+   
+	# run in test mode, send out the sample image per 2000ms
+	./client-OpenCV -t 2000
+
+	# run in orbit mode, myGUID set to 101, otherGUID set to 102
+	sudo ./client-OpenCV -orbit -m 101 -o 102
+ 

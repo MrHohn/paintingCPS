@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unordered_set>
 #include "MsgDistributor.h"
+#include "AEScipher.h"
 
 using namespace cv;
 using namespace std;
@@ -47,6 +48,7 @@ int global_dst_GUID; // used for close command
 
 int global_stop = 0;
 int orbit = 0;
+int sb = 0;
 bool test = false;
 char *userID;
 int debug = 0;
@@ -90,11 +92,14 @@ void help(void)
             " Last, you should run the mfstack first before run this application in orbit mode\n"
             " ---------------------------------------------------------------\n" \
             " sample commands:\n" \
-            "   ./client-OpenCV -d\n" \
-            "   ./client-OpenCV -id yourid\n" \
+            "   # run in debug mode\n" \
+            "   ./client-OpenCV -d\n\n" \
+            "   # input a specific id\n" \
+            "   ./client-OpenCV -id yourid\n\n" \
+            "   # run in test mode, send out the sample image per 2000ms\n" \
+            "   ./client-OpenCV -t 2000\n\n" \
+            "   # run in orbit mode, myGUID set to 101, otherGUID set to 102\n" \
             "   sudo ./client-OpenCV -orbit -m 101 -o 102\n" \
-            "   make run\n" \
-            "   make orbit\n" \
             " \n");
 }
 
@@ -139,10 +144,16 @@ void *result_thread(void *arg)
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd < 0) 
             error("ERROR opening socket");
-        char server_addr[] = "127.0.0.1";
-        inet_pton(AF_INET, server_addr, &ipv4addr);
-        server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-        // server = gethostbyname("sb");
+        if (!sb)
+        {
+            char server_addr[] = "127.0.0.1";
+            inet_pton(AF_INET, server_addr, &ipv4addr);
+            server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+        }
+        else
+        {
+            server = gethostbyname("sb");        
+        }
         if (debug) printf("\n[client] Host name: %s\n", server->h_name);
         // printf("\n[client] Server address: %s\n", server_addr);
         if (server == NULL) 
@@ -473,10 +484,16 @@ void *display_thread(void *arg)
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
-    char server_addr[] = "127.0.0.1";
-    inet_pton(AF_INET, server_addr, &ipv4addr);
-    server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-    // server = gethostbyname("sb");
+    if (!sb)
+    {
+        char server_addr[] = "127.0.0.1";
+        inet_pton(AF_INET, server_addr, &ipv4addr);
+        server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+    }
+    else
+    {
+        server = gethostbyname("sb");   
+    }
     if (debug) printf("\n[client] Host name: %s\n", server->h_name);
     // printf("\n[client] Server address: %s\n", server_addr);
     if (server == NULL) {
@@ -543,7 +560,7 @@ void *display_thread(void *arg)
             // capture >> frame;
             // writer << frame;
         
-            if (count >= 60 && !frame.empty()) {
+            if (count >= 50 && !frame.empty()) {
                 count = 0;
 
 
@@ -928,6 +945,7 @@ int main(int argc, char *argv[])
             {"m", required_argument, 0, 0},
             {"o", required_argument, 0, 0},
             {"t", required_argument, 0, 0},
+            {"sb", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -992,6 +1010,11 @@ int main(int argc, char *argv[])
         case 9:
             delay_time = strtol(optarg, NULL, 10);
             test = true;
+            break;
+
+            /* sand box */
+        case 10:
+            sb = 1;
             break;
 
         default:
