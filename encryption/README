@@ -1,0 +1,9 @@
+Enctyption codes is working independently now, but due to the time limit, we not yet combine it with the CPS application.
+
+For run this code: 
+	
+	# compile the code
+	gcc AEScipher.c -lcrypto -o AEScipher
+
+	# run the code
+	./AEScipher
