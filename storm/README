@@ -3,6 +3,13 @@ First of all, please install STORM framework:
 	Storm Cluster install:
 	https://storm.apache.org/documentation/Setting-up-a-Storm-cluster.html
 
+Database and Library configuration:
+
+	1. Put all database images into /demo/img/
+	2. Put all info txts into /demo/info/
+	3. Put ImgIndex.yml and indexImgTable create by the train mode into /demo/
+	4. Put dynamic library libJniImageMatching.so into /usr/lib/. Notice that this library could be created by compile the original c++ codes within storm/src/jvm/storm/winlab/cps/ folder, simply enter make(under cps folder) to generate it.
+
 For using the STORM with server, first compile and start the STORM program, All the necessary operations could be executed through the util.sh shell script. Below is the instruction(make sure you are under the storm folder):
 
 	# before start the storm, we need to compile the SpoutFinder and some assistant programs first.
@@ -21,7 +28,7 @@ For using the STORM with server, first compile and start the STORM program, All 
 	./util.sh run
 
 	# after everything come up, start the CPS server with storm mode
-	# notice that this command should be used under server folder
+	# notice that this command should be used under the server folder
 	./server-OpenCV -storm
 
 	# kill the topo
