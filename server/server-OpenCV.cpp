@@ -83,15 +83,19 @@ void help(void)
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
+            " If you have not already train the Img database, use train option to train it\n"
             " Your need to be the root or use sudo to run the orbit mode\n"
             " Last, you should run the mfstack first before run this application in orbit mode\n"
             " ---------------------------------------------------------------\n" \
             " sample commands:\n" \
-            "   ./server-OpenCV -train\n" \
-            "   ./server-OpenCV -d\n" \
+            "   # train with the database, create the yml file only\n" \
+            "   ./server-OpenCV -train\n\n" \
+            "   # start the server, run in debug mode\n" \
+            "   ./server-OpenCV -d\n\n" \
+            "   # start the server with STORM, all requests would be passed to storm framework\n" \
+            "   ./server-OpenCV -storm\n\n" \
+            "   # run in orbit mode, using MF network, set myGUID as 102, otherGUID as 101\n" \
             "   sudo ./server-OpenCV -orbit -m 102 -o 101\n" \
-            "   make run\n" \
-            "   make orbit\n" \
             " \n");
 }
 
