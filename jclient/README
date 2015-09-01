@@ -8,12 +8,12 @@ JCLient <dst_GUID> <src_GUID>
 
 compile: 
 	javac *.java -cp jmfapi-1.0-SNAPSHOT.jar
-	# or simply use makefile to run it
+	# or simply use makefile to compile it
 	make
 
 run: 
 	# set myGUID as 101, otherGUID as 102
-	sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102
+	sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar TestClient 101 102
 	# or simply use makefile to run it
 	make run
 
