@@ -5,8 +5,17 @@ Make sure you have installed the MFAPI on the machine. To complile the codes, en
 
 Usage:
 JCLient <dst_GUID> <src_GUID>
-compile: javac *.java -cp jmfapi-1.0-SNAPSHOT.jar
-run: sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102
+
+compile: 
+	javac *.java -cp jmfapi-1.0-SNAPSHOT.jar
+	# or simply use makefile to run it
+	make
+
+run: 
+	# set myGUID as 101, otherGUID as 102
+	sudo java -cp .:jmfapi-1.0-SNAPSHOT.jar JClient 101 102
+	# or simply use makefile to run it
+	make run
 
 PS:
 This java client run in orbit mode in default. Please start the mf stack before run this program.
