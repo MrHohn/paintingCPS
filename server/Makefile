@@ -11,7 +11,7 @@ CC = g++
 
 CFLAGS +=-c -g -O0 -Wall -std=c++11 -I$(MF_HOME)/common -I$(MF_HOME)/netapi/c -DLINUX
 
-LFLAGS = -lmfapi -lpthread `pkg-config --cflags --libs opencv`
+LFLAGS = -lmfapi -lpthread `pkg-config --cflags --libs opencv` -lcrypto
 
 SOURCES = server-OpenCV.cpp ImgMatch.cpp MsgDistributor.cpp
 
