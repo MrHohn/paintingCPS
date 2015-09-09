@@ -244,38 +244,20 @@ void *result_thread(void *arg)
             }
             else
             {
-                // orbit mode remain the old version
-                if (orbit)
-                {
-                    drawResult = 0;
-                    if (debug) printf("result: %s\n", buffer);
-                    resultShown = strtok(buffer, ",");
-                    resultShown = "painting title: " + resultShown;
-                    // for (int i = 0; i < 8; ++i) {
-                    //     resultTemp = strtok(NULL, ",");
-                    //     coord[i] = atof(resultTemp);
-                    //     if (debug) printf("%f\n", coord[i]);
-                    // }
-                    drawResult = 1;
+                drawResult = 0;
+                if (debug) printf("result: %s\n", buffer);
+                result_title = strtok(buffer, ",");
+                result_title = "Title: " + result_title;
+                result_artist = strtok(NULL, ",");
+                result_artist = "Artist: " + result_artist;
+                result_date = strtok(NULL, ",");
+                result_date = "Date: " + result_date;
+                for (int i = 0; i < 8; ++i) {
+                    resultTemp = strtok(NULL, ",");
+                    coord[i] = atof(resultTemp);
+                    if (debug) printf("%f\n", coord[i]);
                 }
-                // tcp version now display more info
-                else
-                {
-                    drawResult = 0;
-                    if (debug) printf("result: %s\n", buffer);
-                    result_title = strtok(buffer, ",");
-                    result_title = "Title: " + result_title;
-                    result_artist = strtok(NULL, ",");
-                    result_artist = "Artist: " + result_artist;
-                    result_date = strtok(NULL, ",");
-                    result_date = "Date: " + result_date;
-                    for (int i = 0; i < 8; ++i) {
-                        resultTemp = strtok(NULL, ",");
-                        coord[i] = atof(resultTemp);
-                        if (debug) printf("%f\n", coord[i]);
-                    }
-                    drawResult = 1;
-                }
+                drawResult = 1;
             }
         }
         else
@@ -732,53 +714,132 @@ void *orbit_thread(void *arg)
     /*-------------------end----------------------*/
 
 
-    while (!global_stop)
+    if (!test)
     {
-        ++count;
-    
-        if (count >= 60) {
-            count = 0;
+        // // create window
+        // namedWindow("Real-Time CPS", 1);
 
-            printf("[orbit mode] send an image\n");
+        VideoCapture capture(0);
+        Mat frame;
 
-            // set up the file name and encode the frame to jpeg
-            sprintf(file_name, "pics/orbit-sample.jpg");
-            ++index;
+        // set up the image format and the quality
+        capture.set(CV_CAP_PROP_FRAME_WIDTH, 800);
+        capture.set(CV_CAP_PROP_FRAME_HEIGHT, 600);
+        vector<int> compression_params;
+        compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+        compression_params.push_back(95);
 
-
-            /*-------------------send current frame here--------------*/
-
-            pthread_t thread_id;
-            struct arg_transmit trans_info;
-            trans_info.sock = sockfd;
-            bzero(&trans_info.file_name, BUFFER_SIZE);
-            strcpy(trans_info.file_name, file_name);
-            /* create thread and pass socket and file name to send file */
-            if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
-            {
-                fprintf(stderr,"pthread_create error!\n");
-                break; //break while loop
-            }
-            pthread_detach(thread_id);
-
-            /*---------------------------end--------------------------*/
-        }
-        
-        if (drawResult)
+        while (capture.isOpened() && !global_stop)
         {
-            printf("\n[orbit] got result from server\n");
-            printf("[orbit] %s\n", resultShown.c_str());
-            // printf("[orbit] coordinates as below:\n");
-            // printf("%f, %f\n", coord[0], coord[1]);
-            // printf("%f, %f\n", coord[2], coord[3]);
-            // printf("%f, %f\n", coord[4], coord[5]);
-            // printf("%f, %f\n\n", coord[6], coord[7]);
-            drawResult = 0;
-        }
+            ++count;
+            capture.read(frame);
+            // capture >> frame;
+            // writer << frame;
+        
+            if (count >= 50 && !frame.empty()) {
+                count = 0;
 
-        usleep(1000 * 100); // sleep a while to imitate video catching
+
+                // set up the file name and encode the frame to jpeg
+                sprintf(file_name, "pics/%s-%d.jpg", userID, index);
+                imwrite(file_name, frame, compression_params);
+                ++index;
+
+                /*-------------------send current frame here--------------*/
+
+                pthread_t thread_id;
+                struct arg_transmit trans_info;
+                trans_info.sock = sockfd;
+                strcpy(trans_info.file_name, file_name);
+                /* create thread and pass socket and file name to send file */
+                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+                {
+                    fprintf(stderr,"pthread_create error!\n");
+                    break; //break while loop
+                }
+                pthread_detach(thread_id);
+
+                /*---------------------------end--------------------------*/
+            }
+            
+            if (drawResult)
+            {
+                putText(frame, result_title, Point(10, 30), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
+                putText(frame, result_artist, Point(10, 60), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
+                putText(frame, result_date, Point(10, 90), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
+                line(frame, cvPoint(coord[0], coord[1]), cvPoint(coord[2], coord[3]), Scalar(0, 0, 255), 2);
+                line(frame, cvPoint(coord[2], coord[3]), cvPoint(coord[4], coord[5]), Scalar(0, 0, 255), 2);
+                line(frame, cvPoint(coord[4], coord[5]), cvPoint(coord[6], coord[7]), Scalar(0, 0, 255), 2);
+                line(frame, cvPoint(coord[6], coord[7]), cvPoint(coord[0], coord[1]), Scalar(0, 0, 255), 2);
+            }
+
+            if(!frame.empty()){
+                imshow("Real-Time CPS", frame);
+            }
+            if (index == 1 && count == 1) {
+                moveWindow("Real-Time CPS", 100, 150 ); 
+            }
+            if (cvWaitKey(20) == 27)
+            {
+                break;
+            }
+            // usleep(1000 * DELAY);
+        }
     }
-    
+    // below is mf-test mode
+    else{
+
+        while (!global_stop)
+        {
+            ++count;
+        
+            if (count >= 10) {
+                count = 0;
+
+                printf("[mf-test] send an image\n");
+
+                // set up the file name and encode the frame to jpeg
+                sprintf(file_name, "pics/orbit-sample.jpg");
+                ++index;
+
+
+                /*-------------------send current frame here--------------*/
+
+                pthread_t thread_id;
+                struct arg_transmit trans_info;
+                trans_info.sock = sockfd;
+                bzero(&trans_info.file_name, BUFFER_SIZE);
+                strcpy(trans_info.file_name, file_name);
+                /* create thread and pass socket and file name to send file */
+                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
+                {
+                    fprintf(stderr,"pthread_create error!\n");
+                    break; //break while loop
+                }
+                pthread_detach(thread_id);
+
+                /*---------------------------end--------------------------*/
+            }
+            
+            if (drawResult)
+            {
+                if (debug) printf("drawResult: %d\n", drawResult); 
+                printf("\n[mf-test] got result from server\n");
+                printf("[mf-test] %s\n", result_title.c_str());
+                printf("[mf-test] %s\n", result_artist.c_str());
+                printf("[mf-test] %s\n", result_date.c_str());
+                // printf("[mf-test] coordinates as below:\n");
+                // printf("%f, %f\n", coord[0], coord[1]);
+                // printf("%f, %f\n", coord[2], coord[3]);
+                // printf("%f, %f\n", coord[4], coord[5]);
+                // printf("%f, %f\n\n", coord[6], coord[7]);
+                drawResult = 0;
+            }
+
+            usleep(100 * delay_time); // sleep a while to imitate video catching
+        }
+    }
+
     // MsgD.close(sockfd, 0);
     printf("[client] connection closed --- transmit\n");
     global_stop = 1;
