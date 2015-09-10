@@ -485,7 +485,7 @@ void server_transmit (int sock, string userID)
                     break;
                 }  
 
-                // receive the data from server and store them into buffer
+                // receive the data from client and store them into buffer
                 bzero(buffer, sizeof(buffer));
                 while((length = recv(sock, buffer, sizeof(buffer), 0)))  
                 {
@@ -767,7 +767,7 @@ void server_transmit (int sock, string userID)
                 // in storm mode, don't save img into disk
                 char img[file_size];
                 int offset = 0;
-                // receive the data from server and store them into buffer
+                // receive the data from client and store them into buffer
                 while(1)  
                 {
                     bzero(buffer, sizeof(buffer));
@@ -792,11 +792,11 @@ void server_transmit (int sock, string userID)
                     }
 
                     // copy the content into img
-                    for (int i = 0; i < n; ++i)
+                    for (int i = 0; i < recv_length; ++i)
                     {
                         img[i + offset] = buffer[i];
                     }
-                    offset += n;
+                    offset += recv_length;
 
                     received_size += recv_length;
                 }

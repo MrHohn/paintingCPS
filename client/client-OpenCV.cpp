@@ -634,7 +634,7 @@ void *display_thread(void *arg)
                 printf("\n[test] got result from server\n");
                 printf("[test] %s\n", result_title.c_str());
                 printf("[test] %s\n", result_artist.c_str());
-                printf("[test] %s\n", result_date.c_str());
+                printf("[test] %s\n\n", result_date.c_str());
                 // printf("[test] coordinates as below:\n");
                 // printf("%f, %f\n", coord[0], coord[1]);
                 // printf("%f, %f\n", coord[2], coord[3]);
@@ -827,7 +827,7 @@ void *orbit_thread(void *arg)
                 printf("\n[mf-test] got result from server\n");
                 printf("[mf-test] %s\n", result_title.c_str());
                 printf("[mf-test] %s\n", result_artist.c_str());
-                printf("[mf-test] %s\n", result_date.c_str());
+                printf("[mf-test] %s\n\n", result_date.c_str());
                 // printf("[mf-test] coordinates as below:\n");
                 // printf("%f, %f\n", coord[0], coord[1]);
                 // printf("%f, %f\n", coord[2], coord[3]);
