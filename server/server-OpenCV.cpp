@@ -485,6 +485,7 @@ void server_transmit (int sock, string userID)
                     break;
                 }  
 
+                int done = 0;
                 // receive the data from client and store them into buffer
                 bzero(buffer, sizeof(buffer));
                 while((length = recv(sock, buffer, sizeof(buffer), 0)))  
@@ -494,6 +495,12 @@ void server_transmit (int sock, string userID)
                         printf("Recieve Data From Client Failed!\n");  
                         break;  
                     }
+
+                    int remain = file_size - received_size;
+                    if (remain < BUFFER_SIZE) {
+                        length = remain;
+                        done = 1;
+                    }
               
                     write_length = fwrite(buffer, sizeof(char), length, fp);  
                     if (write_length < length)
@@ -502,12 +509,13 @@ void server_transmit (int sock, string userID)
                         break;  
                     }  
                     bzero(buffer, sizeof(buffer));
-                    received_size += length;
-                    if (received_size >= file_size)
+
+                    if (done)
                     {
                         if (debug) printf("file size full\n");
                         break;
                     }
+                    received_size += length;
                 }
 
                 // print out time comsumption
@@ -525,8 +533,9 @@ void server_transmit (int sock, string userID)
             else
             {
                 // in storm mode, don't save img into disk
-                char img[file_size];
                 int offset = 0;
+                char* img = new char[file_size];
+                int done = 0;
                 // receive the data from server and store them into buffer
                 bzero(buffer, sizeof(buffer));
                 while((length = recv(sock, buffer, sizeof(buffer), 0)))  
@@ -536,6 +545,12 @@ void server_transmit (int sock, string userID)
                         printf("Recieve Data From Client Failed!\n");  
                         break;  
                     }
+
+                    int remain = file_size - offset;
+                    if (remain < BUFFER_SIZE) {
+                        length = remain;
+                        done = 1;
+                    }
               
                     // copy the content into img
                     for (int i = 0; i < length; ++i)
@@ -544,12 +559,14 @@ void server_transmit (int sock, string userID)
                     }
 
                     bzero(buffer, sizeof(buffer));
-                    offset += length;
-                    if (offset >= file_size)
+                    if (done)
                     {
+                        if (debug) printf("offset: %d\n", offset + remain);
                         if (debug) printf("file size full\n");
                         break;
                     }
+                    offset += length;
+                    // if (debug) printf("offset: %d\n", offset);
                 }
 
                 // print out time comsumption
@@ -622,7 +639,7 @@ void server_transmit (int sock, string userID)
                 if (debug) printf("got response: %s\n", buf_spout);
 
                 if (debug) printf("[server] send the img\n");
-                ret = write(sockfd, img, sizeof(img));
+                ret = write(sockfd, img, file_size);
                 if (ret < 0)
                 {
                     printf("error sending\n");
@@ -632,6 +649,7 @@ void server_transmit (int sock, string userID)
                 printf("[server] Finished transmitting image to spout\n\n");
 
                 close(sockfd);
+                delete[] img;
 
             }
 
@@ -765,7 +783,7 @@ void server_transmit (int sock, string userID)
             // below is storm mode
             else {
                 // in storm mode, don't save img into disk
-                char img[file_size];
+                char* img = new char[file_size];
                 int offset = 0;
                 // receive the data from client and store them into buffer
                 while(1)  
@@ -871,7 +889,7 @@ void server_transmit (int sock, string userID)
                 if (debug) printf("got response: %s\n", buf_spout);
 
                 if (debug) printf("[server] send the img\n");
-                ret = write(sockfd, img, sizeof(img));
+                ret = write(sockfd, img, file_size);
                 if (ret < 0)
                 {
                     printf("error sending\n");
@@ -880,7 +898,8 @@ void server_transmit (int sock, string userID)
                 if (debug) printf("ret: %d\n", ret);
                 printf("[server] Finished transmitting image to spout\n\n");
 
-                close(sockfd); 
+                close(sockfd);
+                delete[] img;
             }
             
             // lock the queue, ensure there is only one thread modifying the queue
