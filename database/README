@@ -1,4 +1,4 @@
-For the storm mode, please put the img folder and info folder into /demo/ folder.
+For the storm mode, please put the img folder and info folder into /demo/ folder. Also, put the ImgIndex.yml and indexImgTable into this folder after run the server with the train mode. These two file should show up in the server folder.
 
 For the local mode(using only one machine to process image), please put these two folders into server/ folder
  
