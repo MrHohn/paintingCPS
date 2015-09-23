@@ -16,7 +16,7 @@
 #include <semaphore.h>
 #include <unordered_map>
 #include <queue>
-#include <mfapi.h>
+#include <mobilityfirst/mfapi.h>
 
 using namespace std;
 
