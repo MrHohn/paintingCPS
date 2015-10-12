@@ -19,8 +19,8 @@ vector<KeyPoint> ImgMatch::dbKeyPoints;
 string ImgMatch::featureClusterAdd;
 string ImgMatch::imgInfoAdd;
 vector<int> ImgMatch::index_IMG;
-vector<int> dscCnt_IMG;
-int ImgMatch::minHessian = 1700;
+vector<int> ImgMatch::dscCnt_IMG;
+int ImgMatch::minHessian = 1500;
 int lastIndex = 0;
 int imgCount = 0;
 //Changed here
@@ -30,7 +30,7 @@ flann::Index ImgMatch::flannIndex;
 //till here
 ImgMatch::ImgMatch()
 {
-    minHessian = 1700;
+    minHessian = 1500;
  
 }
  
@@ -326,7 +326,7 @@ void ImgMatch::matchImg(string srcImgAdd){
             matchedImgIndex = t.ImgIndex;
     }
     if (matchedImgIndex != 0) {
-        if (maxFreq < .02*dscCnt_IMG.at(matchedImgIndex-1)){
+        if (maxFreq < .015*dscCnt_IMG.at(matchedImgIndex-1)){
             // cout << "Do not find matched ojbect" <<oendl;
             printf("Match at %d, failed with Freq = %d\n",matchedImgIndex,maxFreq);
             matchedImgIndex=0;
@@ -357,19 +357,30 @@ int ImgMatch::getMatchedImgIndex(){
 }
 
 vector<float> ImgMatch::calLocation(){
-  
-  if( matchedImgIndex == 0)
-    return matchedLocation;
+    struct timeval tpstart,tpend;
+    double timeuse;
+    gettimeofday(&tpstart,NULL);
+
+    if( matchedImgIndex == 0)
+        return matchedLocation;
 
     char filename[100];
     // sprintf(filename, "./imgDB/IMG_%d.jpg", matchedImgIndex);
     sprintf(filename, "/demo/img/%d.jpg", matchedImgIndex);
     Mat matchImg = imread(filename);
+
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    printf("read sample:%fms\n",timeuse / 1000);
  
     SurfFeatureDetector detector(minHessian);
     SurfDescriptorExtractor extractor;
     detector.detect(matchImg, keyPoints2);
     extractor.compute(matchImg, keyPoints2, despDB);
+
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    printf("extract:%fms\n",timeuse / 1000);
 
     FlannBasedMatcher matcher;
     vector<DMatch>matches;
@@ -407,7 +418,7 @@ vector<float> ImgMatch::calLocation(){
         return matchedLocation;
     }
  
-    Mat img_matches = srcImg;
+    // Mat img_matches = srcImg;
      
     //-- Localize the object
     vector<Point2f> obj;
@@ -467,6 +478,10 @@ vector<float> ImgMatch::calLocation(){
     matchedLocation.push_back(scene_corners[0].x + (scene_corners[1].x - scene_corners[0].x) / 2);
     matchedLocation.push_back(scene_corners[0].y + (scene_corners[3].y - scene_corners[0].y) / 2);
     matchedLocation.push_back(sqrt(((scene_corners[1].x - scene_corners[0].x) / 2)*((scene_corners[1].x - scene_corners[0].x) / 2) + ((scene_corners[3].y - scene_corners[0].y) / 2)* ((scene_corners[3].y - scene_corners[0].y) / 2)));
+
+    gettimeofday(&tpend,NULL);
+    timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+    printf("calLocation:%fms\n",timeuse / 1000);
  
     return matchedLocation;
      

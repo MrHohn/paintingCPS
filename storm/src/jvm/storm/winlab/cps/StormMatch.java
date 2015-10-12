@@ -38,7 +38,7 @@ import storm.winlab.cps.JniImageMatching;
 
 public class StormMatch {
     // private static long initiatePointer;
-    private static int num = 15;
+    private static int num = 100;
     private static int index = 1;
     private static boolean found = false;
     private static int monitorPort = 9876;
@@ -238,13 +238,17 @@ public class StormMatch {
 
 				// send the finish signal
 				sendData = new byte[1024];
-				String delims = "[,]";
-				String[] tokens = result.split(delims);
-				sendData = tokens[0].getBytes();
+				// String delims = "[,]";
+				// String[] tokens = result.split(delims);
+				// sendData = tokens[0].getBytes();
+				sendData = result.getBytes();
 				// send back the result to server
 				sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, serverPort);
 				clientSocket.send(sendPacket);
 				if (monitor) {
+					String delims = "[,]";
+					String[] tokens = result.split(delims);
+					sendData = tokens[0].getBytes();
 					// send back the result to monitor
 					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);

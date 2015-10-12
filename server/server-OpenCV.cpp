@@ -176,9 +176,10 @@ void *result_child(void *arg)
     else
     {
         // send result to client
-        coord = imgM.calLocation();
+        // coord = imgM.calLocation();
         string info = imgM.getInfo();
-        sprintf(sendInfo, "%s,%f,%f,%f,%f,%f,%f,%f,%f", info.c_str(), coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+        // sprintf(sendInfo, "%s,%d,%f,%f,%f,%f,%f,%f,%f,%f", info.c_str(), matchedIndex, coord.at(0), coord.at(1), coord.at(2), coord.at(3), coord.at(4), coord.at(5), coord.at(6), coord.at(7));
+        sprintf(sendInfo, "%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,", info.c_str(), matchedIndex, 0, 0, 0, 0, 0, 0, 0, 0);
         printf("Matched Index: %d\n\n", matchedIndex);
 
         if (debug) printf("sendInfo: %s\n", sendInfo);
@@ -327,10 +328,15 @@ void server_result (int sock, string userID)
             }
             else
             {
-                int matchedIndex = atoi(buf);
+                // int matchedIndex = atoi(buf);
+                string numbers(buf);
+                string indexString = strtok(buf, ",");
+                // cout << numbers << endl;
+                int matchedIndex = stoi(indexString);
+
                 printf("received result: %d\n\n", matchedIndex);
                 char defMsg[] = "none";
-                char sendInfo[200];
+                char sendInfo[1024];
                 if (matchedIndex == 0)
                 {
                     // write none to client
@@ -352,7 +358,7 @@ void server_result (int sock, string userID)
                 {
                     // send result to client
                     string info = ImgMatch::getInfo(matchedIndex);
-                    sprintf(sendInfo, "%s,0,0,0,0,0,0,0,0,", info.c_str());
+                    sprintf(sendInfo, "%s,%s", info.c_str(), numbers.c_str());
                     
                     if (debug) printf("sendInfo: %s\n", sendInfo);
 
@@ -1229,8 +1235,11 @@ void server_run()
         close(fd);
     }
 
-    // prepare the img database
-    ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "/demo/info/");
+    if (!storm)
+    {
+        // prepare the img database
+        ImgMatch::init_matchImg("./indexImgTable", "ImgIndex.yml", "/demo/info/");
+    }
 
     if (orbit)
     {

@@ -20,11 +20,11 @@ string ImgMatch::featureClusterAdd;
 string ImgMatch::imgInfoAdd;
 vector<int> ImgMatch::index_IMG;
 vector<int> ImgMatch::dscCnt_IMG;
-int ImgMatch::minHessian = 1700;
+int ImgMatch::minHessian = 1500;
 flann::Index ImgMatch::flannIndex;
 ImgMatch::ImgMatch()
 {
-    minHessian = 1700;
+    minHessian = 1500;
  
 }
  
@@ -417,9 +417,9 @@ string ImgMatch::matchImg(char* img, int size){
     if (deb) printf("Matched Image Index = %d\n",matchedImgIndex);
 
     string output = to_string(matchedImgIndex);
-    output.append(",");
-    string location = calLocation();
-    output += location;
+    output.append(",0,0,0,0,0,0,0,0,");
+    // string location = calLocation();
+    // output += location;
     return output;
 }
 
@@ -653,7 +653,9 @@ string ImgMatch::calLocation(){
     string locationString = "";
     for (int i = 0; i < 8; ++i)
     {
-        locationString += matchedLocation.at(i);
+        ostringstream buff;
+        buff << matchedLocation.at(i);
+        locationString += buff.str();
         locationString += ",";
     }
 

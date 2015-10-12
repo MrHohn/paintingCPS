@@ -252,6 +252,7 @@ void *result_thread(void *arg)
                 result_artist = "Artist: " + result_artist;
                 result_date = strtok(NULL, ",");
                 result_date = "Date: " + result_date;
+                string matchIndex = strtok(NULL, ",");
                 for (int i = 0; i < 8; ++i) {
                     resultTemp = strtok(NULL, ",");
                     coord[i] = atof(resultTemp);
@@ -542,7 +543,7 @@ void *display_thread(void *arg)
             // capture >> frame;
             // writer << frame;
         
-            if (count >= 50 && !frame.empty()) {
+            if (count >= 35 && !frame.empty()) {
                 count = 0;
 
 
@@ -635,11 +636,11 @@ void *display_thread(void *arg)
                 printf("[test] %s\n", result_title.c_str());
                 printf("[test] %s\n", result_artist.c_str());
                 printf("[test] %s\n\n", result_date.c_str());
-                // printf("[test] coordinates as below:\n");
-                // printf("%f, %f\n", coord[0], coord[1]);
-                // printf("%f, %f\n", coord[2], coord[3]);
-                // printf("%f, %f\n", coord[4], coord[5]);
-                // printf("%f, %f\n\n", coord[6], coord[7]);
+                printf("[test] coordinates as below:\n");
+                printf("%f, %f\n", coord[0], coord[1]);
+                printf("%f, %f\n", coord[2], coord[3]);
+                printf("%f, %f\n", coord[4], coord[5]);
+                printf("%f, %f\n\n", coord[6], coord[7]);
                 drawResult = 0;
             }
 

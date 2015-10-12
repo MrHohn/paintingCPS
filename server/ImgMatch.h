@@ -61,6 +61,7 @@ private:
     static string featureClusterAdd; //file address saving feature descriptors of all images
     static string imgInfoAdd;
     static flann::Index flannIndex;
+    static vector<int> dscCnt_IMG;
 
     Mat indices, dists;
     struct ImgFreq{
