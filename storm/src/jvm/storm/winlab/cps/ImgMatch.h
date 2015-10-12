@@ -27,24 +27,25 @@ class ImgMatch
 public:
     ImgMatch();
     ~ImgMatch();
-    static void init_DB(int size_DB, string add_DB, string indexImgAdd, string featureClusterAdd); // minHessian, db add, db size
-    static void init_infoDB( string add_DB);
-    static long int init_matchImg(string indexImgAdd,string featureClusterAdd,string imgInfoAdd);
+    // static void init_DB(int size_DB, string add_DB, string indexImgAdd, string featureClusterAdd); // minHessian, db add, db size
+    // static void init_infoDB( string add_DB);
+    static void init_matchImg(string indexImgAdd,string featureClusterAdd,string imgInfoAdd);
 
-    string matchImg(string srcImgAdd, long int initiatePointer);
+    // string matchImg(string srcImgAdd, long int initiatePointer);
     string matchImg(char* img, int size);
     void set_minHessian(int minHessian);
     static void set_dbSize(int size_DB);
-    static void releaseInitResource(long int initiatePointer  );
+    // static void releaseInitResource(long int initiatePointer  );
     void set_indexImgAdd(string indexImgAdd);
     int getMatchedImgIndex();
-    vector<float> calLocation();
+    // vector<float> calLocation();
+    string calLocation();
     vector<float> matchedLocation;
     void clearLocation();
-    void getMatchedImgInfo();
-    string getInfo();
-    void locateDrawRect(vector<float> location);
-    void locateDrawCirle(vector<float> location);
+    // void getMatchedImgInfo();
+    // string getInfo();
+    // void locateDrawRect(vector<float> location);
+    // void locateDrawCirle(vector<float> location);
 private:
     static int minHessian;
     static string add_DB;  //database address
@@ -60,7 +61,8 @@ private:
     // undefinded 
     static vector<int>index_IMG;
     static Mat featureCluster;
-    static flann::Index *flannIndex;
+    static flann::Index flannIndex;
+    static vector<int> dscCnt_IMG;
     static string featureClusterAdd; //file address saving feature descriptors of all images
     static string imgInfoAdd;
     Mat indices, dists;

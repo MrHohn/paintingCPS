@@ -37,7 +37,7 @@ import java.net.*;
 import storm.winlab.cps.JniImageMatching;
 
 public class StormMatch {
-    private static long initiatePointer;
+    // private static long initiatePointer;
     private static int num = 15;
     private static int index = 1;
     private static boolean found = false;
@@ -164,7 +164,7 @@ public class StormMatch {
 						clientSocket.send(sendPacket);
 					}
 
-					Utils.sleep(200);
+					Utils.sleep(1000);
 
 					--num;
 					if (num == 0) {
@@ -192,7 +192,7 @@ public class StormMatch {
 		@Override
 		public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
 		    _collector = collector;
-		    initiatePointer = JniImageMatching.initiate_imageMatching (JniImageMatching.indexImgTableAddr,JniImageMatching.imgIndexYmlAddr,JniImageMatching.infoDatabaseAddr);
+		    JniImageMatching.initiate_imageMatching (JniImageMatching.indexImgTableAddr,JniImageMatching.imgIndexYmlAddr,JniImageMatching.infoDatabaseAddr);
 
 		    if (monitor) {
 			    try {
@@ -240,7 +240,7 @@ public class StormMatch {
 				sendData = new byte[1024];
 				String delims = "[,]";
 				String[] tokens = result.split(delims);
-				sendData = tokens[2].getBytes();
+				sendData = tokens[0].getBytes();
 				// send back the result to server
 				sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, serverPort);
 				clientSocket.send(sendPacket);
@@ -286,7 +286,7 @@ public class StormMatch {
 
             //let it run 30 seconds;                        
             Thread.sleep(30000);
-	   		JniImageMatching.releaseInitResource(initiatePointer);
+	   		// JniImageMatching.releaseInitResource(initiatePointer);
             cluster.killTopology("stormImageMatch");
             cluster.shutdown();
         }
