@@ -29,6 +29,7 @@
 #include <unordered_set>
 #include "MsgDistributor.h"
 // #include "AEScipher.h"
+#include <queue>
 
 using namespace cv;
 using namespace std;
@@ -42,14 +43,16 @@ static pthread_t resultThread;
 static pthread_t orbitThread;
 static pthread_t mflistenThread;
 
-pthread_mutex_t sendLock;  // mutex lock to make sure transmit order
-unordered_set<int> id_set; // set to store the sock id used  
-int global_dst_GUID; // used for close command
+pthread_mutex_t sendLock;         // mutex lock to make sure transmit order
+unordered_set<int> id_set;        // set to store the sock id used  
+int global_dst_GUID;              // used for close command
+queue<struct timeval> *timeQueue; // queue for timestamps
 
 int global_stop = 0;
 int orbit = 0;
 int sb = 0;
 bool test = false;
+bool consume = false;
 char *userID;
 int debug = 0;
 MsgDistributor MsgD;
@@ -85,6 +88,8 @@ void help(void)
             " [-m]..................: mine GUID, a.k.a src_GUID\n" \
             " [-o]..................: other's GUID, a.k.a dst_GUID\n" \
             " [-t]..................: testing mode, please define delay\n" \
+            " [-sb].................: sandbox mode\n" \
+            " [-c]..................: consumption mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -238,6 +243,18 @@ void *result_thread(void *arg)
         }
         else if (n > 0)
         {
+            if (consume)
+            {
+                // print out time comsumption
+                struct timeval tpstart, tpend;
+                double timeuse;
+                gettimeofday(&tpend,NULL);
+                tpstart = timeQueue->front();
+                timeQueue->pop();
+                timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+                printf("request used time:%fms\n",timeuse / 1000);
+            }
+
             if (strcmp(buffer, "none") == 0)
             {
                 drawResult = 0;
@@ -295,6 +312,13 @@ void *transmit_child(void *arg)
     struct arg_transmit *args = (struct arg_transmit *)arg;
     int sockfd = args->sock;
     char *file_name = args->file_name;
+    struct timeval tpstart, tpend;
+    double timeuse;
+    if (consume)
+    {
+        gettimeofday(&tpstart, NULL);
+        timeQueue->push(tpstart);
+    }
 
     if (!orbit) {
         int n;
@@ -355,7 +379,7 @@ void *transmit_child(void *arg)
             }
 
             fclose(fp);  
-            printf("[client] Transfer Finished!\n\n");  
+            printf("[client] Transfer Finished!\n");  
         }
     }
     // below is orbit mode, using MFAPI
@@ -427,8 +451,16 @@ void *transmit_child(void *arg)
             }
 
             fclose(fp);  
-            printf("[client] Transfer Finished!\n\n");  
+            printf("[client] Transfer Finished!\n");  
         }
+    }
+
+    if (consume)
+    {
+        // print out time comsumption
+        gettimeofday(&tpend,NULL);
+        timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+        printf("emitting time:%fms\n",timeuse / 1000);
     }
 
     pthread_mutex_unlock(&sendLock);
@@ -636,11 +668,11 @@ void *display_thread(void *arg)
                 printf("[test] %s\n", result_title.c_str());
                 printf("[test] %s\n", result_artist.c_str());
                 printf("[test] %s\n\n", result_date.c_str());
-                printf("[test] coordinates as below:\n");
-                printf("%f, %f\n", coord[0], coord[1]);
-                printf("%f, %f\n", coord[2], coord[3]);
-                printf("%f, %f\n", coord[4], coord[5]);
-                printf("%f, %f\n\n", coord[6], coord[7]);
+                // printf("[test] coordinates as below:\n");
+                // printf("%f, %f\n", coord[0], coord[1]);
+                // printf("%f, %f\n", coord[2], coord[3]);
+                // printf("%f, %f\n", coord[4], coord[5]);
+                // printf("%f, %f\n\n", coord[6], coord[7]);
                 drawResult = 0;
             }
 
@@ -918,6 +950,12 @@ int client_stop()
         mfclose(&handle);
     }
 
+    if (consume)
+    {
+        // release timeQueue
+        delete timeQueue;
+    }
+
     return 0;
 }
 
@@ -928,6 +966,11 @@ Return Value: always 0
 ******************************************************************************/
 int client_run()
 {
+    if (consume)
+    {
+        // init the time queue
+        timeQueue = new queue<struct timeval>();
+    }
     // DBG("launching threads\n");
     printf("\nLaunching threads.\n");
     pthread_create(&resultThread, 0, result_thread, NULL);
@@ -946,8 +989,6 @@ int client_run()
         pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
         pthread_detach(mflistenThread);
     }
-
-
 
     return 0;
 }
@@ -1008,6 +1049,7 @@ int main(int argc, char *argv[])
             {"o", required_argument, 0, 0},
             {"t", required_argument, 0, 0},
             {"sb", no_argument, 0, 0},
+            {"c", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1077,6 +1119,11 @@ int main(int argc, char *argv[])
             /* sand box */
         case 10:
             sb = 1;
+            break;
+
+            /* consumption mode */
+        case 11:
+            consume = true;
             break;
 
         default:
