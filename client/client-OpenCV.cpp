@@ -53,6 +53,7 @@ int orbit = 0;
 int sb = 0;
 bool test = false;
 bool consume = false;
+int size_per_time = 1;
 char *userID;
 int debug = 0;
 MsgDistributor MsgD;
@@ -90,6 +91,7 @@ void help(void)
             " [-t]..................: testing mode, please define delay\n" \
             " [-sb].................: sandbox mode\n" \
             " [-c]..................: consumption mode\n" \
+            " [-size]..................: define file size\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -136,6 +138,8 @@ void *result_thread(void *arg)
     sprintf(header, "result,%s", userID);
     char *resultTemp;
     int sockfd, n;
+    // counter for tesing;
+    int counter = size_per_time;
 
     /*-----------------network part--------------*/
 
@@ -243,6 +247,13 @@ void *result_thread(void *arg)
         }
         else if (n > 0)
         {
+            --counter;
+            if (counter > 0) {
+                continue;
+            }
+            printf("Count: %d\n", size_per_time);
+            counter = size_per_time;
+
             if (consume)
             {
                 // print out time comsumption
@@ -320,139 +331,150 @@ void *transmit_child(void *arg)
         timeQueue->push(tpstart);
     }
 
-    if (!orbit) {
-        int n;
-        char bufferSend[BUFFER_SIZE];
-        char response[10];
-
-        // stat of file, to get the size
-        struct stat file_stat;
-
-        // get the status of file
-        if (stat(file_name, &file_stat) == -1)
-        {
-            perror("stat");
-            exit(EXIT_FAILURE);
-        }
-        
-        if (debug) printf("file size: %ld\n", file_stat.st_size);
-
-        // gain the lock, insure transmit order
-        pthread_mutex_lock(&sendLock);
-
-        // send the file info, combine with ','
-        printf("[client] file name: %s\n", file_name);
-        bzero(bufferSend, sizeof(bufferSend)); 
-        sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
-
-        // send and read through the tcp socket
-        n = write(sockfd, bufferSend, sizeof(bufferSend));
-        if (n < 0) 
-            error("ERROR writing to socket");
-
-        // get the response
-        n = read(sockfd, response, sizeof(response));
-        if (n < 0) 
-            error("ERROR reading from socket");
-
-        FILE *fp = fopen(file_name, "r");  
-        if (fp == NULL)  
-        {  
-            printf("File:\t%s Not Found!\n", file_name);
-            exit(0);
-        }  
-        else  
-        {  
-            bzero(bufferSend, sizeof(bufferSend));  
-            int file_block_length = 0;
-            // start transmitting the file
-            while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
-            {  
-                // send data to the client side  
-                if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
-                {  
-                    printf("Send File: %s Failed!\n", file_name);  
-                    break;  
-                }  
-
-                bzero(bufferSend, BUFFER_SIZE);  
-            }
-
-            fclose(fp);  
-            printf("[client] Transfer Finished!\n");  
-        }
-    }
-    // below is orbit mode, using MFAPI
-    else
+    for (int i = 0; i < size_per_time; ++i)
     {
-        struct stat file_stat; // stat of file, to get the size
-        int n;
 
-        // get the id length and send length
-        int id_length = 1;
-        int divisor = 10;
-        while (sockfd / divisor > 0)
-        {
-            ++id_length;
-            divisor *= 10;
-        }
-        // int send_size = BUFFER_SIZE - 6 - id_length;
-        int send_size = BUFFER_SIZE * 4; //4096 bytes per time
-        char bufferSend[send_size];
-        
-        // get the status of file
-        if (stat(file_name, &file_stat) == -1)
-        {
-            perror("stat");
-            exit(EXIT_FAILURE);
-        }
-        if (debug) printf("one time size: %d\n", send_size);
-        printf("file size: %ld\n", file_stat.st_size);
+        if (!orbit) {
+            int n;
+            char bufferSend[BUFFER_SIZE];
+            char response[10];
 
-        // gain the lock, insure transmit order
-        pthread_mutex_lock(&sendLock);
+            // stat of file, to get the size
+            struct stat file_stat;
 
-        // send the file info, combine with ','
-        printf("[client] file name: %s\n", file_name);
-        sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+            // get the status of file
+            if (stat(file_name, &file_stat) == -1)
+            {
+                perror("stat");
+                exit(EXIT_FAILURE);
+            }
+            
+            if (debug) printf("file size: %ld\n", file_stat.st_size);
 
-        // send through the socket
-        n = MsgD.send(sockfd, bufferSend, 100);
-        if (n < 0) 
-            error("ERROR writing to socket");
+            // gain the lock, insure transmit order
+            pthread_mutex_lock(&sendLock);
 
-        FILE *fp = fopen(file_name, "r");  
-        if (fp == NULL)  
-        {  
-            printf("File:\t%s Not Found!\n", file_name);  
-            exit(0);
-        }  
-        else  
-        {  
-            bzero(bufferSend, sizeof(bufferSend));
+            // send the file info, combine with ','
+            if (debug) printf("[client] file name: %s\n", file_name);
+            bzero(bufferSend, sizeof(bufferSend)); 
+            sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+
+            if (debug) printf("now send the file size\n");
+            if (debug) printf("message: %s\n", bufferSend);
+            // send and read through the tcp socket
+            n = write(sockfd, bufferSend, sizeof(bufferSend));
+            if (n < 0) 
+                error("ERROR writing to socket");
+
+            if (debug) printf("wait for file size response\n");
 
             // get the response
-            n = MsgD.recv(sockfd, bufferSend, 10);
-            bzero(bufferSend, sizeof(bufferSend));
+            n = read(sockfd, response, sizeof(response));
+            if (n < 0) 
+                error("ERROR reading from socket");
 
-            int file_block_length = 0;
-            // start transmitting the file
-            while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
+            FILE *fp = fopen(file_name, "r");  
+            if (fp == NULL)  
             {  
-                // if (debug) printf("send length: %d\n", file_block_length);
-                // send data to the client side  
-                if (MsgD.send(sockfd, bufferSend, send_size) < 0)  
+                printf("File:\t%s Not Found!\n", file_name);
+                exit(0);
+            }  
+            else  
+            {  
+                bzero(bufferSend, sizeof(bufferSend));  
+                int file_block_length = 0;
+                // start transmitting the file
+                while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
                 {  
-                    printf("Send File: %s Failed!\n", file_name);  
-                    break;  
+                    // send data to the client side  
+                    if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
+                    {  
+                        printf("Send File: %s Failed!\n", file_name);  
+                        break;  
+                    }  
+
+                    bzero(bufferSend, BUFFER_SIZE);  
                 }
 
-                bzero(bufferSend, sizeof(bufferSend)); 
+                fclose(fp);  
+                printf("[client] Transfer Finished!\n");  
             }
-
-            fclose(fp);  
-            printf("[client] Transfer Finished!\n");  
         }
+        // below is orbit mode, using MFAPI
+        else
+        {
+            struct stat file_stat; // stat of file, to get the size
+            int n;
+
+            // get the id length and send length
+            int id_length = 1;
+            int divisor = 10;
+            while (sockfd / divisor > 0)
+            {
+                ++id_length;
+                divisor *= 10;
+            }
+            // int send_size = BUFFER_SIZE - 6 - id_length;
+            int send_size = BUFFER_SIZE * 4; //4096 bytes per time
+            char bufferSend[send_size];
+            
+            // get the status of file
+            if (stat(file_name, &file_stat) == -1)
+            {
+                perror("stat");
+                exit(EXIT_FAILURE);
+            }
+            if (debug) printf("one time size: %d\n", send_size);
+            printf("file size: %ld\n", file_stat.st_size);
+
+            // gain the lock, insure transmit order
+            pthread_mutex_lock(&sendLock);
+
+            // send the file info, combine with ','
+            // printf("[client] file name: %s\n", file_name);
+            sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+
+            // send through the socket
+            n = MsgD.send(sockfd, bufferSend, 100);
+            if (n < 0) 
+                error("ERROR writing to socket");
+
+            FILE *fp = fopen(file_name, "r");  
+            if (fp == NULL)  
+            {  
+                printf("File:\t%s Not Found!\n", file_name);  
+                exit(0);
+            }  
+            else  
+            {  
+                bzero(bufferSend, sizeof(bufferSend));
+
+                // get the response
+                n = MsgD.recv(sockfd, bufferSend, 10);
+                bzero(bufferSend, sizeof(bufferSend));
+
+                int file_block_length = 0;
+                // start transmitting the file
+                while( (file_block_length = fread(bufferSend, sizeof(char), send_size, fp)) > 0)  
+                {  
+                    // if (debug) printf("send length: %d\n", file_block_length);
+                    // send data to the client side  
+                    if (MsgD.send(sockfd, bufferSend, send_size) < 0)  
+                    {  
+                        printf("Send File: %s Failed!\n", file_name);  
+                        break;  
+                    }
+
+                    bzero(bufferSend, sizeof(bufferSend)); 
+                }
+
+                fclose(fp);  
+                printf("[client] Transfer Finished!\n");  
+            }
+        }
+        pthread_mutex_unlock(&sendLock);
+        usleep(1000 * 50); // sleep 50ms to avoid sending out empty message
+
     }
 
     if (consume)
@@ -463,7 +485,6 @@ void *transmit_child(void *arg)
         printf("emitting time:%fms\n",timeuse / 1000);
     }
 
-    pthread_mutex_unlock(&sendLock);
     pthread_exit(NULL);
 
     return NULL;
@@ -629,6 +650,9 @@ void *display_thread(void *arg)
     // test mode
     else
     {
+        count = 9;
+        usleep(1000 * 1000);
+
         while (!global_stop)
         {
             ++count;
@@ -820,7 +844,10 @@ void *orbit_thread(void *arg)
         }
     }
     // below is mf-test mode
-    else{
+    else
+    {
+        count = 9;
+        usleep(1000 * 1000);
 
         while (!global_stop)
         {
@@ -1050,6 +1077,7 @@ int main(int argc, char *argv[])
             {"t", required_argument, 0, 0},
             {"sb", no_argument, 0, 0},
             {"c", no_argument, 0, 0},
+            {"size", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1124,6 +1152,11 @@ int main(int argc, char *argv[])
             /* consumption mode */
         case 11:
             consume = true;
+            break;
+
+            /* consumption mode */
+        case 12:
+            size_per_time = strtol(optarg, NULL, 10);
             break;
 
         default:

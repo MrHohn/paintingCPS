@@ -446,6 +446,8 @@ void server_transmit (int sock, string userID)
 
         while (!global_stop)
         {
+            if (debug) printf("wait for new request\n");
+
             received_size = 0;
             // receive the file info
             bzero(buffer, sizeof(buffer));
@@ -458,6 +460,8 @@ void server_transmit (int sock, string userID)
                 errorSocket("ERROR reading from socket", sock);
             } 
 
+            if (debug) printf("message: %s\n", buffer);
+            if (debug) printf("split the message\n");
             // store the file name and the block count
             file_name = strtok(buffer, ",");
             strcpy(file_name_temp, file_name);
@@ -874,6 +878,7 @@ void server_transmit (int sock, string userID)
 
                 bzero(buf_spout, sizeof(buf_spout));
                 sprintf(buf_spout, "%d", file_size);
+                // usleep(1000 * 10); // sleep 10ms to avoid crash
                 if (debug) printf("[server] send the file size\n");
                 ret = write(sockfd, buf_spout, sizeof(buf_spout));
                 if (ret < 0)
@@ -925,6 +930,8 @@ void server_transmit (int sock, string userID)
             // signal the result thread to do image processing
             sem_post(sem_match);
         }
+        
+        usleep(1000 * 50); // sleep 50ms to avoid crash
     }
 
     delete(imgQueue);
