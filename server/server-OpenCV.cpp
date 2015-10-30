@@ -35,6 +35,8 @@
 
 static pthread_t mflistenThread;
 
+// semaphore to limit the number of threads would be launched
+sem_t process_sem;
 // global flag for quit
 int global_stop = 0; 
 int orbit = 0;
@@ -80,6 +82,7 @@ void help(void)
             " [-o]..................: other's GUID, a.k.a dst_GUID\n" \
             " [-storm]..............: run in storm mode\n" \
             " [-train]..............: train with the database\n" \
+            " [-p]..................: parallelism level (default 5)\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -200,6 +203,8 @@ void *result_child(void *arg)
 
     if (debug) printf("------------- end matching -------------\n");
 
+    // now release process_sem
+    sem_post(&process_sem);
     return NULL;
 
 }
@@ -297,6 +302,9 @@ void server_result (int sock, string userID)
 
         if (!storm)
         {
+            // first try to grab process_sem
+            sem_wait(&process_sem);
+
             if (debug) printf("\n----------- start matching -------------\n");
             string file_name = imgQueue->front(); 
             if (debug) printf("file name: [%s]\n", file_name.c_str());
@@ -318,6 +326,8 @@ void server_result (int sock, string userID)
         }
         else
         {
+            imgQueue->pop();
+
             // receive part
             bzero(buf, sizeof(buf));
             printf("wait for the result...\n");
@@ -1280,6 +1290,7 @@ void signal_handler(int sig)
     pthread_mutex_destroy(&queue_map_lock);
     pthread_mutex_destroy(&sem_map_lock);
     pthread_mutex_destroy(&user_map_lock);
+    sem_destroy(&process_sem);
     usleep(1000 * 1000);
 
     /* clean up threads */
@@ -1297,6 +1308,7 @@ void signal_handler(int sig)
 int main(int argc, char *argv[])
 {
     int src_GUID = -1, dst_GUID = -1;
+    int max_image = 5;
 
     /* parameter parsing */
     while(1) {
@@ -1313,6 +1325,7 @@ int main(int argc, char *argv[])
             {"o", required_argument, 0, 0},
             {"storm", no_argument, 0, 0},
             {"train", no_argument, 0, 0},
+            {"p", required_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1376,6 +1389,11 @@ int main(int argc, char *argv[])
             train = 1;
             break;
 
+            /* parallelism level */
+        case 10:
+            max_image = strtol(optarg, NULL, 10);
+            break;
+
         default:
             help();
             return 0;
@@ -1399,6 +1417,12 @@ int main(int argc, char *argv[])
     {
         printf("\n mutex init failed\n");
         return 1;
+    }
+
+    // init the semaphore
+    if (sem_init(&process_sem, 0, max_image) != 0)
+    {
+        printf("semaphore init failed\n");
     }
 
     if (orbit)

@@ -54,6 +54,7 @@ int sb = 0;
 bool test = false;
 bool consume = false;
 int size_per_time = 1;
+int fake_id = 0;
 char *userID;
 int debug = 0;
 MsgDistributor MsgD;
@@ -354,10 +355,21 @@ void *transmit_child(void *arg)
             // gain the lock, insure transmit order
             pthread_mutex_lock(&sendLock);
 
-            // send the file info, combine with ','
-            if (debug) printf("[client] file name: %s\n", file_name);
             bzero(bufferSend, sizeof(bufferSend)); 
-            sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+            // send the file info, combine with ','
+            if (size_per_time == 1)
+            {
+                if (debug) printf("[client] file name: %s\n", file_name);
+                sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+            }
+            else
+            {
+                char fake_name[100];
+                sprintf(fake_name, "pics/%d.jpg", fake_id);
+                ++fake_id;
+                if (debug) printf("[client] file name: %s\n", fake_name);
+                sprintf(bufferSend, "%s,%ld", fake_name, file_stat.st_size);
+            }
 
             if (debug) printf("now send the file size\n");
             if (debug) printf("message: %s\n", bufferSend);
@@ -431,8 +443,19 @@ void *transmit_child(void *arg)
             pthread_mutex_lock(&sendLock);
 
             // send the file info, combine with ','
-            // printf("[client] file name: %s\n", file_name);
-            sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+            if (size_per_time == 1)
+            {
+                if (debug) printf("[client] file name: %s\n", file_name);
+                sprintf(bufferSend, "%s,%ld", file_name, file_stat.st_size);
+            }
+            else
+            {
+                char fake_name[100];
+                sprintf(fake_name, "pics/%d.jpg", fake_id);
+                ++fake_id;
+                if (debug) printf("[client] file name: %s\n", fake_name);
+                sprintf(bufferSend, "%s,%ld", fake_name, file_stat.st_size);
+            }
 
             // send through the socket
             n = MsgD.send(sockfd, bufferSend, 100);
