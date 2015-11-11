@@ -538,6 +538,9 @@ void server_transmit (int sock, string userID)
                     received_size += length;
                 }
 
+                // reponse to the client
+                write(sock, response, sizeof(response));
+
                 // print out time comsumption
                 gettimeofday(&tpend,NULL);
                 timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
@@ -588,6 +591,9 @@ void server_transmit (int sock, string userID)
                     offset += length;
                     // if (debug) printf("offset: %d\n", offset);
                 }
+
+                // reponse to the client
+                write(sock, response, sizeof(response));
 
                 // print out time comsumption
                 gettimeofday(&tpend,NULL);

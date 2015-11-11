@@ -408,6 +408,9 @@ void *transmit_child(void *arg)
                     bzero(bufferSend, BUFFER_SIZE);  
                 }
 
+                // get the response
+                read(sockfd, response, sizeof(response));
+
                 fclose(fp);  
                 printf("[client] Transfer Finished!\n");  
             }
@@ -496,8 +499,6 @@ void *transmit_child(void *arg)
             }
         }
         pthread_mutex_unlock(&sendLock);
-        usleep(1000 * 50); // sleep 50ms to avoid sending out empty message
-
     }
 
     if (consume)
