@@ -28,40 +28,9 @@
 #include <sys/stat.h>
 #include "MsgDistributor.h"
 // #include "AEScipher.h"
+#include "KafkaProducer.h"
 
-#define BUFFER_SIZE               1024  
-#define PORT_NO                  20001
-#define MAX_CONNECTION              10
-
-static pthread_t mflistenThread;
-
-// semaphore to limit the number of threads would be launched
-sem_t process_sem;
-// global flag for quit
-int global_stop = 0; 
-int orbit = 0;
-int storm = 0;
-int train = 0;
-string spoutIP;
-int debug = 0;
-MsgDistributor MsgD;
-// map for result thread to search the queue address
-unordered_map<string, queue<string>*> queue_map;
-// mutex lock for queue_map operation
-pthread_mutex_t queue_map_lock;
-// map for transmit thread to search the semaphore address
-unordered_map<string, sem_t*> sem_map;
-// mutex lock for sem_map operation
-pthread_mutex_t sem_map_lock;
-// map to store logged in userID
-unordered_map<String, uint> user_map;
-// mutex lock for user_map operation
-pthread_mutex_t user_map_lock;
-
-struct arg_result {
-    int sock;
-    char file_name[100];
-};
+#include "global_config.h"
 
 /******************************************************************************
 Description.: Display a help message
@@ -83,6 +52,7 @@ void help(void)
             " [-storm]..............: run in storm mode\n" \
             " [-train]..............: train with the database\n" \
             " [-p]..................: parallelism level (default 5)\n" \
+            " [-kafka]..................: using kafka to submit works\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -416,7 +386,7 @@ Return Value:
 void server_transmit (int sock, string userID)
 {
     // printf("transmitting part\n");
-    
+
     int n;
     char response[] = "ok";
     char file_name_temp[60];
@@ -603,80 +573,91 @@ void server_transmit (int sock, string userID)
 
                 if (debug) printf("[server] Recieve Finished!\n\n");  
 
-                // send request to spout
-                if (debug) printf("Now try to connect the spout\n");
-                int sockfd, ret;
-                int spoutPort = 9878;
-                struct sockaddr_in spout_addr;
-                struct hostent *spout;
-                struct in_addr ipv4addr;
-                char buf_spout[100];
-                char* spout_IP;
-                const int len = spoutIP.length();
-                spout_IP = new char[len+1];
-                strcpy(spout_IP, spoutIP.c_str());
-
-                sockfd = socket(AF_INET, SOCK_STREAM, 0);
-                if (sockfd < 0)
-                {
-                    printf("ERROR opening socket\n");
-                    return;
+                // using kafka to pass the file
+                if (kafka) {
+                    string input = string(file_name_temp);
+                    producer->send(input, input.size());
                 }
-                inet_pton(AF_INET, spout_IP, &ipv4addr);
-                spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-                if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
-                if (spout == NULL) {
-                    fprintf(stderr,"ERROR, no such host\n");
-                    exit(0);
+                // use tcp socket to pass the file
+                else {
+                    // send request to spout
+                    if (debug) printf("Now try to connect the spout\n");
+                    int sockfd, ret;
+                    int spoutPort = 9878;
+                    struct sockaddr_in spout_addr;
+                    struct hostent *spout;
+                    struct in_addr ipv4addr;
+                    char buf_spout[100];
+                    char* spout_IP;
+                    const int len = spoutIP.length();
+                    spout_IP = new char[len+1];
+                    strcpy(spout_IP, spoutIP.c_str());
+
+                    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+                    if (sockfd < 0)
+                    {
+                        printf("ERROR opening socket\n");
+                        return;
+                    }
+                    inet_pton(AF_INET, spout_IP, &ipv4addr);
+                    spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+                    if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
+                    if (spout == NULL) {
+                        fprintf(stderr,"ERROR, no such host\n");
+                        exit(0);
+                    }
+                    bzero((char *) &spout_addr, sizeof(spout_addr));
+                    spout_addr.sin_family = AF_INET;
+                    bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
+                    spout_addr.sin_port = htons(spoutPort);
+
+                    while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
+                    {
+                        printf("The spout is not available now, wait a while and reconnect\n\n");
+                        usleep(100000); // sleep 100ms
+                    }
+
+                    printf("[server] Get connection to spout\n");
+
+                    bzero(buf_spout, sizeof(buf_spout));
+                    sprintf(buf_spout, "%d", file_size);
+                    if (debug) printf("[server] send the file size\n");
+                    ret = write(sockfd, buf_spout, sizeof(buf_spout));
+                    if (ret < 0)
+                    {
+                        printf("error sending\n");
+                        return;
+                    }
+
+                    // get the response
+                    bzero(buf_spout, sizeof(buf_spout));
+                    if (debug) printf("[server] now wait for response\n");
+                    ret = read(sockfd, buf_spout, sizeof(buf_spout));
+                    if (ret < 0)
+                    {
+                        printf("error reading\n");
+                        return;
+                    }
+
+                    if (debug) printf("got response: %s\n", buf_spout);
+
+                    if (debug) printf("[server] send the img\n");
+                    ret = write(sockfd, img, file_size);
+                    if (ret < 0)
+                    {
+                        printf("error sending\n");
+                        return;
+                    }
+                    if (debug) printf("ret: %d\n", ret);
+
+                    // get the ack
+                    read(sockfd, buf_spout, sizeof(buf_spout));
+                    printf("[server] Finished transmitting image to spout\n\n");
+
+                    close(sockfd);
                 }
-                bzero((char *) &spout_addr, sizeof(spout_addr));
-                spout_addr.sin_family = AF_INET;
-                bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
-                spout_addr.sin_port = htons(spoutPort);
 
-                while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
-                {
-                    printf("The spout is not available now, wait a while and reconnect\n\n");
-                    usleep(100000); // sleep 100ms
-                }
-
-                printf("[server] Get connection to spout\n");
-
-                bzero(buf_spout, sizeof(buf_spout));
-                sprintf(buf_spout, "%d", file_size);
-                if (debug) printf("[server] send the file size\n");
-                ret = write(sockfd, buf_spout, sizeof(buf_spout));
-                if (ret < 0)
-                {
-                    printf("error sending\n");
-                    return;
-                }
-
-                // get the response
-                bzero(buf_spout, sizeof(buf_spout));
-                if (debug) printf("[server] now wait for response\n");
-                ret = read(sockfd, buf_spout, sizeof(buf_spout));
-                if (ret < 0)
-                {
-                    printf("error reading\n");
-                    return;
-                }
-
-                if (debug) printf("got response: %s\n", buf_spout);
-
-                if (debug) printf("[server] send the img\n");
-                ret = write(sockfd, img, file_size);
-                if (ret < 0)
-                {
-                    printf("error sending\n");
-                    return;
-                }
-                if (debug) printf("ret: %d\n", ret);
-                printf("[server] Finished transmitting image to spout\n\n");
-
-                close(sockfd);
                 delete[] img;
-
             }
 
             // lock the queue, ensure there is only one thread modifying the queue
@@ -1180,6 +1161,10 @@ Return Value: -
 ******************************************************************************/
 void server_run()
 {
+    if (kafka) {
+        producer = new KafkaProducer();
+    }
+
     if (storm)
     {
         // try to get the IP of spout
@@ -1292,6 +1277,9 @@ void signal_handler(int sig)
     /* signal "stop" to threads */
     printf("\nSetting signal to stop.\n");
     global_stop = 1;
+    if (kafka) {
+        delete producer;
+    }
     pthread_cancel(mflistenThread);
     pthread_mutex_destroy(&queue_map_lock);
     pthread_mutex_destroy(&sem_map_lock);
@@ -1332,6 +1320,7 @@ int main(int argc, char *argv[])
             {"storm", no_argument, 0, 0},
             {"train", no_argument, 0, 0},
             {"p", required_argument, 0, 0},
+            {"kafka", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1400,6 +1389,11 @@ int main(int argc, char *argv[])
             max_image = strtol(optarg, NULL, 10);
             break;
 
+            /* kafka mode */
+        case 11:
+            kafka = true;
+            break;
+
         default:
             help();
             return 0;
@@ -1456,5 +1450,53 @@ int main(int argc, char *argv[])
 
     server_run();
 
+    // // testing
+    // string temp = "message: ";
+    // string input;
+    // char numChars[10];
+    // int num;
+    // producer = new KafkaProducer();
+    
+    // bzero(numChars, 10);
+    // num = 1;
+    // sprintf(numChars, "%d", num);
+    // input = temp + numChars;
+    // producer->send(input, input.size());
+
+    // usleep(1000 * 1000);
+
+    // bzero(numChars, 10);
+    // num = 2;
+    // sprintf(numChars, "%d", num);
+    // input = temp + numChars;
+    // producer->send(input, input.size());
+
+    // usleep(1000 * 1000);
+
+    // bzero(numChars, 10);
+    // num = 3;
+    // sprintf(numChars, "%d", num);
+    // input = temp + numChars;
+    // producer->send(input, input.size());
+
+    // usleep(1000 * 1000);
+
+    // bzero(numChars, 10);
+    // num = 4;
+    // sprintf(numChars, "%d", num);
+    // input = temp + numChars;
+    // producer->send(input, input.size());
+
+    // usleep(1000 * 1000);
+
+    // bzero(numChars, 10);
+    // num = 5;
+    // sprintf(numChars, "%d", num);
+    // input = temp + numChars;
+    // producer->send(input, input.size());
+
+    // delete producer;
+
     return 0;
 }
+

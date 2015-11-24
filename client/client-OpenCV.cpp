@@ -252,7 +252,7 @@ void *result_thread(void *arg)
             if (counter > 0) {
                 continue;
             }
-            printf("Count: %d\n", size_per_time);
+            if (debug) printf("Count: %d\n", size_per_time);
             counter = size_per_time;
 
             if (consume)

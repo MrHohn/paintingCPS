@@ -9,11 +9,11 @@
 
 CC = g++
 
-CFLAGS +=-c -g -O0 -Wall -std=c++11 -I$(MF_HOME)/common -I$(MF_HOME)/netapi/c -DLINUX
+CFLAGS +=-c -g -O0 -Wall -std=c++11 -I$(MF_HOME)/common -I$(MF_HOME)/netapi/c -DLINUX -I/usr/local/include/librdkafka
 
-LFLAGS = -lmfapi -lpthread `pkg-config --cflags --libs opencv` -lcrypto
+LFLAGS = -lmfapi -lz -lpthread -lrt `pkg-config --cflags --libs opencv` -lcrypto -lrdkafka++ -lrdkafka
 
-SOURCES = server-OpenCV.cpp ImgMatch.cpp MsgDistributor.cpp
+SOURCES = server-OpenCV.cpp ImgMatch.cpp MsgDistributor.cpp KafkaProducer.cpp
 
 OBJECTS = $(SOURCES:.cpp=.o)
 

@@ -124,6 +124,8 @@ public class StormMatch {
 						}
 						offset += ret;
 					}
+					// now ack
+					out.println("ok");
 
 					spoutServer.close();
 
