@@ -1,0 +1,40 @@
+First of all, please install STORM framework:
+
+	Storm Cluster install:
+	https://storm.apache.org/documentation/Setting-up-a-Storm-cluster.html
+
+Database and Library configuration:
+
+	1. Put all database images into /demo/img/
+	2. Put all info txts into /demo/info/
+	3. Put ImgIndex.yml and indexImgTable create by the train mode into /demo/
+	4. Put dynamic library libJniImageMatching.so into /usr/lib/. Notice that this library could be created by compile the original c++ codes within storm/src/jvm/storm/winlab/cps/ folder, simply enter make(under cps folder) to generate it.
+
+For using the STORM with server, first compile and start the STORM program, All the necessary operations could be executed through the util.sh shell script. Below is the instruction(make sure you are under the storm folder):
+
+	# before start the storm, we need to compile the SpoutFinder and some assistant programs first.
+	cd assist
+	make
+	cd .. # go back to the storm folder
+	
+	# start the whole storm framework(including zooKeepper, nimbus, ui, supervisor, and SpoutFinder)
+	./util.sh start
+	# above is the single machine version, if you would like to deploy a bigger structure, also go here http://storm.apache.org/documentation/Setting-up-a-Storm-cluster.html.
+
+	# compile the codes used for Image Processing
+	./util.sh make
+
+	# submit a topology to storm and start to take request
+	./util.sh run
+
+	# after everything come up, start the CPS server with storm mode
+	# notice that this command should be used under the server folder
+	./server-OpenCV -storm
+
+	# kill the topo
+	./util.sh kill
+
+	# for stopping the storm framework, the simplest way is use jps command to get the processes id for each JAVA program and use kill command to kill them one by one.
+
+	# if you would like to monitor how the whole program is running, simply go to assist folder and run the ClusterMonitor before you submit the topo.
+	java ClusterMonitor

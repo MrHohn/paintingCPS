@@ -9,6 +9,7 @@ encryption/AEScipher
 
 #Compiled Maven Target
 storm/target/*
+storm-kafka/target/*
 
 # Compiled Java CLass
 *.class

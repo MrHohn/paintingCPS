@@ -16,7 +16,8 @@ class KafkaProducer {
 public:
     KafkaProducer();
     ~KafkaProducer();
-    void send(std::string input, int size);
+    void send(char* message, int size);
+    void sendString(std::string input, int size);
 
 private:
 

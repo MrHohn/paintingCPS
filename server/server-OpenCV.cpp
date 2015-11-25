@@ -575,8 +575,10 @@ void server_transmit (int sock, string userID)
 
                 // using kafka to pass the file
                 if (kafka) {
-                    string input = string(file_name_temp);
-                    producer->send(input, input.size());
+                    // string input = string(file_name_temp);
+                    // producer->sendString(input, input.size());
+
+                    producer->send(img, file_size);
                 }
                 // use tcp socket to pass the file
                 else {
@@ -1165,7 +1167,7 @@ void server_run()
         producer = new KafkaProducer();
     }
 
-    if (storm)
+    if (storm && !kafka)
     {
         // try to get the IP of spout
         struct sockaddr_in myaddr, remaddr;

@@ -15,7 +15,7 @@ ExampleDeliveryReportCb ex_dr_cb;
 
 KafkaProducer::KafkaProducer() {
     brokers = "localhost";
-    topic_str = "demo";
+    topic_str = "cps";
     partition = 0;
 
     /*
@@ -83,7 +83,7 @@ KafkaProducer::~KafkaProducer() {
     // RdKafka::wait_destroyed(5000);
 }
 
-void KafkaProducer::send(std::string input, int size) {
+void KafkaProducer::sendString(std::string input, int size) {
     // Read messages from user and produce to broker.
     if (!run) {
         return;
@@ -98,6 +98,26 @@ void KafkaProducer::send(std::string input, int size) {
         std::cerr << "% Produce failed: " << RdKafka::err2str(resp) << std::endl;
     else
         std::cerr << "% Produced message (" << input.size() << " bytes)" << std::endl;
+
+    producer->poll(0);
+
+}
+
+void KafkaProducer::send(char* message, int size) {
+    // Read messages from user and produce to broker.
+    if (!run) {
+        return;
+    }
+    /*
+    * Produce message
+    */
+
+    /* Copy payload */
+    RdKafka::ErrorCode resp = producer->produce(topic, partition, RdKafka::Producer::RK_MSG_COPY, message, size, NULL, NULL);
+    if (resp != RdKafka::ERR_NO_ERROR)
+        std::cerr << "% Produce failed: " << RdKafka::err2str(resp) << std::endl;
+    else
+        std::cerr << "% Produced message (" << size << " bytes)" << std::endl;
 
     producer->poll(0);
 
