@@ -29,7 +29,7 @@
 #include "MsgDistributor.h"
 // #include "AEScipher.h"
 #include "KafkaProducer.h"
-
+#include "Metrics.h"
 #include "global_config.h"
 
 /******************************************************************************
@@ -170,6 +170,9 @@ void *result_child(void *arg)
         // if (debug) printf("matched image index: %d\n", matchedIndex);
 
     }
+
+    // handle the metrics
+    metrics->finish_request();
 
     if (debug) printf("------------- end matching -------------\n");
 
@@ -359,6 +362,9 @@ void server_result (int sock, string userID)
                 }
 
             }
+
+            // handle the metrics
+            metrics->finish_request();
         }
 
         // end
@@ -450,6 +456,9 @@ void server_transmit (int sock, string userID)
             file_size_char = strtok(NULL, ",");
             file_size = strtol(file_size_char, NULL, 10);
             if (debug) printf("file size: %d\n", file_size);
+
+            // handle the metrics
+            metrics->submit_request();
 
             // calculate the time consumption here
             struct timeval tpstart,tpend;
@@ -579,6 +588,8 @@ void server_transmit (int sock, string userID)
                     // string input = string(file_name_temp);
                     // producer->sendString(input, input.size());
 
+                    printf("Current metrics: %f\n", metrics->get_metrics());
+                    printf("Now submit to Kafka.\n");
                     producer->send(img, file_size);
                 }
                 // use tcp socket to pass the file
@@ -727,6 +738,9 @@ void server_transmit (int sock, string userID)
             file_size_char = strtok(NULL, ",");
             file_size = strtol(file_size_char, NULL, 10);
             printf("[server] file size: %d\n", file_size);
+
+            // handle the metrics
+            metrics->submit_request();
 
             // calculate the time consumption here
             struct timeval tpstart,tpend;
@@ -912,7 +926,7 @@ void server_transmit (int sock, string userID)
                 close(sockfd);
                 delete[] img;
             }
-            
+ 
             // lock the queue, ensure there is only one thread modifying the queue
             pthread_mutex_lock(&queueLock);
 
@@ -1164,6 +1178,8 @@ Return Value: -
 ******************************************************************************/
 void server_run()
 {
+    metrics = new Metrics();
+
     if (kafka) {
         producer = new KafkaProducer();
     }
@@ -1283,6 +1299,7 @@ void signal_handler(int sig)
     if (kafka) {
         delete producer;
     }
+    delete metrics;
     pthread_cancel(mflistenThread);
     pthread_mutex_destroy(&queue_map_lock);
     pthread_mutex_destroy(&sem_map_lock);

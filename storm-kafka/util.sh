@@ -1,6 +1,6 @@
 #
 # Purpose: Shell script, the finger saver
-# Author.: Zihong Zheng (zzhonzi@gmail.com)
+# Author.: Zihong Zheng (zzhonzi@gmail.com), Wuyang Zhang
 # Version: 1.0
 # License: 
 #

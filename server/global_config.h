@@ -19,6 +19,9 @@ MsgDistributor MsgD;
 bool kafka = false;
 KafkaProducer* producer;
 
+// Metrics recorder
+Metrics* metrics;
+
 // map for result thread to search the queue address
 unordered_map<string, queue<string>*> queue_map;
 // mutex lock for queue_map operation
