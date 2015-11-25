@@ -246,6 +246,7 @@ void server_result (int sock, string userID)
     while(!global_stop) 
     {
         sem_wait(sem_match);
+
         // get the address of image queue
         if (imgQueue == 0)
         {

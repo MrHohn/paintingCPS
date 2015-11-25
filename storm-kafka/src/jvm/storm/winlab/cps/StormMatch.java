@@ -125,11 +125,13 @@ public class StormMatch {
 					sendPacket = new DatagramPacket(sendData, sendData.length, serverIP, monitorPort);
 					clientSocket.send(sendPacket);
 				}
+
+				// Ack this tuple
+				_collector.ack(tuple);
 			}
 		    catch (Exception e) {
 		    	e.printStackTrace();
 		    }
-
 		    
 		}
 
@@ -152,7 +154,7 @@ public class StormMatch {
 
 		// Set read Broker of Kafka from Zookeeper
 		BrokerHosts brokerHosts = new ZkHosts(zks);
-		
+
 		// Spout configuration
 		SpoutConfig spoutConf = new SpoutConfig(brokerHosts, topic, zkRoot, id);
 		// Takes the byte[] and returns a tuple with byte[] as is
@@ -161,30 +163,30 @@ public class StormMatch {
 		spoutConf.zkServers = Arrays.asList(new String[] {"localhost"});
 		spoutConf.zkPort = 2181;
 
-    	// Create the topology
-        TopologyBuilder builder = new TopologyBuilder();
-        // Attach the KafkaSpout to the topology -- parallelism of 1
-        builder.setSpout("image-received",new KafkaSpout(spoutConf), 1);
-        // Attach the ImageProcessBolt to the topology -- parallelism of 3
-        builder.setBolt("image-matching",new ImgMatchingBolt(), 3).shuffleGrouping("image-received");
+		// Create the topology
+		TopologyBuilder builder = new TopologyBuilder();
+		// Attach the KafkaSpout to the topology -- parallelism of 1
+		builder.setSpout("image-received",new KafkaSpout(spoutConf), 1);
+		// Attach the ImageProcessBolt to the topology -- parallelism of 2
+		builder.setBolt("image-matching",new ImgMatchingBolt(), 2).shuffleGrouping("image-received");
 
-        Config conf = new Config();
+		Config conf = new Config();
 
-        if(args != null && args.length > 0){
-            // Run it on a live storm cluser
-            conf.setNumWorkers(3);
-            StormSubmitter.submitTopology(args[0],conf,builder.createTopology());
-        } else {
-            // Run it on a simulated local cluster
-            LocalCluster cluster = new LocalCluster();
-            // Topo name, configuration, builder.topo
-            cluster.submitTopology("stormImageMatch",conf, builder.createTopology());
+		if(args != null && args.length > 0){
+		    // Run it on a live storm cluser
+		    conf.setNumWorkers(3);
+		    StormSubmitter.submitTopology(args[0],conf,builder.createTopology());
+		} else {
+		    // Run it on a simulated local cluster
+		    LocalCluster cluster = new LocalCluster();
+		    // Topo name, configuration, builder.topo
+		    cluster.submitTopology("stormImageMatch",conf, builder.createTopology());
 
-            //let it run 30 seconds;                        
-            Thread.sleep(30000);
-	   		// JniImageMatching.releaseInitResource(initiatePointer);
-            cluster.killTopology("stormImageMatch");
-            cluster.shutdown();
-        }
+		    //let it run 30 seconds;                        
+		    Thread.sleep(30000);
+				// JniImageMatching.releaseInitResource(initiatePointer);
+		    cluster.killTopology("stormImageMatch");
+		    cluster.shutdown();
+		}
     }
 }

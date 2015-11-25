@@ -63,6 +63,7 @@ string resultShown = "";
 string result_title = "";
 string result_artist = "";
 string result_date = "";
+string matchIndex = "";
 float coord[8];
 int delay_time = 0;
 
@@ -255,7 +256,7 @@ void *result_thread(void *arg)
             if (debug) printf("Count: %d\n", size_per_time);
             counter = size_per_time;
 
-            if (consume)
+            if (consume && !timeQueue->empty())
             {
                 // print out time comsumption
                 struct timeval tpstart, tpend;
@@ -281,7 +282,7 @@ void *result_thread(void *arg)
                 result_artist = "Artist: " + result_artist;
                 result_date = strtok(NULL, ",");
                 result_date = "Date: " + result_date;
-                string matchIndex = strtok(NULL, ",");
+                matchIndex = strtok(NULL, ",");
                 for (int i = 0; i < 8; ++i) {
                     resultTemp = strtok(NULL, ",");
                     coord[i] = atof(resultTemp);
@@ -684,11 +685,14 @@ void *display_thread(void *arg)
             if (count >= 10) {
                 count = 0;
 
-                printf("\n[test mode] send an image\n");
+                printf("\n[test mode] send an image, index: %d\n", index);
 
                 // set up the file name and encode the frame to jpeg
-                sprintf(file_name, "pics/orbit-sample.jpg");
+                sprintf(file_name, "sample/%d.jpg", index);
                 ++index;
+                if (index > 100) {
+                    index = 1;
+                }
 
 
                 /*-------------------send current frame here--------------*/
@@ -712,7 +716,8 @@ void *display_thread(void *arg)
             if (drawResult)
             {
                 if (debug) printf("drawResult: %d\n", drawResult); 
-                printf("\n[test] got result from server\n");
+                printf("\n[test] Got result from server\n");
+                printf("[test] Index: %s\n", matchIndex.c_str());
                 printf("[test] %s\n", result_title.c_str());
                 printf("[test] %s\n", result_artist.c_str());
                 printf("[test] %s\n\n", result_date.c_str());
