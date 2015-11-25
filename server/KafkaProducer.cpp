@@ -32,7 +32,7 @@ KafkaProducer::KafkaProducer() {
 
     conf->set("event_cb", &ex_event_cb, errstr);
 
-    signal(SIGINT, sigterm);
+    // signal(SIGINT, sigterm);
     signal(SIGTERM, sigterm);
 
     /*
@@ -99,6 +99,7 @@ void KafkaProducer::sendString(std::string input, int size) {
     else
         std::cerr << "% Produced message (" << input.size() << " bytes)" << std::endl;
 
+    // Poll to handle delivery reports.
     producer->poll(0);
 
 }

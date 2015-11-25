@@ -1453,53 +1453,6 @@ int main(int argc, char *argv[])
 
     server_run();
 
-    // // testing
-    // string temp = "message: ";
-    // string input;
-    // char numChars[10];
-    // int num;
-    // producer = new KafkaProducer();
-    
-    // bzero(numChars, 10);
-    // num = 1;
-    // sprintf(numChars, "%d", num);
-    // input = temp + numChars;
-    // producer->send(input, input.size());
-
-    // usleep(1000 * 1000);
-
-    // bzero(numChars, 10);
-    // num = 2;
-    // sprintf(numChars, "%d", num);
-    // input = temp + numChars;
-    // producer->send(input, input.size());
-
-    // usleep(1000 * 1000);
-
-    // bzero(numChars, 10);
-    // num = 3;
-    // sprintf(numChars, "%d", num);
-    // input = temp + numChars;
-    // producer->send(input, input.size());
-
-    // usleep(1000 * 1000);
-
-    // bzero(numChars, 10);
-    // num = 4;
-    // sprintf(numChars, "%d", num);
-    // input = temp + numChars;
-    // producer->send(input, input.size());
-
-    // usleep(1000 * 1000);
-
-    // bzero(numChars, 10);
-    // num = 5;
-    // sprintf(numChars, "%d", num);
-    // input = temp + numChars;
-    // producer->send(input, input.size());
-
-    // delete producer;
-
     return 0;
 }
 
