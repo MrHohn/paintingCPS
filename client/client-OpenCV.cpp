@@ -27,50 +27,14 @@
 #include <getopt.h>
 #include <errno.h>
 #include <unordered_set>
-#include "MsgDistributor.h"
-// #include "AEScipher.h"
 #include <queue>
+
+#include "MsgDistributor.h"
+#include "MFPackager.h"
+#include "global_config.h"
 
 using namespace cv;
 using namespace std;
-
-#define BUFFER_SIZE               1024  
-#define PORT_NO                  20001
-#define DELAY                        1 // ms
-
-static pthread_t transmitThread;
-static pthread_t resultThread;
-static pthread_t orbitThread;
-static pthread_t mflistenThread;
-
-pthread_mutex_t sendLock;         // mutex lock to make sure transmit order
-unordered_set<int> id_set;        // set to store the sock id used  
-int global_dst_GUID;              // used for close command
-queue<struct timeval> *timeQueue; // queue for timestamps
-
-int global_stop = 0;
-int orbit = 0;
-int sb = 0;
-bool test = false;
-bool consume = false;
-int size_per_time = 1;
-int fake_id = 0;
-char *userID;
-int debug = 0;
-MsgDistributor MsgD;
-int drawResult = 0;
-string resultShown = "";
-string result_title = "";
-string result_artist = "";
-string result_date = "";
-string matchIndex = "";
-float coord[8];
-int delay_time = 0;
-
-struct arg_transmit {
-    int sock;
-    char file_name[100];
-};
 
 /******************************************************************************
 Description.: Display a help message
@@ -94,6 +58,7 @@ void help(void)
             " [-sb].................: sandbox mode\n" \
             " [-c]..................: consumption mode\n" \
             " [-size]..................: define file size\n" \
+            " [-neworbit]..................: run in new orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -145,7 +110,8 @@ void *result_thread(void *arg)
 
     /*-----------------network part--------------*/
 
-    if (!orbit)
+    // tcp mode
+    if (!orbit && !neworbit)
     {
         int portno;
         struct sockaddr_in serv_addr;
@@ -157,13 +123,15 @@ void *result_thread(void *arg)
             error("ERROR opening socket");
         if (!sb)
         {
-            char server_addr[] = "127.0.0.1";
+            // char server_addr[] = "127.0.0.1";
+            char server_addr[] = "10.0.0.200";
             inet_pton(AF_INET, server_addr, &ipv4addr);
             server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
         }
         else
         {
-            server = gethostbyname("sb");        
+            server = gethostbyname("sb");
+            // server = gethostbyname("Hon-ubuntu");
         }
         if (debug) printf("\n[client] Host name: %s\n", server->h_name);
         // printf("\n[client] Server address: %s\n", server_addr);
@@ -206,7 +174,7 @@ void *result_thread(void *arg)
         }
     }
     // below is the orbit mode using MFAPI
-    else
+    else if (orbit)
     {
         sockfd = MsgD.connect();
         // insert the new id into set
@@ -229,18 +197,23 @@ void *result_thread(void *arg)
         }
 
     }
+    // new orbit mode need not be initialized
     
     while(!global_stop)
     {
         bzero(buffer, sizeof(buffer));
-        if (!orbit)
+        if (!orbit && !neworbit)
         {
             n = recv(sockfd, buffer, sizeof(buffer), 0);        
         }
-        else
+        else if (orbit)
         {
             if (debug) printf("Still waiting here for the new result\n");
             n = MsgD.recv(sockfd, buffer, sizeof(buffer));
+        }
+        else if (neworbit)
+        {
+
         }
 
         if (n < 0) 
@@ -297,7 +270,7 @@ void *result_thread(void *arg)
             global_stop = 1;
         }
     }
-    if (!orbit)
+    if (!orbit && !neworbit)
     {
         close(sockfd); // disconnect server    
     }
@@ -336,7 +309,7 @@ void *transmit_child(void *arg)
     for (int i = 0; i < size_per_time; ++i)
     {
 
-        if (!orbit) {
+        if (!orbit && !neworbit) {
             int n;
             char bufferSend[BUFFER_SIZE];
             char response[10];
@@ -417,7 +390,7 @@ void *transmit_child(void *arg)
             }
         }
         // below is orbit mode, using MFAPI
-        else
+        else if (orbit)
         {
             struct stat file_stat; // stat of file, to get the size
             int n;
@@ -441,7 +414,7 @@ void *transmit_child(void *arg)
                 exit(EXIT_FAILURE);
             }
             if (debug) printf("one time size: %d\n", send_size);
-            printf("file size: %ld\n", file_stat.st_size);
+            if (debug) printf("file size: %ld\n", file_stat.st_size);
 
             // gain the lock, insure transmit order
             pthread_mutex_lock(&sendLock);
@@ -499,6 +472,10 @@ void *transmit_child(void *arg)
                 printf("[client] Transfer Finished!\n");  
             }
         }
+        // new orbit mode
+        else if (neworbit) {
+
+        }
         pthread_mutex_unlock(&sendLock);
     }
 
@@ -526,78 +503,115 @@ void *display_thread(void *arg)
 {
     int index = 1;
     int count = 0;
-    
     char file_name[100] = {0};
+    int sockfd = 0, n;
 
+    /*-----------------network preconnect part--------------*/
 
+    // orbit mode
+    if (orbit) {
+        char response[10];
+        char header[100];
+        sprintf(header, "transmit,%s", userID);
 
-    /*-----------------network part--------------*/
+        sockfd = MsgD.connect();
+        if (sockfd < 0) 
+        {
+            printf("-------- The server is not available now. ---------\n\n");
+            global_stop = 1;
+            exit(0);
+        }
+        else
+        {
+            // insert the new id into set
+            id_set.insert(sockfd);
+            printf("[client] transmit thread get connection to server\n");
+            printf("[client] start transmitting current frame\n\n");
+        }
 
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-    struct in_addr ipv4addr;
-    portno = PORT_NO;
-    char response[10];
-    char header[100];
-    sprintf(header, "transmit,%s", userID);
+        // send the header first
+        n = MsgD.send(sockfd, header, sizeof(header));
+        if (n < 0) 
+             error("ERROR writing to socket");
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    if (!sb)
-    {
-        char server_addr[] = "127.0.0.1";
-        inet_pton(AF_INET, server_addr, &ipv4addr);
-        server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+        // get the response
+        n = MsgD.recv(sockfd, response, sizeof(response));
+        if (n < 0) 
+             error("ERROR reading from socket");
+        if (strcmp(response, "failed") == 0)
+        {
+            errno = EACCES;
+            error("ERROR log in failed");
+        }
     }
-    else
-    {
-        server = gethostbyname("sb");   
-    }
-    if (debug) printf("\n[client] Host name: %s\n", server->h_name);
-    // printf("\n[client] Server address: %s\n", server_addr);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
-    serv_addr.sin_port = htons(portno);
+    // tcp mode
+    else {
+        int portno;
+        struct sockaddr_in serv_addr;
+        struct hostent *server;
+        struct in_addr ipv4addr;
+        portno = PORT_NO;
+        char response[10];
+        char header[100];
+        sprintf(header, "transmit,%s", userID);
 
-    // finished initialize, try to connect
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0) 
+            error("ERROR opening socket");
+        if (!sb)
+        {
+            // char server_addr[] = "127.0.0.1";
+            char server_addr[] = "10.0.0.200";
+            inet_pton(AF_INET, server_addr, &ipv4addr);
+            server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+        }
+        else
+        {
+            server = gethostbyname("sb");   
+        }
+        if (debug) printf("\n[client] Host name: %s\n", server->h_name);
+        // printf("\n[client] Server address: %s\n", server_addr);
+        if (server == NULL) {
+            fprintf(stderr,"ERROR, no such host\n");
+            exit(0);
+        }
+        bzero((char *) &serv_addr, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length); 
+        serv_addr.sin_port = htons(portno);
 
-    if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
-    {
-        printf("-------- The server is not available now. ---------\n\n");
-        global_stop = 1;
-        exit(0);
-        // error("ERROR connecting");
-    }
-    else
-    {
-        printf("[client] transmit thread get connection to server\n");
-        printf("[client] start transmitting current frame\n\n");
-    }
+        // finished initialize, try to connect
 
-    // send the header first
-    n = write(sockfd, header, sizeof(header));
-    if (n < 0) 
-         error("ERROR writing to socket");
+        if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+        {
+            printf("-------- The server is not available now. ---------\n\n");
+            global_stop = 1;
+            exit(0);
+            // error("ERROR connecting");
+        }
+        else
+        {
+            printf("[client] transmit thread get connection to server\n");
+            printf("[client] start transmitting current frame\n\n");
+        }
 
-    // get the response
-    n = read(sockfd, response, sizeof(response));
-    if (n < 0) 
-         error("ERROR reading from socket");
-    if (strcmp(response, "failed") == 0)
-    {
-        errno = EACCES;
-        error("ERROR log in failed");
+        // send the header first
+        n = write(sockfd, header, sizeof(header));
+        if (n < 0) 
+             error("ERROR writing to socket");
+
+        // get the response
+        n = read(sockfd, response, sizeof(response));
+        if (n < 0) 
+             error("ERROR reading from socket");
+        if (strcmp(response, "failed") == 0)
+        {
+            errno = EACCES;
+            error("ERROR log in failed");
+        }
     }
   
     /*-------------------end----------------------*/
-
 
     if (!test) {
 
@@ -716,11 +730,11 @@ void *display_thread(void *arg)
             if (drawResult)
             {
                 if (debug) printf("drawResult: %d\n", drawResult); 
-                printf("\n[test] Got result from server\n");
+                // printf("\n[test] Got result from server\n");
                 printf("[test] Index: %s\n", matchIndex.c_str());
-                printf("[test] %s\n", result_title.c_str());
-                printf("[test] %s\n", result_artist.c_str());
-                printf("[test] %s\n\n", result_date.c_str());
+                // printf("[test] %s\n", result_title.c_str());
+                // printf("[test] %s\n", result_artist.c_str());
+                // printf("[test] %s\n\n", result_date.c_str());
                 // printf("[test] coordinates as below:\n");
                 // printf("%f, %f\n", coord[0], coord[1]);
                 // printf("%f, %f\n", coord[2], coord[3]);
@@ -731,211 +745,17 @@ void *display_thread(void *arg)
 
             usleep(100 * delay_time); // sleep a while to imitate video catching
         }
-        exit(1);
+        // exit(1);
     }
 
-    
-    close(sockfd); // disconnect server
+    if (!orbit && !neworbit) {
+        close(sockfd); // disconnect server
+    }
     printf("[client] connection closed --- transmit\n");
     global_stop = 1;
     // exit(0);
 
     return 0;
-}
-
-/******************************************************************************
-Description.: this is the orbit thread
-              it loops forever, send a sample image out to the server in 
-              a certain frequency
-Input Value.:
-Return Value:
-******************************************************************************/
-void *orbit_thread(void *arg)
-{
-    printf("\n---------- RUN IN ORBIT MODE ----------\n");
-
-    int index = 1;
-    int count = 0;
-    int sockfd;
-    int n;
-    
-    char file_name[100] = {0};
-
-    /*-----------------network part--------------*/
-
-    char response[10];
-    char header[100];
-    sprintf(header, "transmit,%s", userID);
-
-    sockfd = MsgD.connect();
-    if (sockfd < 0) 
-    {
-        printf("-------- The server is not available now. ---------\n\n");
-        global_stop = 1;
-        exit(0);
-    }
-    else
-    {
-        // insert the new id into set
-        id_set.insert(sockfd);
-        printf("[client] transmit thread get connection to server\n");
-        printf("[client] start transmitting current frame\n\n");
-    }
-
-    // send the header first
-    n = MsgD.send(sockfd, header, sizeof(header));
-    if (n < 0) 
-         error("ERROR writing to socket");
-
-    // get the response
-    n = MsgD.recv(sockfd, response, sizeof(response));
-    if (n < 0) 
-         error("ERROR reading from socket");
-    if (strcmp(response, "failed") == 0)
-    {
-        errno = EACCES;
-        error("ERROR log in failed");
-    }
-  
-    /*-------------------end----------------------*/
-
-
-    if (!test)
-    {
-        // // create window
-        // namedWindow("Real-Time CPS", 1);
-
-        VideoCapture capture(0);
-        Mat frame;
-
-        // set up the image format and the quality
-        capture.set(CV_CAP_PROP_FRAME_WIDTH, 800);
-        capture.set(CV_CAP_PROP_FRAME_HEIGHT, 600);
-        vector<int> compression_params;
-        compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
-        compression_params.push_back(95);
-
-        while (capture.isOpened() && !global_stop)
-        {
-            ++count;
-            capture.read(frame);
-            // capture >> frame;
-            // writer << frame;
-        
-            if (count >= 50 && !frame.empty()) {
-                count = 0;
-
-
-                // set up the file name and encode the frame to jpeg
-                sprintf(file_name, "pics/%s-%d.jpg", userID, index);
-                imwrite(file_name, frame, compression_params);
-                ++index;
-
-                /*-------------------send current frame here--------------*/
-
-                pthread_t thread_id;
-                struct arg_transmit trans_info;
-                trans_info.sock = sockfd;
-                strcpy(trans_info.file_name, file_name);
-                /* create thread and pass socket and file name to send file */
-                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
-                {
-                    fprintf(stderr,"pthread_create error!\n");
-                    break; //break while loop
-                }
-                pthread_detach(thread_id);
-
-                /*---------------------------end--------------------------*/
-            }
-            
-            if (drawResult)
-            {
-                putText(frame, result_title, Point(10, 30), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
-                putText(frame, result_artist, Point(10, 60), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
-                putText(frame, result_date, Point(10, 90), CV_FONT_HERSHEY_COMPLEX, 0.6, Scalar(150, 0, 0), 2);
-                line(frame, cvPoint(coord[0], coord[1]), cvPoint(coord[2], coord[3]), Scalar(0, 0, 255), 2);
-                line(frame, cvPoint(coord[2], coord[3]), cvPoint(coord[4], coord[5]), Scalar(0, 0, 255), 2);
-                line(frame, cvPoint(coord[4], coord[5]), cvPoint(coord[6], coord[7]), Scalar(0, 0, 255), 2);
-                line(frame, cvPoint(coord[6], coord[7]), cvPoint(coord[0], coord[1]), Scalar(0, 0, 255), 2);
-            }
-
-            if(!frame.empty()){
-                imshow("Real-Time CPS", frame);
-            }
-            if (index == 1 && count == 1) {
-                moveWindow("Real-Time CPS", 100, 150 ); 
-            }
-            if (cvWaitKey(20) == 27)
-            {
-                break;
-            }
-            // usleep(1000 * DELAY);
-        }
-    }
-    // below is mf-test mode
-    else
-    {
-        count = 9;
-        usleep(1000 * 1000);
-
-        while (!global_stop)
-        {
-            ++count;
-        
-            if (count >= 10) {
-                count = 0;
-
-                printf("[mf-test] send an image\n");
-
-                // set up the file name and encode the frame to jpeg
-                sprintf(file_name, "pics/orbit-sample.jpg");
-                ++index;
-
-
-                /*-------------------send current frame here--------------*/
-
-                pthread_t thread_id;
-                struct arg_transmit trans_info;
-                trans_info.sock = sockfd;
-                bzero(&trans_info.file_name, BUFFER_SIZE);
-                strcpy(trans_info.file_name, file_name);
-                /* create thread and pass socket and file name to send file */
-                if (pthread_create(&thread_id, 0, transmit_child, (void *)&(trans_info)) == -1)
-                {
-                    fprintf(stderr,"pthread_create error!\n");
-                    break; //break while loop
-                }
-                pthread_detach(thread_id);
-
-                /*---------------------------end--------------------------*/
-            }
-            
-            if (drawResult)
-            {
-                if (debug) printf("drawResult: %d\n", drawResult); 
-                printf("\n[mf-test] got result from server\n");
-                printf("[mf-test] %s\n", result_title.c_str());
-                printf("[mf-test] %s\n", result_artist.c_str());
-                printf("[mf-test] %s\n\n", result_date.c_str());
-                // printf("[mf-test] coordinates as below:\n");
-                // printf("%f, %f\n", coord[0], coord[1]);
-                // printf("%f, %f\n", coord[2], coord[3]);
-                // printf("%f, %f\n", coord[4], coord[5]);
-                // printf("%f, %f\n\n", coord[6], coord[7]);
-                drawResult = 0;
-            }
-
-            usleep(100 * delay_time); // sleep a while to imitate video catching
-        }
-    }
-
-    // MsgD.close(sockfd, 0);
-    printf("[client] connection closed --- transmit\n");
-    global_stop = 1;
-    pause();
-    // exit(0);
-
-    return NULL;
 }
 
 /******************************************************************************
@@ -968,7 +788,7 @@ int client_stop()
     {
         printf("failed to cancel result thread\n");
     }
-    if (!orbit)
+    if (!orbit && !neworbit)
     {
         n = pthread_cancel(transmitThread);
         if (n)
@@ -976,10 +796,10 @@ int client_stop()
             printf("failed to cancel thread\n");
         }
     }
-    else
+    else if (orbit)
     {
         // cancel orbit thread
-        n = pthread_cancel(orbitThread);
+        n = pthread_cancel(transmitThread);
         if (n)
         {
             printf("failed to cancel orbit thread\n");
@@ -1031,17 +851,13 @@ int client_run()
     printf("\nLaunching threads.\n");
     pthread_create(&resultThread, 0, result_thread, NULL);
     pthread_detach(resultThread);
-    if (!orbit)
-    {
-        pthread_create(&transmitThread, 0, display_thread, NULL);
-        pthread_detach(transmitThread);
-    }
+    // sleep 50ms to avoid crash
+    usleep(1000 * 50);
+    pthread_create(&transmitThread, 0, display_thread, NULL);
+    pthread_detach(transmitThread);
     // run in orbit mode
-    else
+    if (orbit)
     {
-        pthread_create(&orbitThread, 0, orbit_thread, NULL);
-        pthread_detach(orbitThread);
-        // mflisten_thread();
         pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
         pthread_detach(mflistenThread);
     }
@@ -1107,6 +923,7 @@ int main(int argc, char *argv[])
             {"sb", no_argument, 0, 0},
             {"c", no_argument, 0, 0},
             {"size", required_argument, 0, 0},
+            {"neworbit", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1188,6 +1005,11 @@ int main(int argc, char *argv[])
             size_per_time = strtol(optarg, NULL, 10);
             break;
 
+            /* new orbit mode */
+        case 13:
+            neworbit = 1;
+            break;
+
         default:
             help();
             return 0;
@@ -1195,7 +1017,7 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    if (!orbit) {
+    if (!orbit && !neworbit) {
         if(signal(SIGINT, signal_handler) == SIG_ERR)
         {
             printf("could not register signal handler\n");
@@ -1209,20 +1031,26 @@ int main(int argc, char *argv[])
         }   
     }
 
-    if (orbit)
+    if (orbit || neworbit)
     {
         if (src_GUID != -1 && dst_GUID != -1)
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
-            /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID, debug);
         }
         else
         {
             printf("ERROR: please enter src_GUID and dst_GUID with flags -m & -o\n");
             exit(1);
         }
-
+        if (orbit) {
+            /* init new Message Distributor */
+            MsgD.init(src_GUID, dst_GUID, debug);
+        }
+        // if new orbit mode
+        else if (neworbit) {
+            // init the MFPackager
+            mfpack = new MFPackager(src_GUID, dst_GUID, debug);
+        }
     }
 
     client_run();
