@@ -141,13 +141,15 @@ void *result_child(void *arg)
             printf("Not match.\n\n");
 
         }
-        else
+        else if (orbit)
         {
             MsgD.send(sock, defMsg, sizeof(defMsg));
             printf("Not match.\n\n");
         }
-
-        // if (debug) printf("not match\n");            
+        else if (mf) {
+            mfpack->sendResult(defMsg, sizeof(defMsg));
+            printf("Not match.\n\n");
+        }
     }
     else
     {
@@ -166,12 +168,13 @@ void *result_child(void *arg)
                 errorSocket("ERROR writting to socket", sock);
             }
         }
-        else
+        else if (orbit)
         {
             MsgD.send(sock, sendInfo, sizeof(sendInfo));
         }
-        // if (debug) printf("matched image index: %d\n", matchedIndex);
-
+        else if (mf) {
+            mfpack->sendResult(sendInfo, sizeof(sendInfo));
+        }
     }
 
     // handle the metrics
@@ -218,10 +221,11 @@ void server_result (int sock, string userID)
             error("ERROR writting to socket");
         }
     }
-    else
+    else if (orbit)
     {
         MsgD.send(sock, response, sizeof(response));
     }
+    // new orbit mode need not to response
 
     struct sockaddr_in myaddr;
     int ret;
@@ -268,12 +272,7 @@ void server_result (int sock, string userID)
             delete(sem_match);
             delete(imgQueue);
             sem_destroy(sem_match);
-            // if (orbit)
-            // {
-            //     MsgD.close(sock, 0);                
-            // }
             printf("[server] client disconnected --- result\n");
-            // pthread_exit(NULL); //terminate calling thread!
             return;
         }
 
@@ -334,9 +333,12 @@ void server_result (int sock, string userID)
                            errorSocket("ERROR writting to socket", sock);
                         }
                     }
-                    else
+                    else if (orbit)
                     {
                         MsgD.send(sock, defMsg, sizeof(defMsg));
+                    }
+                    else if (mf) {
+                        mfpack->sendResult(defMsg, sizeof(defMsg));
                     }
 
                     if (debug) printf("not match\n");
@@ -356,9 +358,12 @@ void server_result (int sock, string userID)
                             errorSocket("ERROR writting to socket", sock);
                         }
                     }
-                    else
+                    else if (orbit)
                     {
                         MsgD.send(sock, sendInfo, sizeof(sendInfo));
+                    }
+                    else if (mf) {
+                        mfpack->sendResult(sendInfo, sizeof(sendInfo));
                     }
 
                     if (debug) printf("matched image index: %d\n", matchedIndex);
@@ -439,7 +444,7 @@ void server_transmit (int sock, string userID)
 
             // receive the file info
             bzero(buffer, sizeof(buffer));
-            n = read(sock,buffer, sizeof(buffer));
+            n = read(sock, buffer, sizeof(buffer));
             if (n <= 0)
             {
                 pthread_mutex_destroy(&queueLock);
@@ -474,122 +479,69 @@ void server_transmit (int sock, string userID)
                 // signal the result thread to terminate
                 sem_post(sem_match);
                 errorSocket("ERROR writting to socket", sock);
-            } 
+            }
 
+            // receive the data from client and store them into buffer
+            int offset = 0;
+            char* img = new char[file_size];
+            int done = 0;
+            // receive the data from server and store them into buffer
+            bzero(buffer, sizeof(buffer));
+            int num = 1;
+            while((length = recv(sock, buffer, sizeof(buffer), 0)))  
+            {
+                if (length < 0)  
+                {  
+                    printf("Recieve Data From Client Failed!\n");  
+                    break;  
+                }
+                // printf("num: %d, len: %d\n", num++, length);
 
+                if (offset + length == file_size) {
+                    done = 1;
+                }
+          
+                // copy the content into img
+                for (int i = 0; i < length; ++i)
+                {
+                    img[i + offset] = buffer[i];
+                }
+
+                bzero(buffer, sizeof(buffer));
+                if (done)
+                {
+                    if (debug) printf("file size full\n");
+                    break;
+                }
+                offset += length;
+            }
+
+            // reponse to the client
+            write(sock, response, sizeof(response));
+
+            // print out time comsumption
+            gettimeofday(&tpend,NULL);
+            timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+            // printf("used time:%fus\n",timeuse);
+            printf("receive used time:%fms\n",timeuse / 1000);
+
+            // finished
+            if (debug) printf("[server] Recieve Finished!\n\n");  
+
+            // if not using storm, write into disk
             if (!storm)
             {
-                FILE *fp = fopen(file_name, "w");  
+                FILE *fp = fopen(file_name_temp, "w");  
                 if (fp == NULL)  
                 {  
-                    printf("File:\t%s Can Not Open To Write!\n", file_name);  
+                    printf("File:\t%s Can Not Open To Write!\n", file_name_temp);  
                     break;
-                }  
-
-                // receive the data from client and store them into buffer
-                int offset = 0;
-                char* img = new char[file_size];
-                int done = 0;
-                // receive the data from server and store them into buffer
-                bzero(buffer, sizeof(buffer));
-                while((length = recv(sock, buffer, sizeof(buffer), 0)))  
-                {
-                    if (length < 0)  
-                    {  
-                        printf("Recieve Data From Client Failed!\n");  
-                        break;  
-                    }
-
-                    int remain = file_size - offset;
-                    if (remain < BUFFER_SIZE) {
-                        length = remain;
-                        done = 1;
-                    }
-              
-                    // copy the content into img
-                    for (int i = 0; i < length; ++i)
-                    {
-                        img[i + offset] = buffer[i];
-                    }
-
-                    bzero(buffer, sizeof(buffer));
-                    if (done)
-                    {
-                        if (debug) printf("offset: %d\n", offset + remain);
-                        if (debug) printf("file size full\n");
-                        break;
-                    }
-                    offset += length;
                 }
-
                 write_length = fwrite(img, sizeof(char), file_size, fp);
-
-                // reponse to the client
-                write(sock, response, sizeof(response));
-
-                // print out time comsumption
-                gettimeofday(&tpend,NULL);
-                timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-                // printf("used time:%fus\n",timeuse);
-                printf("receive used time:%fms\n",timeuse / 1000);
-
-                if (debug) printf("[server] Recieve Finished!\n\n");  
-
-                // finished
-                delete[] img;
                 fclose(fp);
             }
-            // below is storm mode
-            else
-            {
-                // in storm mode, don't save img into disk
-                int offset = 0;
-                char* img = new char[file_size];
-                int done = 0;
-                // receive the data from server and store them into buffer
-                bzero(buffer, sizeof(buffer));
-                while((length = recv(sock, buffer, sizeof(buffer), 0)))  
-                {
-                    if (length < 0)  
-                    {  
-                        printf("Recieve Data From Client Failed!\n");  
-                        break;  
-                    }
-
-                    int remain = file_size - offset;
-                    if (remain < BUFFER_SIZE) {
-                        length = remain;
-                        done = 1;
-                    }
-              
-                    // copy the content into img
-                    for (int i = 0; i < length; ++i)
-                    {
-                        img[i + offset] = buffer[i];
-                    }
-
-                    bzero(buffer, sizeof(buffer));
-                    if (done)
-                    {
-                        if (debug) printf("offset: %d\n", offset + remain);
-                        if (debug) printf("file size full\n");
-                        break;
-                    }
-                    offset += length;
-                    // if (debug) printf("offset: %d\n", offset);
-                }
-
-                // reponse to the client
-                write(sock, response, sizeof(response));
-
-                // print out time comsumption
-                gettimeofday(&tpend,NULL);
-                timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-                // printf("used time:%fus\n",timeuse);
-                printf("receive used time:%fms\n",timeuse / 1000);
-
-                if (debug) printf("[server] Recieve Finished!\n\n");  
-
+            // if using storm mode, transfer the file
+            else if (storm) {
                 // using kafka to pass the file
                 if (kafka) {
                     // string input = string(file_name_temp);
@@ -697,12 +649,14 @@ void server_transmit (int sock, string userID)
             }
             // signal the result thread to do image processing
             sem_post(sem_match);
+
+            usleep(1000 * 50); // sleep 50ms
         }
 
         close(sock);
     }
     // below is orbit mode
-    else
+    else if (orbit)
     {
         // get the id length
         int id_length = 1;
@@ -962,8 +916,6 @@ void server_transmit (int sock, string userID)
             // signal the result thread to do image processing
             sem_post(sem_match);
         }
-        
-        usleep(1000 * 50); // sleep 50ms to avoid crash
     }
 
     delete(imgQueue);
