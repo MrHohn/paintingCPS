@@ -12,9 +12,10 @@ int global_dst_GUID;              // used for close command
 queue<struct timeval> *timeQueue; // queue for timestamps
 
 int global_stop = 0;
-int orbit = 0;
-int neworbit = 0;
-int sb = 0;
+bool tcp = true;
+bool orbit = false;
+bool mf = false;
+bool sb = false;
 bool test = false;
 bool consume = false;
 int size_per_time = 1;

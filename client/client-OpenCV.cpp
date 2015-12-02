@@ -58,7 +58,7 @@ void help(void)
             " [-sb].................: sandbox mode\n" \
             " [-c]..................: consumption mode\n" \
             " [-size]..................: define file size\n" \
-            " [-neworbit]..................: run in new orbit mode\n" \
+            " [-mf]..................: run in new orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
@@ -111,7 +111,7 @@ void *result_thread(void *arg)
     /*-----------------network part--------------*/
 
     // tcp mode
-    if (!orbit && !neworbit)
+    if (tcp)
     {
         int portno;
         struct sockaddr_in serv_addr;
@@ -202,7 +202,7 @@ void *result_thread(void *arg)
     while(!global_stop)
     {
         bzero(buffer, sizeof(buffer));
-        if (!orbit && !neworbit)
+        if (tcp)
         {
             n = recv(sockfd, buffer, sizeof(buffer), 0);        
         }
@@ -211,7 +211,7 @@ void *result_thread(void *arg)
             if (debug) printf("Still waiting here for the new result\n");
             n = MsgD.recv(sockfd, buffer, sizeof(buffer));
         }
-        else if (neworbit)
+        else if (mf)
         {
             pause();
             n = mfpack->recvResult(buffer, sizeof(buffer));
@@ -271,7 +271,7 @@ void *result_thread(void *arg)
             global_stop = 1;
         }
     }
-    if (!orbit && !neworbit)
+    if (tcp)
     {
         close(sockfd); // disconnect server    
     }
@@ -311,7 +311,7 @@ void *transmit_child(void *arg)
     for (int i = 0; i < size_per_time; ++i)
     {
 
-        if (!orbit && !neworbit) {
+        if (tcp) {
             int n;
             char bufferSend[BUFFER_SIZE];
             char response[10];
@@ -386,9 +386,9 @@ void *transmit_child(void *arg)
 
                 // get the response
                 read(sockfd, response, sizeof(response));
+                printf("[client] Transfer Finished!\n");
 
                 fclose(fp);  
-                printf("[client] Transfer Finished!\n");  
             }
         }
         // below is orbit mode, using MFAPI
@@ -475,7 +475,7 @@ void *transmit_child(void *arg)
             }
         }
         // new orbit mode
-        else if (neworbit) {
+        else if (mf) {
             struct stat file_stat; // stat of file, to get the size
             int n;
 
@@ -545,7 +545,7 @@ void *display_thread(void *arg)
     /*-----------------network preconnect part--------------*/
 
     // tcp mode
-    if (!orbit && !neworbit) {
+    if (tcp) {
         int portno;
         struct sockaddr_in serv_addr;
         struct hostent *server;
@@ -784,7 +784,7 @@ void *display_thread(void *arg)
         // exit(1);
     }
 
-    if (!orbit && !neworbit) {
+    if (tcp) {
         close(sockfd); // disconnect server
     }
     printf("[client] connection closed --- transmit\n");
@@ -824,22 +824,14 @@ int client_stop()
     {
         printf("failed to cancel result thread\n");
     }
-    if (!orbit && !neworbit)
+    n = pthread_cancel(transmitThread);
+    if (n)
     {
-        n = pthread_cancel(transmitThread);
-        if (n)
-        {
-            printf("failed to cancel thread\n");
-        }
+        printf("failed to cancel thread\n");
     }
-    else if (orbit)
+
+    if (orbit)
     {
-        // cancel orbit thread
-        n = pthread_cancel(transmitThread);
-        if (n)
-        {
-            printf("failed to cancel orbit thread\n");
-        }
         // cancel listen thread
         n = pthread_cancel(mflistenThread);
         if (n)
@@ -883,7 +875,6 @@ int client_run()
         // init the time queue
         timeQueue = new queue<struct timeval>();
     }
-    // DBG("launching threads\n");
     printf("\nLaunching threads.\n");
     pthread_create(&resultThread, 0, result_thread, NULL);
     pthread_detach(resultThread);
@@ -959,7 +950,7 @@ int main(int argc, char *argv[])
             {"sb", no_argument, 0, 0},
             {"c", no_argument, 0, 0},
             {"size", required_argument, 0, 0},
-            {"neworbit", no_argument, 0, 0},
+            {"mf", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1001,7 +992,8 @@ int main(int argc, char *argv[])
 
             /* orbit, run in orbit mode */
         case 5:
-            orbit = 1;
+            orbit = true;
+            tcp = false;
             break;
 
             /* debug mode */
@@ -1028,7 +1020,7 @@ int main(int argc, char *argv[])
 
             /* sand box */
         case 10:
-            sb = 1;
+            sb = true;
             break;
 
             /* consumption mode */
@@ -1043,7 +1035,8 @@ int main(int argc, char *argv[])
 
             /* new orbit mode */
         case 13:
-            neworbit = 1;
+            mf = true;
+            tcp = false;
             break;
 
         default:
@@ -1053,21 +1046,21 @@ int main(int argc, char *argv[])
     }
 
     /* register signal handler for <CTRL>+C in order to clean up */
-    if (!orbit && !neworbit) {
-        if(signal(SIGINT, signal_handler) == SIG_ERR)
-        {
-            printf("could not register signal handler\n");
-            exit(EXIT_FAILURE);
-        }
+    // if (tcp) {
+    //     if(signal(SIGINT, signal_handler) == SIG_ERR)
+    //     {
+    //         printf("could not register signal handler\n");
+    //         exit(EXIT_FAILURE);
+    //     }
 
-        if (pthread_mutex_init(&sendLock, NULL) != 0)
-        {
-            printf("\n mutex init failed\n");
-            return 1;
-        }   
-    }
+    //     if (pthread_mutex_init(&sendLock, NULL) != 0)
+    //     {
+    //         printf("\n mutex init failed\n");
+    //         return 1;
+    //     }   
+    // }
 
-    if (orbit || neworbit)
+    if (orbit || mf)
     {
         if (src_GUID != -1 && dst_GUID != -1)
         {
@@ -1083,7 +1076,7 @@ int main(int argc, char *argv[])
             MsgD.init(src_GUID, dst_GUID, debug);
         }
         // if new orbit mode
-        else if (neworbit) {
+        else if (mf) {
             // init the MFPackager
             mfpack = new MFPackager(src_GUID, dst_GUID, debug);
         }
