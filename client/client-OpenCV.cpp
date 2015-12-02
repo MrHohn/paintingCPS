@@ -371,17 +371,19 @@ void *transmit_child(void *arg)
             {  
                 bzero(bufferSend, sizeof(bufferSend));  
                 int file_block_length = 0;
+                // int num = 1;
                 // start transmitting the file
-                while( (file_block_length = fread(bufferSend, sizeof(char), BUFFER_SIZE, fp)) > 0)  
+                while( (file_block_length = fread(bufferSend, sizeof(char), sizeof(bufferSend), fp)) > 0)
                 {  
                     // send data to the client side  
                     if (send(sockfd, bufferSend, file_block_length, 0) < 0)  
                     {  
                         printf("Send File: %s Failed!\n", file_name);  
                         break;  
-                    }  
+                    }
+                    // printf("num: %d, len: %d\n", num++, file_block_length);
 
-                    bzero(bufferSend, BUFFER_SIZE);  
+                    bzero(bufferSend, sizeof(bufferSend));  
                 }
 
                 // get the response
