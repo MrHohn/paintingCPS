@@ -19,18 +19,20 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
-#include "ImgMatch.h"
 #include <sys/time.h>
 #include <queue>
 #include <getopt.h>
 #include <unordered_map>
 #include <errno.h>
 #include <sys/stat.h>
+
+#include "ImgMatch.h"
 #include "MsgDistributor.h"
-// #include "AEScipher.h"
 #include "KafkaProducer.h"
 #include "Metrics.h"
+#include "MFPackager.h"
 #include "global_config.h"
+
 
 /******************************************************************************
 Description.: Display a help message
@@ -53,6 +55,7 @@ void help(void)
             " [-train]..............: train with the database\n" \
             " [-p]..................: parallelism level (default 5)\n" \
             " [-kafka]..................: using kafka to submit works\n" \
+            " [-mf]..................: new orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"
@@ -93,7 +96,7 @@ void errorSocket(const char *msg, int sock)
     errno = EBADF;
     perror(msg);
     printf("[server] Connection closed. --- error\n\n");
-    if (!orbit)
+    if (tcp)
     {
         close(sock);     
         pthread_exit(NULL); //terminate calling thread!
@@ -130,7 +133,7 @@ void *result_child(void *arg)
     if (matchedIndex == 0) 
     {   
         // write none to client
-        if (!orbit) {
+        if (tcp) {
             if (write(sock, defMsg, sizeof(defMsg)) < 0)
             {
                errorSocket("ERROR writting to socket", sock);
@@ -156,7 +159,7 @@ void *result_child(void *arg)
         printf("Matched Index: %d\n\n", matchedIndex);
 
         if (debug) printf("sendInfo: %s\n", sendInfo);
-        if (!orbit)
+        if (tcp)
         {
             if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
             {
@@ -207,7 +210,7 @@ void server_result (int sock, string userID)
     pthread_mutex_unlock(&sem_map_lock);
 
     // reponse to the client
-    if (!orbit)
+    if (tcp)
     {
         n = write(sock, response, sizeof(response));
         if (n < 0)
@@ -324,7 +327,7 @@ void server_result (int sock, string userID)
                 if (matchedIndex == 0)
                 {
                     // write none to client
-                    if (!orbit)
+                    if (tcp)
                     {
                         if (write(sock, defMsg, sizeof(defMsg)) < 0)
                         {
@@ -346,7 +349,7 @@ void server_result (int sock, string userID)
                     
                     if (debug) printf("sendInfo: %s\n", sendInfo);
 
-                    if (!orbit)
+                    if (tcp)
                     {
                         if (write(sock, sendInfo, sizeof(sendInfo)) < 0)
                         {
@@ -371,7 +374,7 @@ void server_result (int sock, string userID)
     }
 
     stop:
-    if (!orbit)
+    if (tcp)
     {
         close(sock);
     }
@@ -416,12 +419,11 @@ void server_transmit (int sock, string userID)
         errorSocket("ERROR mutex init failed", sock);
     }
 
-    if (!orbit)
+    if (tcp)
     {
         char buffer[BUFFER_SIZE];
         char *file_size_char;
         int file_size;
-        int received_size = 0;
 
         // reponse to the client
         n = write(sock, response, sizeof(response));
@@ -435,7 +437,6 @@ void server_transmit (int sock, string userID)
         {
             if (debug) printf("wait for new request\n");
 
-            received_size = 0;
             // receive the file info
             bzero(buffer, sizeof(buffer));
             n = read(sock,buffer, sizeof(buffer));
@@ -485,8 +486,11 @@ void server_transmit (int sock, string userID)
                     break;
                 }  
 
-                int done = 0;
                 // receive the data from client and store them into buffer
+                int offset = 0;
+                char* img = new char[file_size];
+                int done = 0;
+                // receive the data from server and store them into buffer
                 bzero(buffer, sizeof(buffer));
                 while((length = recv(sock, buffer, sizeof(buffer), 0)))  
                 {
@@ -496,27 +500,29 @@ void server_transmit (int sock, string userID)
                         break;  
                     }
 
-                    int remain = file_size - received_size;
+                    int remain = file_size - offset;
                     if (remain < BUFFER_SIZE) {
                         length = remain;
                         done = 1;
                     }
               
-                    write_length = fwrite(buffer, sizeof(char), length, fp);  
-                    if (write_length < length)
-                    {  
-                        printf("File:\t Write Failed!\n");  
-                        break;  
-                    }  
-                    bzero(buffer, sizeof(buffer));
+                    // copy the content into img
+                    for (int i = 0; i < length; ++i)
+                    {
+                        img[i + offset] = buffer[i];
+                    }
 
+                    bzero(buffer, sizeof(buffer));
                     if (done)
                     {
+                        if (debug) printf("offset: %d\n", offset + remain);
                         if (debug) printf("file size full\n");
                         break;
                     }
-                    received_size += length;
+                    offset += length;
                 }
+
+                write_length = fwrite(img, sizeof(char), file_size, fp);
 
                 // reponse to the client
                 write(sock, response, sizeof(response));
@@ -529,7 +535,8 @@ void server_transmit (int sock, string userID)
 
                 if (debug) printf("[server] Recieve Finished!\n\n");  
 
-                // finished 
+                // finished
+                delete[] img;
                 fclose(fp);
             }
             // below is storm mode
@@ -690,7 +697,6 @@ void server_transmit (int sock, string userID)
             }
             // signal the result thread to do image processing
             sem_post(sem_match);
-            // pause();
         }
 
         close(sock);
@@ -851,79 +857,91 @@ void server_transmit (int sock, string userID)
 
                 if (debug) printf("[server] Recieve Finished!\n\n");  
 
-                // send request to spout
-                if (debug) printf("Now try to connect the spout\n");
-                int sockfd, ret;
-                int spoutPort = 9878;
-                struct sockaddr_in spout_addr;
-                struct hostent *spout;
-                struct in_addr ipv4addr;
-                char buf_spout[100];
-                char* spout_IP;
-                const int len = spoutIP.length();
-                spout_IP = new char[len+1];
-                strcpy(spout_IP, spoutIP.c_str());
+                // using kafka to pass the file
+                if (kafka) {
+                    // string input = string(file_name_temp);
+                    // producer->sendString(input, input.size());
 
-                sockfd = socket(AF_INET, SOCK_STREAM, 0);
-                if (sockfd < 0)
-                {
-                    printf("ERROR opening socket\n");
-                    return;
+                    printf("Current metrics: %f\n", metrics->get_metrics());
+                    printf("Now submit to Kafka.\n");
+                    producer->send(img, file_size);
                 }
-                inet_pton(AF_INET, spout_IP, &ipv4addr);
-                spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-                if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
-                if (spout == NULL) {
-                    fprintf(stderr,"ERROR, no such host\n");
-                    exit(0);
+                // use tcp socket to pass the file
+                else {
+                    // send request to spout
+                    if (debug) printf("Now try to connect the spout\n");
+                    int sockfd, ret;
+                    int spoutPort = 9878;
+                    struct sockaddr_in spout_addr;
+                    struct hostent *spout;
+                    struct in_addr ipv4addr;
+                    char buf_spout[100];
+                    char* spout_IP;
+                    const int len = spoutIP.length();
+                    spout_IP = new char[len+1];
+                    strcpy(spout_IP, spoutIP.c_str());
+
+                    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+                    if (sockfd < 0)
+                    {
+                        printf("ERROR opening socket\n");
+                        return;
+                    }
+                    inet_pton(AF_INET, spout_IP, &ipv4addr);
+                    spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+                    if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
+                    if (spout == NULL) {
+                        fprintf(stderr,"ERROR, no such host\n");
+                        exit(0);
+                    }
+                    bzero((char *) &spout_addr, sizeof(spout_addr));
+                    spout_addr.sin_family = AF_INET;
+                    bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
+                    spout_addr.sin_port = htons(spoutPort);
+
+                    while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
+                    {
+                        printf("The spout is not available now, wait a while and reconnect\n\n");
+                        usleep(100000); // sleep 100ms
+                    }
+
+                    printf("[server] Get connection to spout\n");
+
+                    bzero(buf_spout, sizeof(buf_spout));
+                    sprintf(buf_spout, "%d", file_size);
+                    // usleep(1000 * 10); // sleep 10ms to avoid crash
+                    if (debug) printf("[server] send the file size\n");
+                    ret = write(sockfd, buf_spout, sizeof(buf_spout));
+                    if (ret < 0)
+                    {
+                        printf("error sending\n");
+                        return;
+                    }
+
+                    // get the response
+                    bzero(buf_spout, sizeof(buf_spout));
+                    if (debug) printf("[server] now wait for response\n");
+                    ret = read(sockfd, buf_spout, sizeof(buf_spout));
+                    if (ret < 0)
+                    {
+                        printf("error reading\n");
+                        return;
+                    }
+
+                    if (debug) printf("got response: %s\n", buf_spout);
+
+                    if (debug) printf("[server] send the img\n");
+                    ret = write(sockfd, img, file_size);
+                    if (ret < 0)
+                    {
+                        printf("error sending\n");
+                        return;
+                    }
+                    if (debug) printf("ret: %d\n", ret);
+                    printf("[server] Finished transmitting image to spout\n\n");
+
+                    close(sockfd);
                 }
-                bzero((char *) &spout_addr, sizeof(spout_addr));
-                spout_addr.sin_family = AF_INET;
-                bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
-                spout_addr.sin_port = htons(spoutPort);
-
-                while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
-                {
-                    printf("The spout is not available now, wait a while and reconnect\n\n");
-                    usleep(100000); // sleep 100ms
-                }
-
-                printf("[server] Get connection to spout\n");
-
-                bzero(buf_spout, sizeof(buf_spout));
-                sprintf(buf_spout, "%d", file_size);
-                // usleep(1000 * 10); // sleep 10ms to avoid crash
-                if (debug) printf("[server] send the file size\n");
-                ret = write(sockfd, buf_spout, sizeof(buf_spout));
-                if (ret < 0)
-                {
-                    printf("error sending\n");
-                    return;
-                }
-
-                // get the response
-                bzero(buf_spout, sizeof(buf_spout));
-                if (debug) printf("[server] now wait for response\n");
-                ret = read(sockfd, buf_spout, sizeof(buf_spout));
-                if (ret < 0)
-                {
-                    printf("error reading\n");
-                    return;
-                }
-
-                if (debug) printf("got response: %s\n", buf_spout);
-
-                if (debug) printf("[server] send the img\n");
-                ret = write(sockfd, img, file_size);
-                if (ret < 0)
-                {
-                    printf("error sending\n");
-                    return;
-                }
-                if (debug) printf("ret: %d\n", ret);
-                printf("[server] Finished transmitting image to spout\n\n");
-
-                close(sockfd);
                 delete[] img;
             }
  
@@ -973,7 +991,7 @@ void *serverThread (void * inputsock)
 
     // Receive the header
     bzero(buffer, sizeof(buffer));
-    if (!orbit)
+    if (tcp)
     {
         n = read(sock, buffer, sizeof(buffer));
         if (n < 0)
@@ -1012,7 +1030,7 @@ void *serverThread (void * inputsock)
             // remember to unlock!
             pthread_mutex_unlock(&user_map_lock);
             // reponse to the client
-            if (!orbit)
+            if (tcp)
             {
                 if (write(sock, "failed", sizeof("failed")) < 0)
                 {
@@ -1040,7 +1058,7 @@ void *serverThread (void * inputsock)
     }
     else
     {
-        if (!orbit)
+        if (tcp)
         {
             close(sock); 
         }
@@ -1059,7 +1077,7 @@ void server_main()
 {
     printf("\n[server] start supporting service\n");
 
-    if (!orbit)
+    if (tcp)
     {
         // init part
         int sockfd, newsockfd, portno;
@@ -1121,7 +1139,7 @@ void server_main()
         close(sockfd);
     }
     // below is orbit mode
-    else
+    else if (orbit)
     {
         int newsockfd;   
         // init finished, now wait for a client
@@ -1341,6 +1359,7 @@ int main(int argc, char *argv[])
             {"train", no_argument, 0, 0},
             {"p", required_argument, 0, 0},
             {"kafka", no_argument, 0, 0},
+            {"mf", no_argument, 0, 0},
             {0, 0, 0, 0}
         };
 
@@ -1376,7 +1395,8 @@ int main(int argc, char *argv[])
 
             /* orbit, run in orbit mode */
         case 4:
-            orbit = 1;
+            orbit = true;
+            tcp = false;
             break;
 
             /* debug mode */
@@ -1396,12 +1416,12 @@ int main(int argc, char *argv[])
 
             /* storm mode */
         case 8:
-            storm = 1;
+            storm = true;
             break;
 
             /* train mode */
         case 9:
-            train = 1;
+            train = true;
             break;
 
             /* parallelism level */
@@ -1414,13 +1434,19 @@ int main(int argc, char *argv[])
             kafka = true;
             break;
 
+            /* new orbit mode */
+        case 12:
+            mf = true;
+            tcp = false;
+            break;
+
         default:
             help();
             return 0;
         }
     }
 
-    if (!orbit)
+    if (tcp)
     {
         /* register signal handler for <CTRL>+C in order to clean up */
         if(signal(SIGINT, signal_handler) == SIG_ERR)
@@ -1445,18 +1471,24 @@ int main(int argc, char *argv[])
         printf("semaphore init failed\n");
     }
 
-    if (orbit)
+    if (orbit || mf)
     {
         if (src_GUID != -1 && dst_GUID != -1)
         {
             if (debug) printf("src_GUID: %d, dst_GUID: %d\n", src_GUID, dst_GUID);
-            /* init new Message Distributor */
-            MsgD.init(src_GUID, dst_GUID, debug);
         }
         else
         {
             printf("ERROR: please enter src_GUID and dst_GUID with flags -m & -o\n");
             exit(1);
+        }
+        if (orbit) {
+            /* init new Message Distributor */
+            MsgD.init(src_GUID, dst_GUID, debug);
+        }
+        else if (mf) {
+            // init the MFPackager
+            mfpack = new MFPackager(src_GUID, dst_GUID, debug);
         }
 
     }

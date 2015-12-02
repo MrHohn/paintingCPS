@@ -8,11 +8,17 @@ static pthread_t mflistenThread;
 sem_t process_sem;
 // global flag for quit
 int global_stop = 0; 
-int orbit = 0;
-int storm = 0;
-int train = 0;
+bool orbit = false;
+bool mf = false;
+bool tcp = true;
+bool storm = false;
+bool train = false;
 string spoutIP;
 int debug = 0;
+
+// MFPackager
+MFPackager* mfpack;
+
 MsgDistributor MsgD;
 
 // Kafka Producer
