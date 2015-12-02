@@ -213,7 +213,8 @@ void *result_thread(void *arg)
         }
         else if (neworbit)
         {
-
+            pause();
+            n = mfpack->recvResult(buffer, sizeof(buffer));
         }
 
         if (n < 0) 
@@ -298,6 +299,7 @@ void *transmit_child(void *arg)
     struct arg_transmit *args = (struct arg_transmit *)arg;
     int sockfd = args->sock;
     char *file_name = args->file_name;
+
     struct timeval tpstart, tpend;
     double timeuse;
     if (consume)
@@ -474,7 +476,41 @@ void *transmit_child(void *arg)
         }
         // new orbit mode
         else if (neworbit) {
+            struct stat file_stat; // stat of file, to get the size
+            int n;
 
+            // get the status of file
+            if (stat(file_name, &file_stat) == -1)
+            {
+                perror("stat");
+                exit(EXIT_FAILURE);
+            }
+            if (debug) printf("file size: %ld\n", file_stat.st_size);
+            char img[file_stat.st_size];
+            // read the image first
+            FILE *fp = fopen(file_name, "r");  
+            if (fp == NULL)  
+            {  
+                printf("File:\t%s Not Found!\n", file_name);  
+                exit(0);
+            }  
+            else  
+            {
+                int read_size;
+                read_size = fread(img, sizeof(char), file_stat.st_size, fp);
+                printf("read_size: %d\n", read_size);
+                fclose(fp);
+            }
+
+            // gain the lock, insure transmit order
+            pthread_mutex_lock(&sendLock);
+
+            // send the file info
+            if (debug) printf("[client] file name: %s\n", file_name);
+            n = mfpack->sendImage(img, file_stat.st_size);
+            if (n < 0) 
+                error("ERROR writing to socket");
+            printf("[client] Transfer Finished!\n");
         }
         pthread_mutex_unlock(&sendLock);
     }
@@ -508,44 +544,8 @@ void *display_thread(void *arg)
 
     /*-----------------network preconnect part--------------*/
 
-    // orbit mode
-    if (orbit) {
-        char response[10];
-        char header[100];
-        sprintf(header, "transmit,%s", userID);
-
-        sockfd = MsgD.connect();
-        if (sockfd < 0) 
-        {
-            printf("-------- The server is not available now. ---------\n\n");
-            global_stop = 1;
-            exit(0);
-        }
-        else
-        {
-            // insert the new id into set
-            id_set.insert(sockfd);
-            printf("[client] transmit thread get connection to server\n");
-            printf("[client] start transmitting current frame\n\n");
-        }
-
-        // send the header first
-        n = MsgD.send(sockfd, header, sizeof(header));
-        if (n < 0) 
-             error("ERROR writing to socket");
-
-        // get the response
-        n = MsgD.recv(sockfd, response, sizeof(response));
-        if (n < 0) 
-             error("ERROR reading from socket");
-        if (strcmp(response, "failed") == 0)
-        {
-            errno = EACCES;
-            error("ERROR log in failed");
-        }
-    }
     // tcp mode
-    else {
+    if (!orbit && !neworbit) {
         int portno;
         struct sockaddr_in serv_addr;
         struct hostent *server;
@@ -602,6 +602,42 @@ void *display_thread(void *arg)
 
         // get the response
         n = read(sockfd, response, sizeof(response));
+        if (n < 0) 
+             error("ERROR reading from socket");
+        if (strcmp(response, "failed") == 0)
+        {
+            errno = EACCES;
+            error("ERROR log in failed");
+        }
+    }
+    // orbit mode
+    else if (orbit) {
+        char response[10];
+        char header[100];
+        sprintf(header, "transmit,%s", userID);
+
+        sockfd = MsgD.connect();
+        if (sockfd < 0) 
+        {
+            printf("-------- The server is not available now. ---------\n\n");
+            global_stop = 1;
+            exit(0);
+        }
+        else
+        {
+            // insert the new id into set
+            id_set.insert(sockfd);
+            printf("[client] transmit thread get connection to server\n");
+            printf("[client] start transmitting current frame\n\n");
+        }
+
+        // send the header first
+        n = MsgD.send(sockfd, header, sizeof(header));
+        if (n < 0) 
+             error("ERROR writing to socket");
+
+        // get the response
+        n = MsgD.recv(sockfd, response, sizeof(response));
         if (n < 0) 
              error("ERROR reading from socket");
         if (strcmp(response, "failed") == 0)
