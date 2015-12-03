@@ -213,7 +213,6 @@ void *result_thread(void *arg)
         }
         else if (mf)
         {
-            pause();
             n = mfpack->recvResult(buffer, sizeof(buffer));
         }
 
