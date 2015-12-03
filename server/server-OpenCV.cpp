@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <errno.h>
 #include <sys/stat.h>
+#include <thread>
 
 #include "ImgMatch.h"
 #include "MsgDistributor.h"
@@ -197,10 +198,11 @@ void server_result (int sock, string userID)
 {
     if (debug) printf("result thread\n\n");
 
-    int n, fd;
+    int ret, fd;
     char response[] = "ok";
+    char buf[1024];
     sem_t *sem_match = new sem_t(); // create a new semaphore in heap
-    queue<string> *imgQueue = 0;    // queue storing the file names 
+    queue<string> *imgQueue = 0;    // queue storing the file names
 
     //  Init semaphore and put the address of semaphore into map
     if (sem_init(sem_match, 0, 0) != 0)
@@ -215,8 +217,8 @@ void server_result (int sock, string userID)
     // reponse to the client
     if (tcp)
     {
-        n = write(sock, response, sizeof(response));
-        if (n < 0)
+        ret = write(sock, response, sizeof(response));
+        if (ret < 0)
         {
             error("ERROR writting to socket");
         }
@@ -226,14 +228,12 @@ void server_result (int sock, string userID)
         MsgD.send(sock, response, sizeof(response));
     }
     // new orbit mode need not to response
-
-    struct sockaddr_in myaddr;
-    int ret;
-    char buf[1024];
-    int serverPort = 9879;
     
     if (storm)
     {
+        // UDP setting for receiving result from storm
+        struct sockaddr_in myaddr;
+        int serverPort = 9879;
 
         if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
             printf("socket create failed\n");
@@ -406,8 +406,10 @@ void server_transmit (int sock, string userID)
     char response[] = "ok";
     char file_name_temp[60];
     char *file_name;
-    int write_length = 0;
+    char *file_size_char;
+    int file_size;
     int length = 0;
+    int fake_index = 1;
     queue<string> *imgQueue = new queue<string>();    // queue storing the file names 
 
     // grap the lock
@@ -419,29 +421,34 @@ void server_transmit (int sock, string userID)
     sem_t *sem_match = 0;
 
     // init the mutex lock
-    if (pthread_mutex_init(&queueLock, NULL) != 0)
-    {
+    if (pthread_mutex_init(&queueLock, NULL) != 0) {
         errorSocket("ERROR mutex init failed", sock);
     }
 
-    if (tcp)
-    {
-        char buffer[BUFFER_SIZE];
-        char *file_size_char;
-        int file_size;
-
+    if (tcp) {
         // reponse to the client
         n = write(sock, response, sizeof(response));
-        if (n < 0)
-        {
+        if (n < 0) {
             pthread_mutex_destroy(&queueLock);
             errorSocket("ERROR writting to socket", sock);
         }
+    }
+    else if (orbit) {
+        // reponse to the client
+        MsgD.send(sock, response, sizeof(response));
+    }
 
-        while (!global_stop)
-        {
-            if (debug) printf("wait for new request\n");
+    while (!global_stop)
+    {
+        if (debug) printf("wait for new request\n");
+        char* img;
 
+        // calculate the time consumption here
+        struct timeval tpstart,tpend;
+        double timeuse;
+
+        if (tcp) {
+            char buffer[BUFFER_SIZE];
             // receive the file info
             bzero(buffer, sizeof(buffer));
             n = read(sock, buffer, sizeof(buffer));
@@ -453,6 +460,8 @@ void server_transmit (int sock, string userID)
                 errorSocket("ERROR reading from socket", sock);
             } 
 
+            gettimeofday(&tpstart,NULL);
+
             if (debug) printf("message: %s\n", buffer);
             if (debug) printf("split the message\n");
             // store the file name and the block count
@@ -462,15 +471,6 @@ void server_transmit (int sock, string userID)
             file_size_char = strtok(NULL, ",");
             file_size = strtol(file_size_char, NULL, 10);
             if (debug) printf("file size: %d\n", file_size);
-
-            // handle the metrics
-            metrics->submit_request();
-
-            // calculate the time consumption here
-            struct timeval tpstart,tpend;
-            double timeuse;
-            gettimeofday(&tpstart,NULL);
-
             // reponse to the client
             n = write(sock, response, sizeof(response));
             if (n <= 0)
@@ -482,12 +482,12 @@ void server_transmit (int sock, string userID)
             }
 
             // receive the data from client and store them into buffer
+            img = new char[file_size];
             int offset = 0;
-            char* img = new char[file_size];
             int done = 0;
             // receive the data from server and store them into buffer
             bzero(buffer, sizeof(buffer));
-            int num = 1;
+            // int num = 1;
             while((length = recv(sock, buffer, sizeof(buffer), 0)))  
             {
                 if (length < 0)  
@@ -518,169 +518,20 @@ void server_transmit (int sock, string userID)
 
             // reponse to the client
             write(sock, response, sizeof(response));
-
-            // print out time comsumption
-            gettimeofday(&tpend,NULL);
-            timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-            // printf("used time:%fus\n",timeuse);
-            printf("receive used time:%fms\n",timeuse / 1000);
-
-            // finished
-            if (debug) printf("[server] Recieve Finished!\n\n");  
-
-            // if not using storm, write into disk
-            if (!storm)
-            {
-                FILE *fp = fopen(file_name_temp, "w");  
-                if (fp == NULL)  
-                {  
-                    printf("File:\t%s Can Not Open To Write!\n", file_name_temp);  
-                    break;
-                }
-                write_length = fwrite(img, sizeof(char), file_size, fp);
-                fclose(fp);
-            }
-            // if using storm mode, transfer the file
-            else if (storm) {
-                // using kafka to pass the file
-                if (kafka) {
-                    // string input = string(file_name_temp);
-                    // producer->sendString(input, input.size());
-
-                    printf("Current metrics: %f\n", metrics->get_metrics());
-                    printf("Now submit to Kafka.\n");
-                    producer->send(img, file_size);
-                }
-                // use tcp socket to pass the file
-                else {
-                    // send request to spout
-                    if (debug) printf("Now try to connect the spout\n");
-                    int sockfd, ret;
-                    int spoutPort = 9878;
-                    struct sockaddr_in spout_addr;
-                    struct hostent *spout;
-                    struct in_addr ipv4addr;
-                    char buf_spout[100];
-                    char* spout_IP;
-                    const int len = spoutIP.length();
-                    spout_IP = new char[len+1];
-                    strcpy(spout_IP, spoutIP.c_str());
-
-                    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-                    if (sockfd < 0)
-                    {
-                        printf("ERROR opening socket\n");
-                        return;
-                    }
-                    inet_pton(AF_INET, spout_IP, &ipv4addr);
-                    spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-                    if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
-                    if (spout == NULL) {
-                        fprintf(stderr,"ERROR, no such host\n");
-                        exit(0);
-                    }
-                    bzero((char *) &spout_addr, sizeof(spout_addr));
-                    spout_addr.sin_family = AF_INET;
-                    bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
-                    spout_addr.sin_port = htons(spoutPort);
-
-                    while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
-                    {
-                        printf("The spout is not available now, wait a while and reconnect\n\n");
-                        usleep(100000); // sleep 100ms
-                    }
-
-                    printf("[server] Get connection to spout\n");
-
-                    bzero(buf_spout, sizeof(buf_spout));
-                    sprintf(buf_spout, "%d", file_size);
-                    if (debug) printf("[server] send the file size\n");
-                    ret = write(sockfd, buf_spout, sizeof(buf_spout));
-                    if (ret < 0)
-                    {
-                        printf("error sending\n");
-                        return;
-                    }
-
-                    // get the response
-                    bzero(buf_spout, sizeof(buf_spout));
-                    if (debug) printf("[server] now wait for response\n");
-                    ret = read(sockfd, buf_spout, sizeof(buf_spout));
-                    if (ret < 0)
-                    {
-                        printf("error reading\n");
-                        return;
-                    }
-
-                    if (debug) printf("got response: %s\n", buf_spout);
-
-                    if (debug) printf("[server] send the img\n");
-                    ret = write(sockfd, img, file_size);
-                    if (ret < 0)
-                    {
-                        printf("error sending\n");
-                        return;
-                    }
-                    if (debug) printf("ret: %d\n", ret);
-
-                    // get the ack
-                    read(sockfd, buf_spout, sizeof(buf_spout));
-                    printf("[server] Finished transmitting image to spout\n\n");
-
-                    close(sockfd);
-                }
-
-                delete[] img;
-            }
-
-            // lock the queue, ensure there is only one thread modifying the queue
-            pthread_mutex_lock(&queueLock);
-
-            // store the file name to the waiting queue
-            string file_name_string(file_name_temp);
-            imgQueue->push(file_name_string);
-
-            pthread_mutex_unlock(&queueLock);
-            // get the address of sem_match
-            if (sem_match == 0)
-            {
-                while (sem_map.find(userID) == sem_map.end());
-                sem_match = sem_map[userID];
-            }
-            // signal the result thread to do image processing
-            sem_post(sem_match);
-
-            usleep(1000 * 50); // sleep 50ms
         }
+        else if (orbit) {
+            // get the id length
+            int id_length = 1;
+            int divisor = 10;
+            while (sock / divisor > 0)
+            {
+                ++id_length;
+                divisor *= 10;
+            }
+            int recv_length = BUFFER_SIZE * 4; // 4096 bytes per time
+            char buffer[recv_length];
+            int received_size = 0;
 
-        close(sock);
-    }
-    // below is orbit mode
-    else if (orbit)
-    {
-        // get the id length
-        int id_length = 1;
-        int divisor = 10;
-        while (sock / divisor > 0)
-        {
-            ++id_length;
-            divisor *= 10;
-        }
-        int recv_length = BUFFER_SIZE * 4; // 4096 bytes per time
-        char buffer[recv_length];
-        char *file_size_char;
-        int file_size;
-        int received_size = 0;
-
-        if (debug) printf("\nstart receiving file\n");
-
-
-        // reponse to the client
-        MsgD.send(sock, response, sizeof(response));
-
-        while (!global_stop)
-        {
-            received_size = 0;
             bzero(buffer, sizeof(buffer));
             // get the file info from client
             n = MsgD.recv(sock, buffer, 100);
@@ -703,226 +554,212 @@ void server_transmit (int sock, string userID)
             metrics->submit_request();
 
             // calculate the time consumption here
-            struct timeval tpstart,tpend;
-            double timeuse;
             gettimeofday(&tpstart,NULL);
 
             // reponse to the client
             MsgD.send(sock, response, sizeof(response));
 
-            // local mode
-            if (!storm) {
-
-                FILE *fp = fopen(file_name, "w");  
-                if (fp == NULL)  
-                {  
-                    printf("File:\t[%s] Can Not Open To Write!\n", file_name);  
-                }  
-
-
-                // receive the data from server and store them into buffer
-                while(1)  
+            img = new char[file_size];
+            int offset = 0;
+            // receive the data from client and store them into buffer
+            while(1)  
+            {
+                bzero(buffer, sizeof(buffer));
+                n = MsgD.recv(sock, buffer, sizeof(buffer));
+                if (n <= 0)
                 {
-                    bzero(buffer, sizeof(buffer));
-                    n = MsgD.recv(sock, buffer, sizeof(buffer));
-                    if (n <= 0)
-                    {
-                        pthread_mutex_destroy(&queueLock);
-                        // signal the result thread to terminate
-                        sem_post(sem_match);
-                        errorSocket("ERROR reading from socket", sock);
-                    } 
-                    
-                    if (file_size - received_size <= recv_length)
-                    {
-                        int remain = file_size - received_size;
-                        write_length = fwrite(buffer, sizeof(char), remain, fp);  
-                        if (write_length < remain)  
-                        {  
-                            printf("File:\t Write Failed!\n");  
-                            break;  
-                        }
-                        break;
-                    }
-
-                    write_length = fwrite(buffer, sizeof(char), recv_length, fp);  
-                    if (write_length < recv_length)  
-                    {  
-                        printf("File:\t Write Failed!\n");  
-                        break;  
-                    }  
-                    received_size += recv_length;
-                }
-
-                // print out time comsumption
-                gettimeofday(&tpend,NULL);
-                timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-                // printf("used time:%fus\n",timeuse);
-                printf("receive used time:%fms\n",timeuse / 1000);
-
-                printf("[server] Recieve Finished!\n\n");  
-                // finished 
-                fclose(fp);
-            }
-            // below is storm mode
-            else {
-                // in storm mode, don't save img into disk
-                char* img = new char[file_size];
-                int offset = 0;
-                // receive the data from client and store them into buffer
-                while(1)  
+                    pthread_mutex_destroy(&queueLock);
+                    // signal the result thread to terminate
+                    sem_post(sem_match);
+                    errorSocket("ERROR reading from socket", sock);
+                } 
+                
+                if (file_size - received_size <= recv_length)
                 {
-                    bzero(buffer, sizeof(buffer));
-                    n = MsgD.recv(sock, buffer, sizeof(buffer));
-                    if (n <= 0)
-                    {
-                        pthread_mutex_destroy(&queueLock);
-                        // signal the result thread to terminate
-                        sem_post(sem_match);
-                        errorSocket("ERROR reading from socket", sock);
-                    } 
-                    
-                    if (file_size - received_size <= recv_length)
-                    {
-                        int remain = file_size - received_size;
-                        // copy the content into img
-                        for (int i = 0; i < remain; ++i)
-                        {
-                            img[i + offset] = buffer[i];
-                        }
-                        break;
-                    }
-
+                    int remain = file_size - received_size;
                     // copy the content into img
-                    for (int i = 0; i < recv_length; ++i)
+                    for (int i = 0; i < remain; ++i)
                     {
                         img[i + offset] = buffer[i];
                     }
-                    offset += recv_length;
-
-                    received_size += recv_length;
+                    break;
                 }
 
-                // print out time comsumption
-                gettimeofday(&tpend,NULL);
-                timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
-                // printf("used time:%fus\n",timeuse);
-                printf("receive used time:%fms\n",timeuse / 1000);
-
-                if (debug) printf("[server] Recieve Finished!\n\n");  
-
-                // using kafka to pass the file
-                if (kafka) {
-                    // string input = string(file_name_temp);
-                    // producer->sendString(input, input.size());
-
-                    printf("Current metrics: %f\n", metrics->get_metrics());
-                    printf("Now submit to Kafka.\n");
-                    producer->send(img, file_size);
+                // copy the content into img
+                for (int i = 0; i < recv_length; ++i)
+                {
+                    img[i + offset] = buffer[i];
                 }
-                // use tcp socket to pass the file
-                else {
-                    // send request to spout
-                    if (debug) printf("Now try to connect the spout\n");
-                    int sockfd, ret;
-                    int spoutPort = 9878;
-                    struct sockaddr_in spout_addr;
-                    struct hostent *spout;
-                    struct in_addr ipv4addr;
-                    char buf_spout[100];
-                    char* spout_IP;
-                    const int len = spoutIP.length();
-                    spout_IP = new char[len+1];
-                    strcpy(spout_IP, spoutIP.c_str());
+                offset += recv_length;
 
-                    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-                    if (sockfd < 0)
-                    {
-                        printf("ERROR opening socket\n");
-                        return;
-                    }
-                    inet_pton(AF_INET, spout_IP, &ipv4addr);
-                    spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
-                    if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
-                    if (spout == NULL) {
-                        fprintf(stderr,"ERROR, no such host\n");
-                        exit(0);
-                    }
-                    bzero((char *) &spout_addr, sizeof(spout_addr));
-                    spout_addr.sin_family = AF_INET;
-                    bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
-                    spout_addr.sin_port = htons(spoutPort);
-
-                    while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
-                    {
-                        printf("The spout is not available now, wait a while and reconnect\n\n");
-                        usleep(100000); // sleep 100ms
-                    }
-
-                    printf("[server] Get connection to spout\n");
-
-                    bzero(buf_spout, sizeof(buf_spout));
-                    sprintf(buf_spout, "%d", file_size);
-                    // usleep(1000 * 10); // sleep 10ms to avoid crash
-                    if (debug) printf("[server] send the file size\n");
-                    ret = write(sockfd, buf_spout, sizeof(buf_spout));
-                    if (ret < 0)
-                    {
-                        printf("error sending\n");
-                        return;
-                    }
-
-                    // get the response
-                    bzero(buf_spout, sizeof(buf_spout));
-                    if (debug) printf("[server] now wait for response\n");
-                    ret = read(sockfd, buf_spout, sizeof(buf_spout));
-                    if (ret < 0)
-                    {
-                        printf("error reading\n");
-                        return;
-                    }
-
-                    if (debug) printf("got response: %s\n", buf_spout);
-
-                    if (debug) printf("[server] send the img\n");
-                    ret = write(sockfd, img, file_size);
-                    if (ret < 0)
-                    {
-                        printf("error sending\n");
-                        return;
-                    }
-                    if (debug) printf("ret: %d\n", ret);
-                    printf("[server] Finished transmitting image to spout\n\n");
-
-                    close(sockfd);
-                }
-                delete[] img;
+                received_size += recv_length;
             }
- 
-            // lock the queue, ensure there is only one thread modifying the queue
-            pthread_mutex_lock(&queueLock);
-
-            // store the file name to the waiting queue
-            string file_name_string(file_name_temp);
-            imgQueue->push(file_name_string);
-
-            pthread_mutex_unlock(&queueLock);
-            // get the address of sem_match
-            if (sem_match == 0)
-            {
-                while (sem_map.find(userID) == sem_map.end());
-                sem_match = sem_map[userID];
-            }
-            // signal the result thread to do image processing
-            sem_post(sem_match);
         }
+        else if (mf) {
+            img = new char[500000]; // large enough to hold the image file
+            file_size = mfpack->recvImage(img, 500000);
+            bzero(file_name_temp, sizeof(file_name_temp));
+            sprintf(file_name_temp, "pics/%d.jpg", fake_index++);
+            printf("\n[server] file name: [%s]\n", file_name_temp);
+            printf("[server] file size: %d\n", file_size);
+
+            gettimeofday(&tpstart,NULL);
+        }
+
+        // print out time comsumption
+        gettimeofday(&tpend,NULL);
+        timeuse=1000000*(tpend.tv_sec-tpstart.tv_sec)+tpend.tv_usec-tpstart.tv_usec;// notice, should include both s and us
+        // printf("used time:%fus\n",timeuse);
+        printf("receive used time:%fms\n",timeuse / 1000);
+        // finished
+        if (debug) printf("[server] Recieve Finished!\n\n");
+
+        // handle the metrics
+        metrics->submit_request();
+
+        // if not using storm, write into disk
+        if (!storm)
+        {
+            FILE *fp = fopen(file_name_temp, "w");  
+            if (fp == NULL)  
+            {  
+                printf("File:\t%s Can Not Open To Write!\n", file_name_temp);  
+                break;
+            }
+            fwrite(img, sizeof(char), file_size, fp);
+            fclose(fp);
+        }
+        // if using storm mode, transfer the file
+        else if (storm) {
+            // using kafka to pass the file
+            if (kafka) {
+                // string input = string(file_name_temp);
+                // producer->sendString(input, input.size());
+
+                printf("Current metrics: %f\n", metrics->get_metrics());
+                printf("Now submit to Kafka.\n");
+                producer->send(img, file_size);
+            }
+            // use tcp socket to pass the file
+            else {
+                // send request to spout
+                if (debug) printf("Now try to connect the spout\n");
+                int sockfd, ret;
+                int spoutPort = 9878;
+                struct sockaddr_in spout_addr;
+                struct hostent *spout;
+                struct in_addr ipv4addr;
+                char buf_spout[100];
+                char* spout_IP;
+                const int len = spoutIP.length();
+                spout_IP = new char[len+1];
+                strcpy(spout_IP, spoutIP.c_str());
+
+                sockfd = socket(AF_INET, SOCK_STREAM, 0);
+                if (sockfd < 0)
+                {
+                    printf("ERROR opening socket\n");
+                    return;
+                }
+                inet_pton(AF_INET, spout_IP, &ipv4addr);
+                spout = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
+                if (debug) printf("\n[server] Spout address: %s\n", spout_IP);
+                if (spout == NULL) {
+                    fprintf(stderr,"ERROR, no such host\n");
+                    exit(0);
+                }
+                bzero((char *) &spout_addr, sizeof(spout_addr));
+                spout_addr.sin_family = AF_INET;
+                bcopy((char *)spout->h_addr, (char *)&spout_addr.sin_addr.s_addr, spout->h_length); 
+                spout_addr.sin_port = htons(spoutPort);
+
+                while (connect(sockfd,(struct sockaddr *) &spout_addr, sizeof(spout_addr)) < 0)
+                {
+                    printf("The spout is not available now, wait a while and reconnect\n\n");
+                    usleep(100000); // sleep 100ms
+                }
+
+                printf("[server] Get connection to spout\n");
+
+                bzero(buf_spout, sizeof(buf_spout));
+                sprintf(buf_spout, "%d", file_size);
+                if (debug) printf("[server] send the file size\n");
+                ret = write(sockfd, buf_spout, sizeof(buf_spout));
+                if (ret < 0)
+                {
+                    printf("error sending\n");
+                    return;
+                }
+
+                // get the response
+                bzero(buf_spout, sizeof(buf_spout));
+                if (debug) printf("[server] now wait for response\n");
+                ret = read(sockfd, buf_spout, sizeof(buf_spout));
+                if (ret < 0)
+                {
+                    printf("error reading\n");
+                    return;
+                }
+
+                if (debug) printf("got response: %s\n", buf_spout);
+
+                if (debug) printf("[server] send the img\n");
+                ret = write(sockfd, img, file_size);
+                if (ret < 0)
+                {
+                    printf("error sending\n");
+                    return;
+                }
+                if (debug) printf("ret: %d\n", ret);
+
+                // get the ack
+                read(sockfd, buf_spout, sizeof(buf_spout));
+                printf("[server] Finished transmitting image to spout\n\n");
+
+                close(sockfd);
+            }
+
+            delete[] img;
+        }
+
+        // lock the queue, ensure there is only one thread modifying the queue
+        pthread_mutex_lock(&queueLock);
+
+        // store the file name to the waiting queue
+        string file_name_string(file_name_temp);
+        imgQueue->push(file_name_string);
+
+        pthread_mutex_unlock(&queueLock);
+        // get the address of sem_match
+        if (sem_match == 0)
+        {
+            while (sem_map.find(userID) == sem_map.end());
+            sem_match = sem_map[userID];
+        }
+        // signal the result thread to do image processing
+        sem_post(sem_match);
     }
 
+    if (tcp)
+       close(sock);
+    
     delete(imgQueue);
     printf("[server] Connection closed. --- transmit\n\n");
-    // pthread_exit(NULL); //terminate calling thread!
     return;
 
+}
+
+void *mfThread(void* inputtype) {
+    user_map["mf"] = 2;
+    int type = (int)inputtype;
+    if (type == 0) {
+        server_result(0, "mf");
+    }
+    else if (type == 1) {
+        server_transmit(0, "mf");
+    }
+
+    return 0;
 }
 
 /******************************************************************************
@@ -932,9 +769,9 @@ Description.: There is a separate instance of this function
 Input Value.:
 Return Value: -
 ******************************************************************************/
-void *serverThread (void * inputsock)
+void *serverThread(void* inputsock)
 {
-    int sock = *((int *)inputsock);
+    int sock = (int)inputsock;
     int n;
     char buffer[100];
     string userID;
@@ -952,7 +789,7 @@ void *serverThread (void * inputsock)
         } 
     }
     // below is orbit mode, using MFAPI
-    else
+    else if (orbit)
     {
         MsgD.recv(sock, buffer, sizeof(buffer));
     }
@@ -1079,7 +916,7 @@ void server_main()
                 printf ("[server] server has got connect from %s, socket id: %d.\n", (char *)inet_ntoa(cli_addr.sin_addr), newsockfd);
 
             /* create thread and pass context to thread function */
-            if (pthread_create(&thread_id, 0, serverThread, (void *)&(newsockfd)) == -1)
+            if (pthread_create(&thread_id, 0, serverThread, (void *)newsockfd) == -1)
             {
                 fprintf(stderr,"pthread_create error!\n");
                 break; //break while loop
@@ -1109,7 +946,7 @@ void server_main()
                 printf ("[server] server has got new connection, socket id: %d.\n", newsockfd);
 
             /* create thread and pass context to thread function */
-            if (pthread_create(&thread_id, 0, serverThread, (void *)&(newsockfd)) == -1)
+            if (pthread_create(&thread_id, 0, serverThread, (void *)newsockfd) == -1)
             {
                 fprintf(stderr,"pthread_create error!\n");
                 break; //break while loop
@@ -1118,10 +955,28 @@ void server_main()
             usleep(1000 * 5); //  sleep 5ms to avoid clients gain same sock
 
         } /* end of while */
+    }
+    // new orbit mode
+    else if (mf) {
+        // start transmit and result threads
+        pthread_t thread1, thread2;
+        int type = 0;
+        if (pthread_create(&thread1, 0, mfThread, (void *)type) == -1)
+        {
+            fprintf(stderr,"pthread_create error!\n");
+        }
+        pthread_detach(thread1);
 
-        if (debug) printf("main end\n");
+        type = 1;
+        if (pthread_create(&thread2, 0, mfThread, (void *)type) == -1)
+        {
+            fprintf(stderr,"pthread_create error!\n");
+        }
+        pthread_detach(thread2);
+        pause();
     }
 
+    if (debug) printf("main end\n");
 }
 
 /******************************************************************************
