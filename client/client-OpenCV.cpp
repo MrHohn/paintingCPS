@@ -123,8 +123,7 @@ void *result_thread(void *arg)
             error("ERROR opening socket");
         if (!sb)
         {
-            // char server_addr[] = "127.0.0.1";
-            char server_addr[] = "10.0.0.200";
+            char server_addr[] = "127.0.0.1";
             inet_pton(AF_INET, server_addr, &ipv4addr);
             server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
         }
@@ -561,8 +560,7 @@ void *display_thread(void *arg)
             error("ERROR opening socket");
         if (!sb)
         {
-            // char server_addr[] = "127.0.0.1";
-            char server_addr[] = "10.0.0.200";
+            char server_addr[] = "127.0.0.1";
             inet_pton(AF_INET, server_addr, &ipv4addr);
             server = gethostbyaddr(&ipv4addr, sizeof(ipv4addr), AF_INET);
         }
