@@ -596,8 +596,8 @@ void server_transmit (int sock, string userID)
             }
         }
         else if (mf) {
-            img = new char[500000]; // large enough to hold the image file
-            file_size = mfpack->recvImage(img, 500000);
+            img = new char[650000]; // large enough to hold the image file
+            file_size = mfpack->recvImage(img, 650000);
             bzero(file_name_temp, sizeof(file_name_temp));
             sprintf(file_name_temp, "pics/%d.jpg", fake_index++);
             printf("\n[server] file name: [%s]\n", file_name_temp);
