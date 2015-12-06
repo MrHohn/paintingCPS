@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unordered_set>
 #include <queue>
+#include <iostream>
 
 #include "MsgDistributor.h"
 #include "MFPackager.h"
@@ -793,6 +794,25 @@ void *display_thread(void *arg)
     return 0;
 }
 
+void *test_Thread(void *arg) {
+    while (!global_stop) {
+        string input;
+        cin >> input;
+        // check if input is number first
+        bool isNumber = true;
+        for (int i = 0; i < (int)input.size(); ++i) {
+            if (input.at(i) < '0' || input.at(i) > '9') {
+                isNumber = false;
+            } 
+        }
+        if (isNumber) {
+            delay_time = stoi(input);
+        }
+    }
+
+    return 0;
+}
+
 /******************************************************************************
 Description.: this is the mflisten thread
               it loops forever, listen on the src_GUID
@@ -853,6 +873,10 @@ int client_stop()
         mfclose(&handle);
     }
 
+    if (test) {
+        pthread_cancel(testThread);
+    }
+
     if (consume)
     {
         // release timeQueue
@@ -869,8 +893,7 @@ Return Value: always 0
 ******************************************************************************/
 int client_run()
 {
-    if (consume)
-    {
+    if (consume) {
         // init the time queue
         timeQueue = new queue<struct timeval>();
     }
@@ -882,10 +905,13 @@ int client_run()
     pthread_create(&transmitThread, 0, display_thread, NULL);
     pthread_detach(transmitThread);
     // run in orbit mode
-    if (orbit)
-    {
+    if (orbit) {
         pthread_create(&mflistenThread, 0, mflisten_thread, NULL);
         pthread_detach(mflistenThread);
+    }
+    if (test) {
+        pthread_create(&testThread, 0, test_Thread, NULL);
+        pthread_detach(testThread);
     }
 
     return 0;

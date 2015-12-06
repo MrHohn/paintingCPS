@@ -5,6 +5,7 @@
 static pthread_t transmitThread;
 static pthread_t resultThread;
 static pthread_t mflistenThread;
+static pthread_t testThread;
 
 pthread_mutex_t sendLock;         // mutex lock to make sure transmit order
 unordered_set<int> id_set;        // set to store the sock id used  

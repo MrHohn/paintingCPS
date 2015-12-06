@@ -550,9 +550,6 @@ void server_transmit (int sock, string userID)
             file_size = strtol(file_size_char, NULL, 10);
             printf("[server] file size: %d\n", file_size);
 
-            // handle the metrics
-            metrics->submit_request();
-
             // calculate the time consumption here
             gettimeofday(&tpstart,NULL);
 
