@@ -4,7 +4,7 @@ Make sure you have installed the MFAPI and OpenCV library on the machine. To com
 	make
 
 Type ./server-OpenCV -h for more information, as listed below:
-
+ 
  Help for server-OpenCV application
  ---------------------------------------------------------------
  The following parameters can be passed to this software:
@@ -17,6 +17,9 @@ Type ./server-OpenCV -h for more information, as listed below:
  [-o]..................: other's GUID, a.k.a dst_GUID
  [-storm]..............: run in storm mode
  [-train]..............: train with the database
+ [-p]..................: parallelism level (default 5)
+ [-kafka]..............: using kafka to submit works
+ [-mf].................: new orbit mode
  
  ---------------------------------------------------------------
  Please start the server first

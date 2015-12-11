@@ -17,6 +17,10 @@ Type ./client-OpenCV -h for more information, as listed below:
  [-m]..................: mine GUID, a.k.a src_GUID
  [-o]..................: other's GUID, a.k.a dst_GUID
  [-t]..................: testing mode, please define delay
+ [-sb].................: sandbox mode
+ [-c]..................: consumption mode
+ [-size]...............: define file size
+ [-mf].................: run in new orbit mode
  
  ---------------------------------------------------------------
  Please start the client after the server is started
@@ -35,4 +39,3 @@ Type ./client-OpenCV -h for more information, as listed below:
 
    # run in orbit mode, myGUID set to 101, otherGUID set to 102
    sudo ./client-OpenCV -orbit -m 101 -o 102
- 

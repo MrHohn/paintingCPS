@@ -1,3 +1,5 @@
+Contents in this folder are very similar to those in the storm folder, expect this STORM program are using Kafka as input source.
+
 First of all, please install STORM framework:
 
 	Storm Cluster install:
@@ -35,6 +37,7 @@ For using the STORM with server, first compile and start the STORM program, All 
 	./util.sh kill
 
 	# for stopping the storm framework, the simplest way is use jps command to get the processes id for each JAVA program and use kill command to kill them one by one.
+	./util.sh.stop
 
 	# if you would like to monitor how the whole program is running, simply go to assist folder and run the ClusterMonitor before you submit the topo.
 	java ClusterMonitor

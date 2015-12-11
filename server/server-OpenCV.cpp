@@ -55,8 +55,8 @@ void help(void)
             " [-storm]..............: run in storm mode\n" \
             " [-train]..............: train with the database\n" \
             " [-p]..................: parallelism level (default 5)\n" \
-            " [-kafka]..................: using kafka to submit works\n" \
-            " [-mf]..................: new orbit mode\n" \
+            " [-kafka]..............: using kafka to submit works\n" \
+            " [-mf].................: new orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the server first\n"

@@ -58,8 +58,8 @@ void help(void)
             " [-t]..................: testing mode, please define delay\n" \
             " [-sb].................: sandbox mode\n" \
             " [-c]..................: consumption mode\n" \
-            " [-size]..................: define file size\n" \
-            " [-mf]..................: run in new orbit mode\n" \
+            " [-size]...............: define file size\n" \
+            " [-mf].................: run in new orbit mode\n" \
             " \n" \
             " ---------------------------------------------------------------\n" \
             " Please start the client after the server is started\n"
