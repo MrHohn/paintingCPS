@@ -21,6 +21,6 @@ The goal of the project is to implement a CPS Application based on computer visi
 - CPS server main program using TCP or MobilityFirst network.
 - OpenCV object recognition program.
 - Cloud computing server based on STORM and Kafka.
-- Combanation of cloud server Load Metric and Network Virtualization.
+- Combination of cloud server Load Metric and Network Virtualization.
 
 For how to configure/compile/install/use the whole system, please go see the README in each folder.
