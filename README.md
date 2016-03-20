@@ -16,10 +16,11 @@ The goal of the project is to implement a CPS Application based on computer visi
 
 ### What has been done:
 
-1. Google glass and Linux client programs that is capable to stream video to server.
-2. Android application as a go between Google glass and the MobilityFirst server.
-3. CPS server main program using TCP or MobilityFirst network.
-4. OpenCV object recognition program.
-5. Cloud computing server based on STORM and Kafka.
+- Google glass and Linux client programs that is capable to stream video to server.
+- Android application as a go between Google glass and the MobilityFirst server.
+- CPS server main program using TCP or MobilityFirst network.
+- OpenCV object recognition program.
+- Cloud computing server based on STORM and Kafka.
+- Combanation of cloud server Load Metric and Network Virtualization.
 
 For how to configure/compile/install/use the whole system, please go see the README in each folder.
